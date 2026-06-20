@@ -174,7 +174,7 @@
         <input type="hidden" name="source" value="{{ filters.source or '' }}" />
         <input type="hidden" name="threat" value="{{ filters.threat or '' }}" />
         <input type="hidden" name="window" value="{{ filters.window or '' }}" />
-        {% if case %}<input type="hidden" name="case" value="{{ case.id }}" />{% endif %}
+        {% for cid in selected_ids or [] %}<input type="hidden" name="case" value="{{ cid }}" />{% endfor %}
         <label class="block">
           <span class="text-[11px] text-slate-500">Alias (duplicate)</span>
           <input name="alias" required placeholder="e.g. Messi"
@@ -204,7 +204,7 @@
             <input type="hidden" name="source" value="{{ filters.source or '' }}" />
             <input type="hidden" name="threat" value="{{ filters.threat or '' }}" />
             <input type="hidden" name="window" value="{{ filters.window or '' }}" />
-            {% if case %}<input type="hidden" name="case" value="{{ case.id }}" />{% endif %}
+            {% for cid in selected_ids or [] %}<input type="hidden" name="case" value="{{ cid }}" />{% endfor %}
             <button class="text-slate-700 hover:text-red-400" title="Remove">&times;</button>
           </form>
         </div>

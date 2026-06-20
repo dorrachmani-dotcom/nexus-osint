@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import Body, FastAPI, File, Form, Request, UploadFile
+from fastapi import Body, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -738,23 +738,37 @@ _EMPTY_GRAPH = {
 
 def _entity_graph_context(
     q: str | None, source: str | None, threat: str | None, window: str | None,
-    case_id: int | None = None,
+    case_ids: list[int] | None = None,
 ) -> dict:
     """Build the topic entity-graph payload (graph HTML + ranked tables).
 
     Aggregates the AI-extracted entities of every stored item matching the same
     filters the feed uses, so the analyst sees *who is talked about the most*
     and *who is most connected* across exactly the slice they are looking at.
-    When ``case_id`` is given, the graph is scoped to that case's tracking words
-    (its live feed) — a per-case relationship map rather than the whole river.
+    When ``case_ids`` is given, the graph is scoped to the UNION of those cases'
+    tracking words — pick one case, several (e.g. Messi + Neymar), or all — so the
+    map shows only entities from items those cases track, not the whole river.
     """
     since_ts = _window_since_ts(window)
-    case = None
+    cases: list[dict] = []
     with get_connection() as conn:
-        if case_id:
-            case = get_case(conn, case_id)
-            terms = [t["term"] for t in case_terms(conn, case_id)] if case else []
-            # No tracking words yet -> an honest empty graph (not the whole DB).
+        all_cases = list_cases(conn, status="open", parent_id=None)
+        if case_ids:
+            terms: list[str] = []
+            seen: set[str] = set()
+            for cid in case_ids:
+                c = get_case(conn, cid)
+                if not c:
+                    continue
+                cases.append(c)
+                for t in case_terms(conn, cid):
+                    if t.get("kind") == "alert":
+                        continue
+                    key = (t["term"] or "").strip().lower()
+                    if key and key not in seen:
+                        seen.add(key)
+                        terms.append(t["term"])
+            # No tracking words across the chosen cases -> honest empty graph.
             data = (
                 topic_entity_graph(conn, terms=terms, since_ts=since_ts)
                 if terms else dict(_EMPTY_GRAPH)
@@ -772,9 +786,21 @@ def _entity_graph_context(
         "sources": sources,
         "threat_levels": THREAT_LEVELS,
         "filters": _filters(q, source, threat, None, None, window, False),
-        "case": case,
+        # ``case`` (single) kept for the per-case tab banner; ``cases`` is the full
+        # selection; ``all_cases`` + ``selected_ids`` drive the multi-select.
+        "case": cases[0] if len(cases) == 1 else None,
+        "cases": cases,
+        "all_cases": all_cases,
+        "selected_ids": [c["id"] for c in cases],
         "aliases": aliases,
     }
+
+
+def _case_id_list(case) -> list[int]:
+    """Parse repeated ?case= values (str/list) into a list of int case ids."""
+    if isinstance(case, str):
+        case = [case]
+    return [int(c) for c in (case or []) if str(c).strip().isdigit()]
 
 
 @app.get("/graph", response_class=HTMLResponse)
@@ -784,11 +810,12 @@ def graph(
     source: str | None = None,
     threat: str | None = None,
     window: str | None = None,
-    case: str | None = None,
+    case: list[str] = Query(default=[]),
 ) -> HTMLResponse:
     """Topic relationship graph — who is talked about the most, and who is most
-    connected. Global by default; scoped to one case with ``?case=ID``."""
-    ctx = _entity_graph_context(q, source, threat, window, case_id=_to_int(case))
+    connected. Global by default; scope to one or more cases with repeated
+    ``?case=ID`` (e.g. ``?case=3&case=7`` for two cases)."""
+    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
     return TEMPLATES.TemplateResponse(request, "graph.html", ctx)
 
 
@@ -799,10 +826,10 @@ def graph_build(
     source: str | None = None,
     threat: str | None = None,
     window: str | None = None,
-    case: str | None = None,
+    case: list[str] = Query(default=[]),
 ) -> HTMLResponse:
     """htmx partial: just the graph + ranked tables, for live re-filtering."""
-    ctx = _entity_graph_context(q, source, threat, window, case_id=_to_int(case))
+    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
     return TEMPLATES.TemplateResponse(request, "_entity_graph.html", ctx)
 
 
@@ -815,12 +842,12 @@ def graph_add_alias(
     source: str | None = Form(default=None),
     threat: str | None = Form(default=None),
     window: str | None = Form(default=None),
-    case: str | None = Form(default=None),
+    case: list[str] = Form(default=[]),
 ) -> HTMLResponse:
     """Add an entity alias (e.g. 'Messi' → 'Lionel Messi') and redraw the graph."""
     with get_connection() as conn:
         add_entity_alias(conn, alias.strip(), canonical.strip())
-    ctx = _entity_graph_context(q, source, threat, window, case_id=_to_int(case))
+    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
     return TEMPLATES.TemplateResponse(request, "_entity_graph.html", ctx)
 
 
@@ -832,12 +859,12 @@ def graph_delete_alias(
     source: str | None = Form(default=None),
     threat: str | None = Form(default=None),
     window: str | None = Form(default=None),
-    case: str | None = Form(default=None),
+    case: list[str] = Form(default=[]),
 ) -> HTMLResponse:
     """Remove an entity alias and redraw the graph."""
     with get_connection() as conn:
         delete_entity_alias(conn, alias_id)
-    ctx = _entity_graph_context(q, source, threat, window, case_id=_to_int(case))
+    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
     return TEMPLATES.TemplateResponse(request, "_entity_graph.html", ctx)
 
 

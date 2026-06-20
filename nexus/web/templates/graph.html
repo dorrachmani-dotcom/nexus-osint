@@ -2,90 +2,85 @@
 {% block content %}
 <section class="space-y-5">
 
-  {# ── Case identity banner ─────────────────────────────────────────────────── #}
-  {% if case %}
-  <div class="rounded-lg border border-amber-700/40 bg-amber-950/20 px-4 py-3 flex items-center gap-3">
-    <span class="text-amber-400 text-base">&#128269;</span>
-    <div class="flex-1 min-w-0">
-      <p class="text-[11px] text-amber-500 font-semibold uppercase tracking-wide">Investigation graph</p>
-      <p class="text-sm font-medium text-amber-200 truncate">{{ case.name }}</p>
-    </div>
-    <a href="/cases/{{ case.id }}?tab=feed"
-       class="shrink-0 text-xs text-slate-400 hover:text-amber-300 border border-slate-700 hover:border-amber-600 rounded px-2 py-1">
-      &#8592; Back to case
-    </a>
-  </div>
-
-  {# Time-window filter even in case mode #}
-  <form hx-get="/graph/build" hx-target="#graph-results" hx-indicator="#graph-busy"
-        hx-push-url="false" class="flex items-center gap-3 text-xs">
-    <input type="hidden" name="case" value="{{ case.id }}" />
-    <span class="text-slate-500">Time window:</span>
-    {% for val, lbl in [('','All time'),('24h','24 h'),('7d','7 days'),('30d','30 days')] %}
-    <label class="flex items-center gap-1 cursor-pointer">
-      <input type="radio" name="window" value="{{ val }}"
-             {% if (filters.window or '') == val %}checked{% endif %}
-             class="accent-amber-500"
-             onchange="this.form.requestSubmit()" />
-      <span class="text-slate-300">{{ lbl }}</span>
-    </label>
-    {% endfor %}
-    <span id="graph-busy" class="htmx-indicator text-amber-400 ml-2">Redrawing…</span>
-  </form>
-
-  {% else %}
-  {# ── Global graph header + filter ────────────────────────────────────────── #}
+  {# ── Header ──────────────────────────────────────────────────────────────── #}
   <div>
     <h1 class="text-lg font-semibold text-slate-100">Relationship graph</h1>
     <p class="text-sm text-slate-400 mt-1">
       See <span class="text-slate-200">who is talked about the most</span> and
-      <span class="text-slate-200">who is most connected</span> across your collected items.
-      Entity names are links — click one to search the feed for items that mention it.
+      <span class="text-slate-200">who is most connected</span>. Choose the scope below:
+      everything, a single case, several cases, or by keyword. Entity names are links.
     </p>
   </div>
 
+  {# ── Unified filter: scope to one/several/all cases, or by keyword ────────── #}
   <form hx-get="/graph/build" hx-target="#graph-results" hx-indicator="#graph-busy"
         hx-push-url="false"
-        class="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] items-end
-               bg-slate-900 border border-slate-800 rounded-lg p-4">
-    <label class="block">
-      <span class="text-xs text-slate-400">Topic / keyword</span>
-      <input name="q" value="{{ filters.q or '' }}"
-             placeholder="e.g. a name, alias, organisation, wallet, CVE"
-             class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
-    </label>
-    <label class="block">
-      <span class="text-xs text-slate-400">Source</span>
-      <select name="source" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
-        <option value="">All</option>
-        {% for s in sources %}
-        <option value="{{ s }}" {% if filters.source == s %}selected{% endif %}>{{ s }}</option>
+        class="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-3">
+
+    {% if all_cases %}
+    <div>
+      <div class="text-xs text-slate-400 mb-1.5">
+        Scope to cases <span class="text-slate-600">— tick one or more (e.g. Messi + Neymar). Leave all unticked for everything.</span>
+      </div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1.5">
+        {% for c in all_cases %}
+        <label class="inline-flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+          <input type="checkbox" name="case" value="{{ c.id }}" class="accent-amber-500"
+                 {% if c.id in selected_ids %}checked{% endif %} />
+          {{ c.name }}
+        </label>
         {% endfor %}
-      </select>
-    </label>
-    <label class="block">
-      <span class="text-xs text-slate-400">Threat</span>
-      <select name="threat" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
-        <option value="">Any</option>
-        {% for t in threat_levels %}
-        <option value="{{ t }}" {% if filters.threat == t %}selected{% endif %}>{{ t }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label class="block">
-      <span class="text-xs text-slate-400">Window</span>
-      <select name="window" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
-        <option value="" {% if not filters.window %}selected{% endif %}>All time</option>
-        <option value="24h" {% if filters.window == '24h' %}selected{% endif %}>Last 24h</option>
-        <option value="7d"  {% if filters.window == '7d'  %}selected{% endif %}>Last 7d</option>
-        <option value="30d" {% if filters.window == '30d' %}selected{% endif %}>Last 30d</option>
-      </select>
-    </label>
-    <button class="sm:col-span-4 justify-self-start rounded bg-slate-800 hover:bg-slate-700
-                   text-slate-200 text-sm px-4 py-1.5">Draw map</button>
+      </div>
+    </div>
+    <div class="border-t border-slate-800"></div>
+    {% endif %}
+
+    <div class="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] items-end">
+      <label class="block">
+        <span class="text-xs text-slate-400">Topic / keyword <span class="text-slate-600">(ignored when cases are ticked)</span></span>
+        <input name="q" value="{{ filters.q or '' }}"
+               placeholder="e.g. a name, alias, organisation, wallet, CVE"
+               class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+      </label>
+      <label class="block">
+        <span class="text-xs text-slate-400">Source</span>
+        <select name="source" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+          <option value="">All</option>
+          {% for s in sources %}
+          <option value="{{ s }}" {% if filters.source == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-xs text-slate-400">Threat</span>
+        <select name="threat" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+          <option value="">Any</option>
+          {% for t in threat_levels %}
+          <option value="{{ t }}" {% if filters.threat == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-xs text-slate-400">Window</span>
+        <select name="window" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+          <option value="" {% if not filters.window %}selected{% endif %}>All time</option>
+          <option value="24h" {% if filters.window == '24h' %}selected{% endif %}>Last 24h</option>
+          <option value="7d"  {% if filters.window == '7d'  %}selected{% endif %}>Last 7d</option>
+          <option value="30d" {% if filters.window == '30d' %}selected{% endif %}>Last 30d</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">Draw map</button>
+      <span id="graph-busy" class="htmx-indicator text-sm text-amber-400">Drawing the map…</span>
+      {% if cases %}
+      <span class="text-xs text-amber-300">Scope: {{ cases | map(attribute='name') | join(' + ') }}</span>
+      {% else %}
+      <span class="text-xs text-slate-500">Scope: all collected items</span>
+      {% endif %}
+    </div>
   </form>
-  <div id="graph-busy" class="htmx-indicator text-sm text-amber-400">Drawing the map…</div>
-  {% endif %}
 
   <div id="graph-results">
     {% include "_entity_graph.html" %}
