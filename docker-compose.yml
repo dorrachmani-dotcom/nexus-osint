@@ -1,0 +1,24 @@
+services:
+  nexus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexus-osint:latest
+    container_name: nexus-osint
+    restart: unless-stopped
+    # OpSec: bind only to loopback so the dashboard is never exposed on the LAN.
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persist the SQLite DB, evidence screenshots and exported reports.
+      - ./data:/app/data
+    # Playwright/Chromium needs a larger shared-memory segment for screenshots.
+    shm_size: "1gb"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else sys.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

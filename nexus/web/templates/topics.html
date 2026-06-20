@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Sources</h1>
+    <p class="text-sm text-slate-400">Where your data comes from.</p>
+    <div class="mt-2 flex gap-1 border-b border-slate-800">
+      <a href="/topics" class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px border-amber-500 text-amber-300 font-semibold">Feeds &amp; presets</a>
+      <a href="/sources/custom" class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px border-transparent text-slate-400 hover:text-slate-200">Custom APIs</a>
+    </div>
+  </div>
+
+  <div>
+    <p class="text-sm text-slate-400">
+      Pick a curated preset, or add your own feed, query, subreddit, or channel.
+      New targets are picked up on the next scan and merged with anything set in
+      <span class="mono text-amber-400">.env</span>.
+    </p>
+  </div>
+
+  {# Subject-tracking now lives inside a Case (its tracking words + questions). #}
+  <div class="rounded-lg border border-sky-900/70 bg-sky-950/20 p-4">
+    <h2 class="text-sm font-medium text-sky-200">Tracking a subject?</h2>
+    <p class="mt-1 text-xs text-slate-400">
+      Investigations now live in one place. Open a <span class="text-slate-300">Case</span> and it holds the
+      subject's <span class="text-slate-300">tracking words</span> (its live feed), its
+      <span class="text-slate-300">questions</span>, pinned evidence and sub-cases — no more juggling separate
+      capsules and boards. The AI can even set up the words for you from a one-line brief.
+    </p>
+    <a href="/cases" class="mt-3 inline-block rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">
+      Go to Cases &rarr;</a>
+  </div>
+
+  <!-- One-click curated presets (all RSS, no API key needed) -->
+  <div class="space-y-3">
+    <h2 class="text-sm font-medium text-slate-300">Quick presets</h2>
+    <p class="text-xs text-slate-500">
+      Each preset subscribes to a bundle of public RSS feeds. No API key required.
+    </p>
+    <div class="flex flex-wrap gap-2">
+      {% for name, feeds in presets.items() %}
+      <form hx-post="/topics/preset" hx-target="#subscriptions" hx-swap="outerHTML">
+        <input type="hidden" name="preset" value="{{ name }}" />
+        <button class="rounded border border-slate-700 bg-slate-900 hover:border-amber-500
+                       hover:text-amber-300 px-3 py-1.5 text-sm">
+          + {{ name }}
+          <span class="mono text-[11px] text-slate-500">({{ feeds|length }})</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Add a custom target -->
+  <div class="space-y-3">
+    <h2 class="text-sm font-medium text-slate-300">Add a custom target</h2>
+    <form hx-post="/topics/add" hx-target="#subscriptions" hx-swap="outerHTML"
+          hx-on::after-request="this.reset()"
+          class="grid gap-3 sm:grid-cols-[auto_1fr_1fr_auto] items-end
+                 bg-slate-900 border border-slate-800 rounded-lg p-4">
+      <label class="block">
+        <span class="text-xs text-slate-400">Source</span>
+        <select name="source" id="topic-source"
+                class="mt-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+          {% for s in sources %}
+          <option value="{{ s.id }}" data-placeholder="{{ s.placeholder }}" data-hint="{{ s.hint }}">{{ s.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-xs text-slate-400">Value</span>
+        <input name="value" id="topic-value" required placeholder="{{ sources[0].placeholder }}"
+               class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+        <span id="topic-hint" class="text-[11px] text-slate-500">{{ sources[0].hint }}</span>
+      </label>
+      <label class="block">
+        <span class="text-xs text-slate-400">Label <span class="text-slate-600">(optional)</span></span>
+        <input name="label"
+               class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+      </label>
+      <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-1.5 text-sm">
+        Add
+      </button>
+    </form>
+    <script>
+      // Update placeholder + hint to match the selected source.
+      (function () {
+        var sel = document.getElementById("topic-source");
+        var val = document.getElementById("topic-value");
+        var hint = document.getElementById("topic-hint");
+        if (!sel) return;
+        sel.addEventListener("change", function () {
+          var opt = sel.options[sel.selectedIndex];
+          val.placeholder = opt.getAttribute("data-placeholder") || "";
+          hint.textContent = opt.getAttribute("data-hint") || "";
+        });
+      })();
+    </script>
+  </div>
+
+  {% include "_subscriptions.html" %}
+
+  {# ── Source health ────────────────────────────────────────────────────────── #}
+  {% if source_stats %}
+  <div class="space-y-2">
+    <h2 class="text-sm font-medium text-slate-300">&#128268; Source activity</h2>
+    <p class="text-xs text-slate-500">How much each source has contributed and when it last delivered an item.</p>
+    <div class="rounded-lg border border-slate-800 overflow-hidden">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="border-b border-slate-800 bg-slate-900/60">
+            <th class="text-left px-3 py-2 text-slate-400 font-medium">Source</th>
+            <th class="text-right px-3 py-2 text-slate-400 font-medium">Today</th>
+            <th class="text-right px-3 py-2 text-slate-400 font-medium">Total</th>
+            <th class="text-right px-3 py-2 text-slate-400 font-medium">Last item</th>
+            <th class="px-3 py-2 text-slate-400 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/60">
+          {% for s in source_stats %}
+          <tr class="hover:bg-slate-900/40">
+            <td class="px-3 py-2 mono text-slate-200 uppercase font-medium">{{ s.source }}</td>
+            <td class="px-3 py-2 text-right tabular-nums
+              {% if s.today > 0 %}text-emerald-400{% else %}text-slate-600{% endif %}">
+              {{ s.today or '—' }}
+            </td>
+            <td class="px-3 py-2 text-right text-slate-400 tabular-nums">{{ s.total }}</td>
+            <td class="px-3 py-2 text-right mono text-slate-500">
+              {{ s.last_at[:16] if s.last_at else '—' }}
+            </td>
+            <td class="px-3 py-2">
+              {% if s.today > 0 %}
+              <span class="inline-flex items-center gap-1 text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>Active</span>
+              {% elif s.last_at and s.last_at[:10] >= (today_date) %}
+              <span class="inline-flex items-center gap-1 text-amber-400"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>Today</span>
+              {% elif s.last_at %}
+              <span class="inline-flex items-center gap-1 text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-slate-600 inline-block"></span>Idle</span>
+              {% else %}
+              <span class="text-slate-700">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

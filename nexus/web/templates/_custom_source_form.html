@@ -1,0 +1,147 @@
+{% set cfg = cfg | default({}, true) %}
+<div id="custom-form-wrap" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+  <h2 class="text-sm font-medium text-slate-300">Source configuration</h2>
+
+  {% if error %}
+  <div class="rounded border border-rose-900/60 bg-rose-950/30 p-2 text-xs text-rose-300">{{ error }}</div>
+  {% endif %}
+  {% if plan_ok %}
+  <div class="rounded border border-emerald-900/60 bg-emerald-950/30 p-2 text-xs text-emerald-300">
+    The AI drafted this configuration. Review the fields below — especially the
+    <span class="mono">items path</span> and <span class="mono">content</span>
+    mapping — then add an API key (if needed) and save.
+  </div>
+  {% endif %}
+
+  <form hx-post="/sources/custom" hx-target="#custom-source-list" hx-swap="outerHTML"
+        autocomplete="off" class="space-y-2.5">
+
+    <div>
+      <label class="text-xs text-slate-400">Name <span class="text-rose-400">*</span></label>
+      <input type="text" name="name" required value="{{ cfg.get('name', '') }}"
+             placeholder="ACLED conflict events"
+             class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-400">Base URL <span class="text-rose-400">*</span></label>
+      <input type="url" name="base_url" required value="{{ cfg.get('base_url', '') }}"
+             placeholder="https://api.example.com"
+             class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+    </div>
+
+    <div class="grid grid-cols-3 gap-2">
+      <div class="col-span-2">
+        <label class="text-xs text-slate-400">Endpoint path</label>
+        <input type="text" name="endpoint" value="{{ cfg.get('endpoint', '') }}"
+               placeholder="/v1/posts or /search/{query}"
+               class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Method</label>
+        <select name="http_method"
+                class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono">
+          {% set m = cfg.get('http_method', 'GET') | upper %}
+          <option value="GET" {% if m != 'POST' %}selected{% endif %}>GET</option>
+          <option value="POST" {% if m == 'POST' %}selected{% endif %}>POST</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label class="text-xs text-slate-400">Auth type</label>
+        <select name="auth_type"
+                class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono">
+          {% set a = cfg.get('auth_type', 'none') | lower %}
+          <option value="none" {% if a == 'none' %}selected{% endif %}>none</option>
+          <option value="header" {% if a == 'header' %}selected{% endif %}>header</option>
+          <option value="query" {% if a == 'query' %}selected{% endif %}>query</option>
+          <option value="bearer" {% if a == 'bearer' %}selected{% endif %}>bearer</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Auth param name</label>
+        <input type="text" name="auth_param" value="{{ cfg.get('auth_param', '') }}"
+               placeholder="Authorization / api_key"
+               class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-400">API key</label>
+      <input type="password" name="api_key" autocomplete="off"
+             placeholder="paste key… (saved to .env only; leave blank if none)"
+             class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+      <p class="text-[11px] text-slate-600 mt-0.5">Stored in <span class="mono">.env</span> only — never the database, never shown back. Only used when auth type is header, query or bearer.</p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <label class="text-xs text-slate-400">Search query param</label>
+        <input type="text" name="query_param" value="{{ cfg.get('query_param', '') }}"
+               placeholder="q (optional)"
+               class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Items path</label>
+        <input type="text" name="items_path" value="{{ cfg.get('items_path', '') }}"
+               placeholder="data.results"
+               class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-400">Extra query params (JSON)</label>
+      <input type="text" name="extra_params" value="{{ cfg.get('extra_params', '') }}"
+             placeholder='{"limit": 50, "lang": "en"}'
+             class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+    </div>
+
+    <div class="border-t border-slate-800 pt-2">
+      <p class="text-xs text-slate-400 mb-1">Field mapping — dotted path inside one item</p>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-[11px] text-slate-500">Content (main text) <span class="text-rose-400">*</span></label>
+          <input type="text" name="map_content" value="{{ cfg.get('map_content', '') }}"
+                 placeholder="text / body"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-500">Title</label>
+          <input type="text" name="map_title" value="{{ cfg.get('map_title', '') }}"
+                 placeholder="title"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-500">URL</label>
+          <input type="text" name="map_url" value="{{ cfg.get('map_url', '') }}"
+                 placeholder="url / link"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-500">Author</label>
+          <input type="text" name="map_author" value="{{ cfg.get('map_author', '') }}"
+                 placeholder="author / user.name"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+        </div>
+        <div class="col-span-2">
+          <label class="text-[11px] text-slate-500">Published date</label>
+          <input type="text" name="map_published" value="{{ cfg.get('map_published', '') }}"
+                 placeholder="created_at / date"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-400">Notes</label>
+      <textarea name="notes" rows="2" placeholder="What this source returns…"
+                class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs">{{ cfg.get('notes', '') }}</textarea>
+    </div>
+
+    <button class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-2 text-sm">
+      Save source
+    </button>
+  </form>
+</div>

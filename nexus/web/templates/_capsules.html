@@ -1,0 +1,54 @@
+{# Investigation capsules: named bundles of search terms, broadcast to every
+   keyword-capable source on each scan. Rendered standalone for htmx swaps. #}
+<div id="capsules" class="space-y-3">
+  {% if capsules %}
+  <div class="grid gap-3 sm:grid-cols-2">
+    {% for cap in capsules %}
+    <div class="rounded-lg border border-sky-900/70 bg-slate-900/60 p-3 space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <a href="/investigation?name={{ cap.name|urlencode }}"
+           class="text-sm font-semibold text-sky-200 hover:text-sky-100 hover:underline"
+           title="Open focused investigation board">{{ cap.name }} &rarr;</a>
+        <form hx-post="/topics/capsule/delete" hx-target="#capsules" hx-swap="outerHTML"
+              hx-confirm="Delete the whole '{{ cap.name }}' capsule?" class="inline">
+          <input type="hidden" name="name" value="{{ cap.name }}" />
+          <button title="Delete capsule"
+                  class="text-[11px] text-slate-500 hover:text-rose-400">delete</button>
+        </form>
+      </div>
+
+      <div class="flex flex-wrap gap-1.5">
+        {% for t in cap.terms %}
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-sky-800
+                     bg-sky-950/50 text-sky-200 pl-2.5 pr-1 py-0.5 text-xs">
+          <span class="mono">{{ t.value }}</span>
+          <form hx-post="/topics/capsule/term/{{ t.id }}/delete" hx-target="#capsules"
+                hx-swap="outerHTML" hx-confirm="Remove the term '{{ t.value }}' from this capsule?"
+                class="inline">
+            <button title="Remove term" class="h-3.5 w-3.5 rounded-full bg-slate-800
+                    hover:bg-rose-600 text-slate-400 hover:text-white leading-none text-[10px]">&times;</button>
+          </form>
+        </span>
+        {% endfor %}
+      </div>
+
+      <form hx-post="/topics/capsule/term" hx-target="#capsules" hx-swap="outerHTML"
+            hx-on::after-request="this.reset()" class="flex gap-1.5">
+        <input type="hidden" name="name" value="{{ cap.name }}" />
+        <input name="value" required placeholder="add a term…"
+               class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs mono
+                      focus:border-sky-500 focus:outline-none" />
+        <button class="rounded border border-slate-700 hover:border-sky-500 hover:text-sky-300
+                       text-xs px-2 py-1">+ add</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-xs text-slate-500">
+    No capsules yet. Name one above (e.g. <span class="mono text-slate-400">Tesla</span>) and list the
+    terms you care about (e.g. <span class="mono text-slate-400">Tesla, Elon Musk</span>) — every term is
+    then searched across all connected sources on each scan.
+  </p>
+  {% endif %}
+</div>

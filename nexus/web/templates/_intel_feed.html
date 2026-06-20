@@ -1,0 +1,126 @@
+{# Intel ranked list — swapped by htmx on filter change or after a scan. #}
+<div id="intel-feed">
+  {% if scan_stats %}
+  <div class="mb-4 rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs mono text-slate-300">
+    Scan result:
+    {% for src, st in scan_stats.items() %}
+      <span class="text-amber-400">{{ src }}</span>
+      {% if st.error %}<span class="text-red-400">error: {{ st.error }}</span>
+      {% elif st.scored is defined %}(scored {{ st.scored }}, hits {{ st.hits }})
+      {% elif st.fetched is defined %}(fetched {{ st.fetched }}, new {{ st.new }}){% endif %}{% if not loop.last %} &middot; {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="mb-3 text-xs mono text-slate-500">{{ items|length }} ranked item(s)</div>
+
+  {% if items %}
+  <div class="space-y-3">
+    {% for it in items %}
+    {% set threat = it.threat_level or 'none' %}
+    {% set score = it.rel_score or 0 %}
+    <article class="rounded-lg border border-slate-800 bg-slate-900/60 hover:border-slate-700 transition p-4{% if it.is_read %} opacity-60{% endif %}">
+      <div class="flex items-center gap-2 mb-1.5 text-[11px] mono">
+        <span class="px-1.5 py-0.5 rounded font-semibold
+          {% if score >= 80 %}bg-emerald-900 text-emerald-200 border border-emerald-700
+          {% elif score >= 60 %}bg-emerald-950 text-emerald-300 border border-emerald-800
+          {% elif score >= 40 %}bg-amber-950 text-amber-300 border border-amber-800
+          {% else %}bg-slate-800 text-slate-300{% endif %}">relevance {{ score }}</span>
+        <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">{{ it.source }}</span>
+        {% if it.rel_match_count and it.rel_match_count > 1 %}
+        <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">{{ it.rel_match_count }} requirements</span>
+        {% endif %}
+        {% if threat != 'none' %}
+        <span class="px-1.5 py-0.5 rounded
+          {% if threat in ['high','critical'] %}bg-red-950 text-red-300 border border-red-800
+          {% elif threat == 'medium' %}bg-amber-950 text-amber-300 border border-amber-800
+          {% else %}bg-slate-800 text-slate-300{% endif %}">&#9888; {{ threat }}</span>
+        {% endif %}
+        <span class="flex-1"></span>
+        <span class="text-slate-500">{{ (it.published_at or it.fetched_at)[:16] }}</span>
+      </div>
+
+      {% if it.title %}<h2 class="text-slate-100 font-semibold leading-snug">{{ it.title }}</h2>{% endif %}
+
+      {% if it.rel_rationale %}
+        <p class="mt-1 text-xs text-sky-300/90 border-l-2 border-sky-800 pl-2">{{ it.rel_rationale }}</p>
+      {% endif %}
+
+      {% if it.summary %}
+        <p class="mt-1 text-sm text-slate-300">{{ it.summary }}</p>
+      {% else %}
+        <p class="mt-1 text-sm text-slate-300">{{ it.content[:280] }}{% if it.content|length > 280 %}&hellip;{% endif %}</p>
+      {% endif %}
+
+      {% if it.translation %}
+        <p class="mt-2 text-sm text-emerald-200/90 border-l-2 border-emerald-800 pl-2">{{ it.translation }}</p>
+      {% endif %}
+
+      <div class="mt-2 flex items-center gap-3 text-[11px] mono text-slate-500">
+        {% if it.author %}<span>{{ it.author }}</span>{% endif %}
+        {% if it.language %}<span class="text-slate-600">[{{ it.language }}]</span>{% endif %}
+        {% if it.url %}<a href="{{ it.url | safe_url }}" target="_blank" rel="noopener"
+            class="text-sky-400 hover:text-sky-300">&#128279; View source</a>{% endif %}
+        <span class="flex-1"></span>
+        <button hx-get="/items/{{ it.id }}/detail"
+          hx-target="#item-drawer-content" hx-swap="innerHTML"
+          class="text-slate-400 hover:text-sky-400" title="View full details">&#8599; Details</button>
+        {% if it.is_read %}
+        <span class="text-emerald-400">&#10003; Read</span>
+        {% else %}
+        <button hx-post="/items/{{ it.id }}/read" hx-swap="none"
+          hx-on::after-request="this.textContent='✓ read'; this.disabled=true; this.className='text-emerald-400 cursor-default'; this.closest('article').classList.add('opacity-60')"
+          class="text-slate-400 hover:text-emerald-400" title="Mark read">&#10003; Read</button>
+        {% endif %}
+        <button hx-post="/items/{{ it.id }}/dismiss" hx-swap="none"
+          hx-on::after-request="this.closest('article').style.display='none'"
+          class="text-slate-400 hover:text-rose-400" title="Dismiss from feed">&#10005;</button>
+        {% if it.is_bookmarked %}
+        <span class="text-amber-400 cursor-default" title="Bookmarked">&#9733; saved</span>
+        {% else %}
+        <button hx-post="/items/{{ it.id }}/bookmark" hx-swap="none"
+          hx-on::after-request="this.textContent='★ saved'; this.disabled=true; this.className='text-amber-400 cursor-default'"
+          class="text-slate-400 hover:text-amber-400">&#9733; Bookmark</button>
+        {% endif %}
+        {% if active_case %}
+        <button hx-post="/cases/{{ active_case.id }}/items/{{ it.id }}/add" hx-swap="none"
+          hx-on::after-request="this.textContent='✓ pinned'; this.disabled=true; this.className='text-emerald-400 cursor-default'"
+          class="text-amber-400 hover:text-amber-300"
+          title="Pin to active case: {{ active_case.name }}">&#128204; {{ active_case.name }}</button>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-lg border border-dashed border-slate-700 p-8 text-center text-slate-400">
+    {% if analysis_enabled is defined and not analysis_enabled %}
+    {# The whole Intel view depends on AI scoring — say so plainly. #}
+    <p class="mb-1 text-slate-300">Intel ranking needs an AI provider.</p>
+    <p class="text-sm text-slate-500">This view ranks items by how well they answer your questions,
+      which the AI scores for you. Turn on a provider (the free local model works), then run a scan.</p>
+    <div class="mt-4">
+      <a href="/settings" class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">Turn on AI in Settings</a>
+    </div>
+    {% elif has_requirements is defined and not has_requirements %}
+    {# AI is on but the analyst hasn't told it what they care about yet. #}
+    <p class="mb-1 text-slate-300">No intelligence requirements defined yet.</p>
+    <p class="text-sm text-slate-500">Add a few plain-English questions you want answered
+      (e.g. &ldquo;Is there evidence of a data breach?&rdquo;). The AI then scores every item against them and ranks the best here.</p>
+    <div class="mt-4">
+      <a href="/requirements" class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">Add requirements</a>
+    </div>
+    {% else %}
+    {# Everything is set up — just nothing scored above the threshold yet. #}
+    <p class="mb-1 text-slate-300">No ranked items yet.</p>
+    <p class="text-sm text-slate-500">Run a scan to collect and score new items, or lower the
+      minimum-score filter to see more.</p>
+    <div class="mt-4">
+      <button hx-post="/intel/scan" hx-target="#intel-feed" hx-swap="outerHTML" hx-indicator="#intel-empty-spin"
+        class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">Run a scan</button>
+      <span id="intel-empty-spin" class="htmx-indicator mono text-xs text-amber-400 ml-2">scanning&hellip;</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

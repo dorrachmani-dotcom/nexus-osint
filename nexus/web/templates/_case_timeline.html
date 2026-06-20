@@ -1,0 +1,95 @@
+{% if not rows %}
+<div class="rounded-lg border border-dashed border-slate-700 p-10 text-center text-slate-500 space-y-2">
+  <p class="text-slate-300 font-medium">No pinned items yet</p>
+  <p class="text-sm">Pin items to this case from the Live feed or the Pinned tab, then come back here to see the timeline.</p>
+</div>
+
+{% else %}
+{# Group rows by day #}
+{% set ns = namespace(cur_day='', day_rows=[]) %}
+
+<div class="space-y-0 relative">
+  {# Vertical spine #}
+  <div class="absolute left-[5.5rem] top-0 bottom-0 w-px bg-slate-800 pointer-events-none"></div>
+
+  {# Summary line #}
+  <p class="text-xs text-slate-500 pb-4 pl-1">
+    {{ rows|length }} pinned item{{ '' if rows|length == 1 else 's' }} across
+    {{ rows | map(attribute='day') | select | unique | list | length }} day{{ '' if (rows | map(attribute='day') | select | unique | list | length) == 1 else 's' }}.
+    Sorted oldest first.
+  </p>
+
+  {% set current_day = namespace(value='') %}
+  {% for r in rows %}
+    {% set day = r.day or 'Unknown date' %}
+
+    {# Day header when the date changes #}
+    {% if day != current_day.value %}
+      {% set current_day.value = day %}
+      <div class="flex items-center gap-3 pt-5 pb-2">
+        <span class="w-20 shrink-0 text-right text-[11px] mono text-amber-400 font-semibold">
+          {% if day != 'Unknown date' %}
+            {{ day[5:] }}{# MM-DD #}
+            <span class="block text-slate-600 font-normal">{{ day[:4] }}</span>
+          {% else %}
+            —
+          {% endif %}
+        </span>
+        <span class="relative z-10 h-3 w-3 rounded-full border-2 border-amber-500 bg-slate-950 shrink-0"></span>
+        <span class="text-xs font-semibold text-slate-300">
+          {% if day != 'Unknown date' %}{{ day }}{% else %}Date unknown{% endif %}
+        </span>
+      </div>
+    {% endif %}
+
+    {# Item row #}
+    {% set threat = r.threat_level or 'none' %}
+    <div class="flex items-start gap-3 py-2 group">
+      <span class="w-20 shrink-0 text-right text-[10px] mono text-slate-600 pt-0.5">
+        {% if r.ts %}{{ r.ts[11:16] }}{% endif %}
+      </span>
+      <span class="relative z-10 mt-1.5 h-2 w-2 rounded-full shrink-0
+        {% if threat in ['critical','high'] %}bg-red-500
+        {% elif threat == 'medium' %}bg-amber-500
+        {% elif threat == 'low' %}bg-sky-500
+        {% else %}bg-slate-600{% endif %}"></span>
+      <div class="flex-1 min-w-0 rounded-lg border border-slate-800 bg-slate-900/60
+                  group-hover:border-slate-700 p-3 space-y-1">
+        <div class="flex items-start gap-2">
+          <span class="shrink-0 text-[10px] mono text-slate-500 uppercase mt-0.5">{{ r.source or '?' }}</span>
+          {% if r.url %}
+          <a href="{{ r.url | safe_url }}" target="_blank" rel="noopener"
+             class="flex-1 text-sm font-medium text-slate-100 hover:text-amber-300 leading-snug min-w-0">
+            {{ r.title or '(no title)' }}
+          </a>
+          {% else %}
+          <span class="flex-1 text-sm font-medium text-slate-100 leading-snug min-w-0">
+            {{ r.title or '(no title)' }}
+          </span>
+          {% endif %}
+          {% if threat and threat != 'none' %}
+          <span class="shrink-0 text-[10px] rounded px-1 py-0.5
+            {% if threat in ['critical','high'] %}bg-red-950 text-red-300 border border-red-800
+            {% elif threat == 'medium' %}bg-amber-950 text-amber-300 border border-amber-800
+            {% else %}bg-slate-800 text-slate-400{% endif %}">{{ threat }}</span>
+          {% endif %}
+          <button hx-get="/items/{{ r.id }}/detail"
+            hx-target="#item-drawer-content" hx-swap="innerHTML"
+            class="shrink-0 text-slate-600 hover:text-sky-400 text-[11px] mono"
+            title="View full details">&#8599;</button>
+        </div>
+        {% if r.summary %}
+        <p class="text-xs text-slate-400 leading-relaxed">{{ r.summary[:200] }}{% if r.summary|length > 200 %}&hellip;{% endif %}</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+
+  {# End marker #}
+  <div class="flex items-center gap-3 pt-4 pb-2">
+    <span class="w-20 shrink-0"></span>
+    <span class="relative z-10 h-3 w-3 rounded-full bg-slate-700 shrink-0"></span>
+    <span class="text-[11px] text-slate-600">End of timeline</span>
+  </div>
+</div>
+{% endif %}

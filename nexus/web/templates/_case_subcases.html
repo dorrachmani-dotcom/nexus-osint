@@ -1,0 +1,109 @@
+{# Case hub -> Sub-cases tab: child investigations under this case (one level). #}
+<div id="case-subcases" class="space-y-4">
+
+  {# Create new sub-case #}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+    <div>
+      <h2 class="text-sm font-medium text-slate-200">Sub-cases</h2>
+      <p class="text-xs text-slate-500 mt-0.5">
+        Break this investigation into focused parts. Each sub-case has its own tracking words,
+        questions, and pinned items — and inherits the parent's tracking words automatically.
+      </p>
+    </div>
+    <form hx-post="/cases/{{ case.id }}/subcases" hx-target="#case-subcases" hx-swap="outerHTML"
+          hx-on::after-request="this.reset()" class="flex items-center gap-2">
+      <input name="name" required placeholder="new sub-case name"
+             class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+      <button class="text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 rounded px-3 py-1.5">&#43; Create</button>
+    </form>
+  </div>
+
+  {% if subcases %}
+  <div class="space-y-3">
+    {% for c in subcases %}
+    <div class="rounded-lg border border-slate-800 bg-slate-900/60">
+
+      {# Header row #}
+      <div class="flex items-center gap-3 px-4 py-3">
+        <a href="/cases/{{ c.id }}" class="flex-1 font-medium text-slate-100 hover:text-amber-300 truncate">
+          {{ c.name }}
+        </a>
+        <span class="text-[10px] mono text-slate-600 border border-slate-700 rounded px-1.5 py-0.5">{{ c.status }}</span>
+        {% if c.new_count %}<a href="/cases/{{ c.id }}?tab=feed" class="text-[11px] font-semibold bg-amber-500 text-slate-950 rounded-full px-1.5 py-0.5 hover:bg-amber-400" title="Jump to feed — {{ c.new_count }} new items">{{ c.new_count }} new</a>{% endif %}
+        <span class="text-[11px] text-slate-500">{{ c.item_count }} pinned</span>
+        <a href="/cases/{{ c.id }}" class="text-[11px] text-slate-500 hover:text-amber-400">Open &#8594;</a>
+      </div>
+
+      {# Tracking words inline #}
+      <div class="border-t border-slate-800/60 px-4 py-3 space-y-3">
+
+        {# Required / search words #}
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-sky-500 inline-block"></span>
+            <span class="text-[11px] font-medium text-slate-400">Tracking words</span>
+            <span class="text-[11px] text-slate-600">— searched in every scan</span>
+          </div>
+          {% if c.required_terms %}
+          <div class="flex flex-wrap gap-1">
+            {% for t in c.required_terms %}
+            <span class="inline-flex items-center gap-0.5 rounded-full bg-sky-950/60 border border-sky-800 pl-2 pr-1 py-0.5 text-[11px] text-sky-200">
+              {{ t.term }}
+              <button hx-post="/cases/{{ case.id }}/subcases/{{ c.id }}/terms/{{ t.id }}/delete"
+                      hx-target="#case-subcases" hx-swap="outerHTML"
+                      hx-confirm="Remove tracking word &quot;{{ t.term }}&quot;?"
+                      class="text-sky-500 hover:text-rose-300 ml-0.5">&times;</button>
+            </span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-[11px] text-slate-600">None yet — add below to give this sub-case its own live feed.</p>
+          {% endif %}
+          <form hx-post="/cases/{{ case.id }}/subcases/{{ c.id }}/terms"
+                hx-target="#case-subcases" hx-swap="outerHTML"
+                hx-on::after-request="this.reset()" class="flex items-center gap-1.5">
+            <input type="hidden" name="kind" value="required" />
+            <input name="terms" placeholder="add tracking words (comma-separated)"
+                   class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs min-w-0" />
+            <button class="text-xs bg-sky-800 hover:bg-sky-700 text-white rounded px-2 py-1 shrink-0">Add</button>
+          </form>
+        </div>
+
+        {# Supplement / alert words #}
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+            <span class="text-[11px] font-medium text-slate-400">Supplement words</span>
+            <span class="text-[11px] text-slate-600">— flag matching items, no extra search</span>
+          </div>
+          {% if c.alert_terms %}
+          <div class="flex flex-wrap gap-1">
+            {% for t in c.alert_terms %}
+            <span class="inline-flex items-center gap-0.5 rounded-full bg-amber-950/50 border border-amber-800/70 pl-2 pr-1 py-0.5 text-[11px] text-amber-200">
+              {{ t.term }}
+              <button hx-post="/cases/{{ case.id }}/subcases/{{ c.id }}/terms/{{ t.id }}/delete"
+                      hx-target="#case-subcases" hx-swap="outerHTML"
+                      hx-confirm="Remove supplement word &quot;{{ t.term }}&quot;?"
+                      class="text-amber-500 hover:text-rose-300 ml-0.5">&times;</button>
+            </span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <form hx-post="/cases/{{ case.id }}/subcases/{{ c.id }}/terms"
+                hx-target="#case-subcases" hx-swap="outerHTML"
+                hx-on::after-request="this.reset()" class="flex items-center gap-1.5">
+            <input type="hidden" name="kind" value="alert" />
+            <input name="terms" placeholder="add supplement words (comma-separated)"
+                   class="flex-1 bg-slate-950 border border-amber-900/40 rounded px-2 py-1 text-xs min-w-0" />
+            <button class="text-xs bg-amber-900/60 hover:bg-amber-800/60 text-amber-200 border border-amber-800/60 rounded px-2 py-1 shrink-0">Add</button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-xs text-slate-500 px-1">No sub-cases yet — create one above.</p>
+  {% endif %}
+</div>

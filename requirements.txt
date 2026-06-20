@@ -1,0 +1,55 @@
+# --- Web / API ---
+# Versions are pinned to the patched releases verified by `pip-audit` (no known
+# CVEs). fastapi 0.136.x pulls a patched starlette (>=1.0); jinja2 3.1.6 fixes
+# CVE-2025-27516; python-multipart 0.0.29 fixes the 2026 multipart DoS CVEs.
+fastapi==0.136.3
+uvicorn[standard]==0.48.0
+jinja2==3.1.6
+python-multipart==0.0.29
+
+# --- Config / models ---
+pydantic==2.13.4
+pydantic-settings==2.14.1
+
+# --- Intelligence core ---
+anthropic==0.42.0
+# Optional alternative analysis backends. Guarded imports: if either is absent
+# that provider is simply unavailable (graceful degradation).
+google-genai>=1.0.0         # Google Gemini (modern genai.Client API)
+openai==1.59.6              # OpenAI (ChatGPT / GPT models)
+# Local model backend (Ollama) needs no extra package — it talks to the local
+# Ollama server over HTTP via httpx (listed below). No key, fully offline.
+# Keyless English-translation fallback (nexus/translate.py) needs NO hard dep:
+#   * LibreTranslate is called as an EXTERNAL web service over httpx (below) — it
+#     is AGPL and is never linked/imported as code, only used via its HTTP API.
+#   * `argostranslate` is an OPTIONAL offline extra (MIT). Install it yourself to
+#     enable on-device translation; it is loaded via a guarded import, so its
+#     absence simply disables that backend (graceful degradation). Not pinned
+#     here on purpose — keep it out of the default install.
+
+# --- Data sources (API-only for v1) ---
+feedparser==6.0.12          # RSS (always-on backbone)
+praw==7.8.1                 # Reddit API
+httpx==0.28.1               # SERPAPI / TelemetryApp / Twitter / Ollama REST calls
+# Stealth/scraping deps (telethon, twscrape, duckduckgo-search) deferred to a
+# future release; v1 is API-only.
+
+# --- Evidence / reporting ---
+playwright==1.49.1          # headless screenshots for the evidence vault
+# OCR over evidence screenshots so their visible text becomes searchable.
+# Optional + guarded: needs the Tesseract engine binary on the host (installed
+# in the Docker image). Without pytesseract OR the binary, OCR is skipped.
+pillow==11.3.0              # image loading for OCR (also a Playwright-adjacent dep)
+pytesseract==0.3.13         # thin wrapper around the Tesseract OCR engine
+# PDF export tries WeasyPrint first (best CSS, needs native GTK libs — ships in
+# the Docker image) then falls back to xhtml2pdf (pure Python, no system deps,
+# works on Windows/macOS local installs). HTML export always works regardless.
+weasyprint==68.0            # HTML -> PDF (primary; Linux/Docker) — 68.0 fixes CVE-2025-68616
+xhtml2pdf==0.2.17           # HTML -> PDF (pure-Python fallback; Windows/macOS)
+
+# --- Entity graph (Maltego replacement) ---
+networkx==3.4.2
+pyvis==0.3.2
+
+# --- Dev / tests ---
+pytest==9.0.3               # 9.0.3 fixes CVE-2025-71176 (dev-only)

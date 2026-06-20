@@ -1,0 +1,16 @@
+{# Reviewed items for a case — lazy loaded into #case-reviewed-section #}
+<div id="case-reviewed-section" class="mt-4 space-y-2">
+  <div class="flex items-center justify-between">
+    <span class="text-xs text-slate-500 font-medium">Reviewed ({{ items|length }}{% if items|length == 100 %}+{% endif %})</span>
+    <button hx-get="/cases/{{ case.id }}/feed" hx-target="#case-feed-tab" hx-swap="outerHTML"
+            class="text-[11px] text-slate-600 hover:text-slate-400">&#9650; Hide</button>
+  </div>
+  {% if items %}
+  {% set current_case = case %}
+  <div class="space-y-2 opacity-70">
+    {% for it in items %}{% include "_feed_item.html" %}{% endfor %}
+  </div>
+  {% else %}
+  <p class="text-xs text-slate-600 py-2">No reviewed items yet.</p>
+  {% endif %}
+</div>

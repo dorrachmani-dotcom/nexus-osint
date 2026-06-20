@@ -1,0 +1,24 @@
+{# One page of feed cards + a Load-more control.
+
+   Rendered both inline (first page, included by _feed.html) and standalone by
+   GET /feed/page for the Load-more button. The button targets itself with an
+   outerHTML swap, so the returned cards + fresh button append in place and the
+   already-loaded rows (and any bulk selection) are preserved. #}
+{% for it in items %}
+  {% include "_feed_item.html" %}
+{% endfor %}
+{% if has_more %}
+<div id="load-more" class="pt-1 text-center">
+  <button type="button"
+    hx-get="/feed/page"
+    hx-include="#feed-filter"
+    hx-vals='{"offset": {{ next_offset }}}'
+    hx-target="#load-more"
+    hx-swap="outerHTML"
+    hx-indicator="#load-more-spin"
+    class="rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-sm px-4 py-1.5">
+    Load more <span class="text-slate-500">({{ remaining }} more)</span>
+  </button>
+  <span id="load-more-spin" class="htmx-indicator mono text-xs text-amber-400 ml-2">loading&hellip;</span>
+</div>
+{% endif %}

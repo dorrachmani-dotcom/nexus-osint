@@ -1,0 +1,73 @@
+{% if setup and (not setup.complete or force_getting_started) %}
+{% set step = {'done': 'bg-emerald-500 text-slate-950', 'todo': 'bg-slate-700 text-slate-200'} %}
+<div id="getting-started" class="mb-5 rounded-lg border border-amber-900/60 bg-amber-950/10 p-5">
+  <div class="flex items-start justify-between gap-3">
+    <div>
+      <h2 class="text-base font-semibold text-amber-200">Welcome to Nexus — 3 steps to your first results</h2>
+      <p class="text-sm text-slate-400 mt-0.5">No coding needed. Do them in order; each button opens the right page.
+        For the full handbook, open the <a href="/guide" class="text-amber-400 hover:text-amber-300 underline">Guide</a>.</p>
+    </div>
+    {% if force_getting_started %}
+    <a href="/" class="shrink-0 text-xs mono text-slate-400 hover:text-amber-300 border border-slate-700 rounded px-2 py-1">Hide</a>
+    {% endif %}
+  </div>
+
+  <ol class="mt-4 space-y-4">
+    <!-- Step 1: pick topics -->
+    <li class="flex items-start gap-3">
+      <span class="mt-0.5 h-6 w-6 shrink-0 rounded-full grid place-items-center text-xs font-bold
+        {{ step.done if setup.has_targets else step.todo }}">{% if setup.has_targets %}&check;{% else %}1{% endif %}</span>
+      <div class="flex-1">
+        <span class="font-medium text-slate-200">Choose what to follow</span>
+        <span class="ml-2 text-[11px] mono {% if setup.has_targets %}text-emerald-400{% else %}text-slate-500{% endif %}">
+          {{ 'done' if setup.has_targets else 'to do' }}</span>
+        <p class="text-sm text-slate-400">Add one ready-made bundle below in a single click (no key needed), or open Topics to type your own term or feed.</p>
+        {% if not setup.has_targets and bundles %}
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          {% for b in bundles %}
+          <button type="button"
+            hx-post="/onboard/bundle"
+            hx-vals='{"preset": "{{ b }}"}'
+            hx-target="#getting-started"
+            hx-swap="outerHTML"
+            hx-indicator="#gs-bundle-spin"
+            class="rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-xs px-2 py-1">+ {{ b }}</button>
+          {% endfor %}
+          <span id="gs-bundle-spin" class="htmx-indicator mono text-xs text-amber-400 self-center">adding&hellip;</span>
+        </div>
+        {% endif %}
+      </div>
+      <a href="/topics" class="shrink-0 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-3 py-1.5">Open Topics</a>
+    </li>
+
+    <!-- Step 2: keys (optional) -->
+    <li class="flex items-start gap-3">
+      <span class="mt-0.5 h-6 w-6 shrink-0 rounded-full grid place-items-center text-xs font-bold
+        {{ step.done if setup.ai_on else step.todo }}">{% if setup.ai_on %}&check;{% else %}2{% endif %}</span>
+      <div class="flex-1">
+        <span class="font-medium text-slate-200">Add API keys</span>
+        <span class="ml-2 text-[11px] mono text-slate-500">optional — unlocks AI analysis &amp; more sources</span>
+        <p class="text-sm text-slate-400">Paste your keys once on the Settings page. Anything without a key is simply skipped — the app still works.</p>
+      </div>
+      <a href="/settings" class="shrink-0 rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-sm px-3 py-1.5">Open Settings</a>
+    </li>
+
+    <!-- Step 3: scan -->
+    <li class="flex items-start gap-3">
+      <span class="mt-0.5 h-6 w-6 shrink-0 rounded-full grid place-items-center text-xs font-bold
+        {{ step.done if setup.scanned else step.todo }}">{% if setup.scanned %}&check;{% else %}3{% endif %}</span>
+      <div class="flex-1">
+        <span class="font-medium text-slate-200">Run your first scan</span>
+        <span class="ml-2 text-[11px] mono {% if setup.scanned %}text-emerald-400{% else %}text-slate-500{% endif %}">
+          {{ 'done' if setup.scanned else 'to do' }}</span>
+        <p class="text-sm text-slate-400">Collects everything you picked and shows it in the feed below. Run it any time to refresh.</p>
+      </div>
+      <div class="shrink-0 flex items-center gap-2">
+        <button hx-post="/scan" hx-target="#feed" hx-swap="outerHTML" hx-indicator="#gs-spin"
+          class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-3 py-1.5">Scan now</button>
+        <span id="gs-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
+      </div>
+    </li>
+  </ol>
+</div>
+{% endif %}

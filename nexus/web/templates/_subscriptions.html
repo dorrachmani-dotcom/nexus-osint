@@ -1,0 +1,37 @@
+<div id="subscriptions" class="space-y-4">
+  <h2 class="text-sm font-medium text-slate-300">Active topics</h2>
+  {% set ns = namespace(total=0) %}
+  {% for s in sources %}{% set ns.total = ns.total + grouped.get(s.id, [])|length %}{% endfor %}
+  {% if ns.total == 0 %}
+  <p class="text-sm text-slate-500">
+    No topics yet. Add a preset or a custom target above to start collecting.
+  </p>
+  {% else %}
+  {% for s in sources %}
+  {% set subs = grouped.get(s.id, []) %}
+  {% if subs %}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 overflow-hidden">
+    <div class="px-3 py-2 border-b border-slate-800 text-xs mono text-slate-400 bg-slate-900">
+      {{ s.label }} <span class="text-slate-600">({{ subs|length }})</span>
+    </div>
+    <ul class="divide-y divide-slate-800/70">
+      {% for sub in subs %}
+      <li class="flex items-center gap-3 px-3 py-2 text-sm">
+        <div class="min-w-0 flex-1">
+          {% if sub.label %}<div class="text-slate-200 truncate">{{ sub.label }}</div>{% endif %}
+          <div class="mono text-[11px] text-slate-500 truncate">{{ sub.value }}</div>
+        </div>
+        <button hx-post="/topics/{{ sub.id }}/delete"
+                hx-target="#subscriptions" hx-swap="outerHTML"
+                hx-confirm="Remove this topic?"
+                class="text-[11px] mono text-rose-400 hover:text-rose-300 shrink-0">
+          remove
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+</div>

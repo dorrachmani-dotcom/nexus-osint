@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block actions %}
+  {# Scan collects from every source (can take a minute or two), then we reload
+     the Brief so any new items show up. /scan returns the feed partial, so we
+     must NOT try to swap its response into the Brief — instead reload /brief. #}
+  <button hx-post="/scan" hx-swap="none"
+          hx-indicator="#brief-spin"
+          hx-on::after-request="window.location.href='/brief'"
+          class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold">
+    &#128260; Scan now</button>
+  <span id="brief-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip; this can take a minute or two</span>
+{% endblock %}
+{% block content %}
+<section class="space-y-5">
+  <div class="mb-3 inline-flex rounded-lg border border-slate-700 overflow-hidden text-sm">
+    <span class="px-3 py-1.5 bg-amber-500 text-slate-950 font-semibold">Brief</span>
+    <a href="/" class="px-3 py-1.5 text-slate-300 hover:bg-slate-800">Latest</a>
+    <a href="/intel" class="px-3 py-1.5 text-slate-300 hover:bg-slate-800">Most relevant</a>
+  </div>
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Daily brief</h1>
+    <p class="text-sm text-slate-400">
+      What's new across your cases since you last looked at each one — your whole
+      morning read in one place. Open a case to mark it caught-up.
+    </p>
+  </div>
+
+  {% if readiness %}
+  <div class="rounded-lg border border-sky-800/70 bg-sky-950/20 p-4 space-y-2">
+    <h2 class="text-sm font-medium text-sky-200">Set-up checklist</h2>
+    {% for r in readiness %}
+    <div class="flex items-start justify-between gap-3 text-sm">
+      <div>
+        <span class="text-slate-200">&#9888; {{ r.label }}</span>
+        <span class="text-slate-400"> &mdash; {{ r.hint }}</span>
+      </div>
+      <a href="{{ r.link }}" class="whitespace-nowrap rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-xs px-2.5 py-1">{{ r.cta }}</a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div id="brief-body" class="space-y-5">
+    {% if blocks %}
+    <p class="text-sm text-slate-300">
+      <span class="font-semibold text-amber-400">{{ total_new }}</span>
+      new item{{ '' if total_new == 1 else 's' }} across
+      <span class="font-semibold">{{ blocks|length }}</span>
+      case{{ '' if blocks|length == 1 else 's' }}.
+    </p>
+
+    {% for b in blocks %}
+    <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <a href="/cases/{{ b.case.id }}?tab=feed" class="text-slate-100 font-semibold hover:text-amber-400">{{ b.case.name }}</a>
+        <div class="flex items-center gap-2">
+          <button hx-post="/cases/{{ b.case.id }}/scan" hx-swap="none"
+                  hx-indicator="#case-scan-spin-{{ b.case.id }}"
+                  hx-on::after-request="if(typeof window.nexusBriefRefresh==='function')window.nexusBriefRefresh(); htmx.ajax('GET','/brief',{target:'#brief-body',select:'#brief-body',swap:'outerHTML'})"
+                  class="text-xs text-slate-500 hover:text-amber-300 mono border border-slate-700 hover:border-amber-600 rounded px-2 py-0.5"
+                  title="Scan new items for this case">&#128260; Scan</button>
+          <span id="case-scan-spin-{{ b.case.id }}" class="htmx-indicator text-[11px] mono text-amber-400">scanning…</span>
+          <form hx-post="/cases/{{ b.case.id }}/pin-all"
+                hx-target="#pin-all-{{ b.case.id }}" hx-swap="outerHTML" class="inline">
+            {% for it in b.new_items %}
+            <input type="hidden" name="item_ids" value="{{ it.id }}" />
+            {% endfor %}
+            <span id="pin-all-{{ b.case.id }}">
+              <button type="submit" class="text-xs text-slate-500 hover:text-amber-300 mono"
+                      title="Pin all {{ b.new_items|length }} items to this case">&#128204; Pin all</button>
+            </span>
+          </form>
+          <form hx-post="/brief/mark-read"
+                hx-target="#read-all-{{ b.case.id }}" hx-swap="outerHTML"
+                hx-on::after-request="if(typeof window.nexusBriefRefresh==='function')window.nexusBriefRefresh()"
+                class="inline">
+            {% for it in b.new_items %}
+            <input type="hidden" name="item_ids" value="{{ it.id }}" />
+            {% endfor %}
+            <span id="read-all-{{ b.case.id }}">
+              <button type="submit" class="text-xs text-slate-500 hover:text-emerald-400 mono"
+                      title="Mark all {{ b.new_items|length }} items read">&#10003; Mark read</button>
+            </span>
+          </form>
+          <span class="rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5">+{{ b.new_count }} new</span>
+        </div>
+      </div>
+      <ul class="divide-y divide-slate-800">
+        {% for it in b.new_items %}
+        <li class="py-2">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="text-sm text-slate-100">{{ it.title or '(untitled)' }}</div>
+              <div class="text-[11px] mono text-slate-500">
+                {{ it.source }}{% if it.relative_time %} &middot; {{ it.relative_time }}{% endif %}
+                {% if it.threat_level and it.threat_level != 'none' %} &middot; <span class="text-rose-300">{{ it.threat_level }}</span>{% endif %}
+              </div>
+              {% if it.summary %}<div class="text-xs text-slate-400 mt-0.5 line-clamp-2">{{ it.summary }}</div>{% endif %}
+            </div>
+            <div class="flex items-center gap-2 whitespace-nowrap text-xs mono">
+              {% if it.url %}<a href="{{ it.url | safe_url }}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">open</a>{% endif %}
+              <button hx-get="/items/{{ it.id }}/detail"
+                      hx-target="#item-drawer-content" hx-swap="innerHTML"
+                      class="text-slate-500 hover:text-sky-400" title="View full details">&#8599;</button>
+              <button hx-post="/cases/{{ b.case.id }}/items/{{ it.id }}/add" hx-swap="none"
+                      hx-on::after-request="this.textContent='✓ pinned'; this.disabled=true; this.className='text-emerald-400 cursor-default'"
+                      class="text-amber-400 hover:text-amber-300" title="Pin to this case">&#128204; pin</button>
+              <button hx-post="/items/{{ it.id }}/read" hx-swap="none"
+                      hx-on::after-request="this.closest('li').style.opacity='0.4'; this.disabled=true"
+                      class="text-slate-500 hover:text-emerald-400" title="Mark read">&#10003;</button>
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if b.new_count > b.new_items|length %}
+      <a href="/cases/{{ b.case.id }}?tab=feed" class="mt-2 inline-block text-xs text-slate-400 hover:text-amber-300">
+        + {{ b.new_count - b.new_items|length }} more in the case &rarr;</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="rounded-lg border border-dashed border-slate-700 p-8 text-center text-slate-400">
+      {% if open_cases %}
+      <p class="text-slate-300">You're all caught up. &#127881;</p>
+      <p class="text-sm text-slate-500">Nothing new across your {{ open_cases }} open case{{ '' if open_cases == 1 else 's' }} since you last looked.
+        Run a scan to pull fresh material, or come back later.</p>
+      {% else %}
+      <p class="text-slate-300">No cases yet.</p>
+      <p class="text-sm text-slate-500">Open a <a href="/cases" class="text-amber-400 hover:underline">case</a> for a subject
+        and add tracking words — then your daily brief fills in here.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# All open cases with nothing new yet — always visible so no case is ever "lost" #}
+    {% if quiet_cases %}
+    <div>
+      <h2 class="text-xs uppercase tracking-wide text-slate-500 mb-2">All caught up</h2>
+      <div class="flex flex-wrap gap-2">
+        {% for c in quiet_cases %}
+        <a href="/cases/{{ c.id }}?tab=feed"
+           class="inline-flex items-center gap-1.5 rounded-full border border-slate-700
+                  bg-slate-900/60 hover:border-amber-500 hover:text-amber-300
+                  text-slate-300 pl-3 pr-2 py-1 text-xs">
+          {{ c.name }}
+          <span class="rounded-full bg-slate-800 text-slate-500 px-1.5 text-[10px] mono">&#10003;</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

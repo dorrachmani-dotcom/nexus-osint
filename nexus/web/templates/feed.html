@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block actions %}
+<button
+  hx-post="/scan"
+  hx-include="[name='scope']:checked"
+  hx-target="#feed"
+  hx-swap="outerHTML"
+  hx-indicator="#scan-spin"
+  class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold">
+  Manual scan
+</button>
+<span id="scan-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
+{% endblock %}
+
+{% block content %}
+{% include "_getting_started.html" %}
+{# Once setup is complete the welcome card hides itself; keep a quiet, always-on
+   way back to the first-run steps and the full Guide for anyone who forgot one. #}
+{% if setup and setup.complete and not force_getting_started %}
+<div class="mb-4 text-xs text-slate-500">
+  New here or forgot a step?
+  <a href="/?welcome=1" class="text-amber-400 hover:text-amber-300 underline">Show the getting-started steps</a>
+  <span class="text-slate-700">·</span>
+  <a href="/guide" class="text-amber-400 hover:text-amber-300 underline">Open the full Guide</a>
+</div>
+{% endif %}
+{% include "_investigations_overview.html" %}
+
+{# One feed, two views: Latest (this page) and Most relevant (ranked by your
+   intelligence questions — what used to be a separate 'Intel' page). #}
+<div class="mb-3 inline-flex rounded-lg border border-slate-700 overflow-hidden text-sm">
+  <a href="/brief" class="px-3 py-1.5 text-slate-300 hover:bg-slate-800">Brief</a>
+  <span class="px-3 py-1.5 bg-amber-500 text-slate-950 font-semibold">Latest</span>
+  <a href="/intel" class="px-3 py-1.5 text-slate-300 hover:bg-slate-800">Most relevant</a>
+</div>
+
+<form id="feed-filter"
+  hx-get="/feed"
+  hx-target="#feed"
+  hx-swap="outerHTML"
+  hx-trigger="submit, change, keyup changed delay:350ms from:input[name='q']"
+  class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+  <input type="search" name="q" value="{{ filters.q }}" placeholder="Full-text search&hellip;"
+    class="lg:col-span-2 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm
+           placeholder-slate-500 focus:border-amber-500 outline-none" />
+  <select name="source" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm">
+    <option value="">All sources</option>
+    {% for s in sources %}
+      <option value="{{ s }}" {% if filters.source == s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <select name="threat" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm">
+    <option value="">All threat levels</option>
+    {% for t in threat_levels %}
+      <option value="{{ t }}" {% if filters.threat == t %}selected{% endif %}>{{ t }}</option>
+    {% endfor %}
+  </select>
+  <div class="flex gap-2">
+    <input type="date" name="since" value="{{ filters.since }}"
+      title="From date"
+      class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm
+             text-slate-300 focus:border-amber-500 outline-none" />
+    <input type="date" name="until" value="{{ filters.until }}"
+      title="To date"
+      class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm
+             text-slate-300 focus:border-amber-500 outline-none" />
+  </div>
+
+  {# Scope toggle: show only what the analyst follows (default) vs. everything. #}
+  <div class="lg:col-span-5 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-slate-500 mono">Show:</span>
+    {% set cur_scope = filters.scope or 'topics' %}
+    <label class="cursor-pointer">
+      <input type="radio" name="scope" value="topics" class="peer sr-only"
+        {% if cur_scope != 'all' %}checked{% endif %} />
+      <span class="px-2 py-0.5 rounded border border-slate-700 text-xs text-slate-400
+        hover:border-slate-500 peer-checked:bg-amber-500 peer-checked:text-slate-950
+        peer-checked:border-amber-500 peer-checked:font-semibold"
+        title="Only items matching the topics you follow">My topics</span>
+    </label>
+    <label class="cursor-pointer">
+      <input type="radio" name="scope" value="all" class="peer sr-only"
+        {% if cur_scope == 'all' %}checked{% endif %} />
+      <span class="px-2 py-0.5 rounded border border-slate-700 text-xs text-slate-400
+        hover:border-slate-500 peer-checked:bg-slate-200 peer-checked:text-slate-950
+        peer-checked:border-slate-200 peer-checked:font-semibold"
+        title="Everything collected, including unrelated items">Everything</span>
+    </label>
+    <span class="h-4 w-px bg-slate-700 mx-1"></span>
+  </div>
+
+  <div class="lg:col-span-5 flex flex-wrap items-center gap-3">
+    <span class="text-xs text-slate-500 mono">Quick window:</span>
+    {% set windows = [('', 'Any time'), ('1h','Last hour'), ('6h','Last 6h'),
+                      ('24h','Last 24h'), ('7d','Last 7 days'), ('30d','Last 30 days')] %}
+    {% for val, lbl in windows %}
+    <label class="cursor-pointer">
+      <input type="radio" name="window" value="{{ val }}" class="peer sr-only"
+        {% if (filters.window or '') == val %}checked{% endif %} />
+      <span class="px-2 py-0.5 rounded border border-slate-700 text-xs text-slate-400
+        hover:border-slate-500 peer-checked:bg-amber-500 peer-checked:text-slate-950
+        peer-checked:border-amber-500 peer-checked:font-semibold">{{ lbl }}</span>
+    </label>
+    {% endfor %}
+    <span class="flex-1"></span>
+    <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+      <input type="checkbox" name="unread" value="1" {% if filters.unread %}checked{% endif %}
+        class="accent-amber-500" /> Unread only
+    </label>
+    <button type="button"
+      hx-post="/feed/read-all" hx-include="#feed-filter"
+      hx-target="#feed" hx-swap="outerHTML"
+      title="Mark every item matching the current filters as read"
+      class="text-xs text-slate-500 hover:text-slate-300 border border-slate-700 hover:border-slate-500 rounded px-2 py-0.5">
+      &#10003;&#10003; Mark all read
+    </button>
+    <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer"
+           title="Include items you marked as not relevant">
+      <input type="checkbox" name="show_dismissed" value="1"
+        {% if filters.show_dismissed %}checked{% endif %}
+        class="accent-rose-500" /> Show dismissed
+    </label>
+    <details class="relative" id="export-menu">
+      <summary title="Download every item matching the current filters"
+        class="cursor-pointer list-none rounded border border-slate-600 hover:border-amber-500
+               hover:text-amber-300 px-2.5 py-1 text-xs text-slate-300">&#11015; Export &#9662;</summary>
+      <div class="absolute right-0 z-30 mt-1 w-48 rounded border border-slate-700 bg-slate-900 p-1.5 shadow-xl">
+        <button type="button" data-format="pdf"
+          class="export-opt block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#128196; PDF report</button>
+        <button type="button" data-format="html"
+          class="export-opt block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#127760; HTML report</button>
+        <button type="button" data-format="csv"
+          class="export-opt block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#128202; CSV (spreadsheet)</button>
+        <button type="button" data-format="json"
+          class="export-opt block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#123;&#125; JSON (data)</button>
+      </div>
+    </details>
+  </div>
+</form>
+
+{# --- Bulk triage bar: appears once one or more items are selected. --- #}
+<div id="bulk-bar"
+  class="hidden sticky top-[3.25rem] z-20 mb-3 flex flex-wrap items-center gap-3
+         rounded-lg border border-amber-700/60 bg-slate-900/95 backdrop-blur px-3 py-2 text-sm shadow-xl">
+  <span class="text-slate-200"><span id="bulk-count" class="font-semibold text-amber-400">0</span> selected</span>
+
+  <button type="button"
+    hx-post="/bulk/read" hx-include="#feed-filter, .bulk-select:checked"
+    hx-target="#feed" hx-swap="outerHTML"
+    class="rounded border border-slate-600 hover:border-emerald-500 hover:text-emerald-300 px-2.5 py-1">
+    &#10003; Mark read
+  </button>
+
+  <button type="button"
+    hx-post="/bulk/dismiss" hx-include="#feed-filter, .bulk-select:checked"
+    hx-target="#feed" hx-swap="outerHTML"
+    title="Hide selected items from the feed (restore with 'Show dismissed')"
+    class="rounded border border-slate-600 hover:border-rose-500 hover:text-rose-300 px-2.5 py-1">
+    &#10005; Dismiss
+  </button>
+
+  <details class="relative">
+    <summary class="cursor-pointer list-none rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 px-2.5 py-1">&#9733; Add to list</summary>
+    <div class="absolute left-0 z-30 mt-1 w-52 rounded border border-slate-700 bg-slate-900 p-2 shadow-xl">
+      {% if all_lists %}
+      <div class="space-y-1">
+        {% for l in all_lists %}
+        <button type="button"
+          hx-post="/bulk/lists/{{ l.id }}/add" hx-include="#feed-filter, .bulk-select:checked"
+          hx-target="#feed" hx-swap="outerHTML"
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ l.name }}</button>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-500 px-1">No lists yet — create one from a single card first.</p>
+      {% endif %}
+    </div>
+  </details>
+
+  <details class="relative">
+    <summary class="cursor-pointer list-none rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 px-2.5 py-1">&#128193; Add to case</summary>
+    <div class="absolute left-0 z-30 mt-1 w-56 rounded border border-slate-700 bg-slate-900 p-2 shadow-xl">
+      {% if all_cases %}
+      <div class="space-y-1">
+        {% for cs in all_cases %}
+        <button type="button"
+          hx-post="/bulk/cases/{{ cs.id }}/add" hx-include="#feed-filter, .bulk-select:checked"
+          hx-target="#feed" hx-swap="outerHTML"
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ cs.name }}</button>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-500 px-1">No cases yet — create one from a single card first.</p>
+      {% endif %}
+    </div>
+  </details>
+
+  <span class="flex-1"></span>
+  <button type="button" id="bulk-clear"
+    class="text-slate-400 hover:text-slate-200 text-xs">Clear selection</button>
+</div>
+
+<div class="mb-2 text-[11px] text-slate-600 hidden sm:block">
+  Keyboard: <span class="mono text-slate-500">j/k</span> move ·
+  <span class="mono text-slate-500">o</span> open ·
+  <span class="mono text-slate-500">b</span> bookmark ·
+  <span class="mono text-slate-500">r</span> read ·
+  <span class="mono text-slate-500">d</span> dismiss ·
+  <span class="mono text-slate-500">v</span> details ·
+  <span class="mono text-slate-500">p</span> pin to case ·
+  <span class="mono text-slate-500">x</span> select
+</div>
+<div id="feed">
+  {% include "_feed.html" %}
+</div>
+
+<script>
+(function () {
+  function selected() {
+    return document.querySelectorAll('.bulk-select:checked');
+  }
+  function refresh() {
+    var n = selected().length;
+    var bar = document.getElementById('bulk-bar');
+    var cnt = document.getElementById('bulk-count');
+    if (cnt) cnt.textContent = n;
+    if (bar) bar.classList.toggle('hidden', n === 0);
+    // Keep any "select all" box in sync with the visible rows.
+    var all = document.getElementById('bulk-all');
+    if (all) {
+      var boxes = document.querySelectorAll('.bulk-select');
+      all.checked = boxes.length > 0 && n === boxes.length;
+    }
+  }
+  // Delegated so it keeps working after htmx swaps the feed list.
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.id === 'bulk-all') {
+      document.querySelectorAll('.bulk-select').forEach(function (c) { c.checked = t.checked; });
+      refresh();
+    } else if (t.classList && t.classList.contains('bulk-select')) {
+      refresh();
+    }
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'bulk-clear') {
+      document.querySelectorAll('.bulk-select').forEach(function (c) { c.checked = false; });
+      refresh();
+    }
+    // Export: open /export with the feed's current filter values so the file
+    // reflects exactly what the analyst is looking at, in the chosen format
+    // (PDF / HTML report, or CSV / JSON data). If the browser's popup blocker
+    // swallows the new tab, fall back to the same tab so the click always works.
+    var opt = e.target && e.target.closest && e.target.closest('.export-opt');
+    if (opt) {
+      e.preventDefault();
+      var form = document.getElementById('feed-filter');
+      var params = new URLSearchParams(new FormData(form));
+      params.set('format', opt.getAttribute('data-format') || 'pdf');
+      var url = '/export?' + params.toString();
+      var win = window.open(url, '_blank');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = url;  // popup blocked -> use the current tab
+      }
+      var menu = document.getElementById('export-menu');
+      if (menu) menu.removeAttribute('open');  // close the dropdown
+    }
+  });
+  // After a feed swap (filter / scan / bulk action) or a Load-more append,
+  // re-sync the bulk bar with whatever rows are now on screen.
+  document.body.addEventListener('htmx:afterSwap', function (evt) {
+    var t = evt.target;
+    if (t && (t.id === 'feed' || t.id === 'feed-items' ||
+              (t.closest && t.closest('#feed')))) refresh();
+  });
+})();
+</script>
+
+<script>
+// Keyboard triage: move through cards with j/k and act without the mouse.
+//   j / k  : next / previous item      o : open the source
+//   b      : bookmark (star)           r : mark read       x : select (bulk)
+// Inert while typing in a field, so search etc. are unaffected.
+(function () {
+  var idx = -1;
+  function cards() { return Array.prototype.slice.call(document.querySelectorAll('#feed-items [id^="item-"]')); }
+  function focusCard(i) {
+    var list = cards();
+    if (!list.length) return;
+    idx = Math.max(0, Math.min(i, list.length - 1));
+    list.forEach(function (c, n) { c.classList.toggle('ring-2', n === idx); c.classList.toggle('ring-amber-500', n === idx); });
+    list[idx].scrollIntoView({ block: 'nearest' });
+  }
+  function clickIn(card, selector) { var el = card && card.querySelector(selector); if (el) el.click(); }
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target && e.target.tagName) || '';
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || e.target.isContentEditable) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var list = cards();
+    if (!list.length) return;
+    var card = list[idx];
+    switch (e.key) {
+      case 'j': e.preventDefault(); focusCard(idx + 1); break;
+      case 'k': e.preventDefault(); focusCard(idx <= 0 ? 0 : idx - 1); break;
+      case 'o': if (card) { e.preventDefault(); var a = card.querySelector('a[target="_blank"]'); if (a) window.open(a.href, '_blank', 'noopener'); } break;
+      case 'b': if (card) { e.preventDefault(); clickIn(card, 'button[hx-post$="/bookmark"], button[hx-post$="/unbookmark"]'); } break;
+      case 'r': if (card) { e.preventDefault(); clickIn(card, 'button[hx-post*="/read"]'); } break;
+      case 'd': if (card) { e.preventDefault(); clickIn(card, 'button[hx-post*="/dismiss"]'); } break;
+      case 'v': if (card) { e.preventDefault(); clickIn(card, 'button[hx-get*="/detail"]'); } break;
+      case 'p': if (card) { e.preventDefault(); clickIn(card, 'button[title^="Pin to active case"]'); } break;
+      case 'x': if (card) { e.preventDefault(); var cb = card.querySelector('.bulk-select'); if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change', { bubbles: true })); } } break;
+    }
+  });
+})();
+</script>
+{% endblock %}

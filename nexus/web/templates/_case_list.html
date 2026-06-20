@@ -1,0 +1,120 @@
+{# The investigation board. Swapped after create / status / star / active-case changes. #}
+{% macro case_card(c, active_case) %}
+{% set is_active = active_case and active_case.id == c.id %}
+{% set is_starred = c.priority == 'high' %}
+<div class="rounded-lg border bg-slate-900/60 p-4
+  {% if is_active %}border-amber-500 ring-1 ring-amber-600/40
+  {% elif c.status == 'closed' %}border-slate-800 opacity-70
+  {% else %}border-slate-800 hover:border-amber-700{% endif %} transition">
+
+  <div class="flex items-start justify-between gap-2">
+    <div class="flex items-center gap-2 min-w-0">
+      {# Star toggle — star = important, shows first in list #}
+      <form hx-post="/cases/{{ c.id }}/update" hx-target="#case-list" hx-swap="outerHTML" class="inline shrink-0">
+        <input type="hidden" name="priority" value="{{ 'medium' if is_starred else 'high' }}" />
+        <button type="submit"
+                title="{{ 'Starred — click to unstar' if is_starred else 'Click to star this case (moves it to the top)' }}"
+                class="{{ 'text-amber-400 hover:text-amber-300' if is_starred else 'text-slate-600 hover:text-amber-400' }} text-base leading-none">
+          {{ '&#9733;' if is_starred else '&#9734;' }}
+        </button>
+      </form>
+      <a href="/cases/{{ c.id }}" class="text-slate-100 font-semibold hover:text-amber-400 truncate">{{ c.name }}</a>
+    </div>
+    <span class="flex items-center gap-2 whitespace-nowrap shrink-0">
+      {% if c.new_count %}<a href="/cases/{{ c.id }}?tab=feed" class="rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5 hover:bg-amber-400"
+        title="Jump to feed — {{ c.new_count }} new tracked items">+{{ c.new_count }} new</a>{% endif %}
+      <span class="text-[11px] mono text-slate-500">{{ c.created_at[:10] }}</span>
+    </span>
+  </div>
+
+  <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+    {# Status badge #}
+    <span class="px-1.5 py-0.5 rounded border
+      {% if c.status == 'closed' %}bg-slate-800 text-slate-400 border-slate-700
+      {% else %}bg-emerald-950 text-emerald-300 border-emerald-800{% endif %}">{{ 'archived' if c.status == 'closed' else c.status }}</span>
+    {% if is_active %}<span class="px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-medium"
+      title="Sherlock's 'this case' and new pins default here">focused</span>{% endif %}
+  </div>
+
+  {% if c.description %}<p class="mt-1.5 text-sm text-slate-400">{{ c.description }}</p>{% endif %}
+
+  {# Tracking words #}
+  {% if c.terms_preview is defined %}
+  <div class="mt-2 text-[11px]">
+    {% if c.terms_preview %}
+    <span class="text-slate-500">Tracks:</span>
+    {% for w in c.terms_preview[:6] %}<span class="inline-block rounded-full bg-sky-950/60 border border-sky-900 px-1.5 py-0.5 text-sky-300 mr-1 mb-1">{{ w }}</span>{% endfor %}
+    {% if c.terms_preview|length > 6 %}<span class="text-slate-500">+{{ c.terms_preview|length - 6 }}</span>{% endif %}
+    {% else %}
+    <a href="/cases/{{ c.id }}?tab=feed" class="text-amber-400/90 hover:text-amber-300">No tracking words yet — add words so its feed fills &rarr;</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="mt-2 flex gap-3 text-[11px] mono text-slate-500">
+    <span>{{ c.item_count }} item(s)</span>
+    <span>{{ c.note_count }} note(s)</span>
+    {% if c.subcase_count %}<a href="/cases/{{ c.id }}?tab=subcases" class="text-sky-400 hover:text-sky-300">{{ c.subcase_count }} sub-case(s)</a>{% endif %}
+  </div>
+
+  {# Inline controls #}
+  <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+    {% if is_active %}
+    <button hx-post="/cases/active" hx-vals='{"case_id": 0}'
+      hx-target="#case-list" hx-swap="outerHTML"
+      title="Stop directing Sherlock's 'here / this case' to this case"
+      class="rounded border border-amber-700/60 px-2 py-0.5 text-amber-400 hover:bg-amber-950/40">&#9673; Focused</button>
+    {% else %}
+    <button hx-post="/cases/active" hx-vals='{"case_id": {{ c.id }}}'
+      hx-target="#case-list" hx-swap="outerHTML"
+      title="Sherlock will treat this as your active case — 'add this here', 'make a report here' will point to it"
+      class="rounded border border-slate-700 px-2 py-0.5 text-slate-400 hover:text-slate-200">&#9675; Focus</button>
+    {% endif %}
+
+    {% if c.status == 'open' %}
+    <button hx-post="/cases/{{ c.id }}/update" hx-vals='{"status": "closed"}'
+      hx-target="#case-list" hx-swap="outerHTML"
+      class="rounded border border-slate-700 px-2 py-0.5 text-slate-400 hover:text-slate-200" title="Move to archive (reversible)">Archive</button>
+    {% else %}
+    <button hx-post="/cases/{{ c.id }}/update" hx-vals='{"status": "open"}'
+      hx-target="#case-list" hx-swap="outerHTML"
+      class="rounded border border-emerald-800 px-2 py-0.5 text-emerald-300 hover:bg-emerald-950/40">Reopen</button>
+    {% endif %}
+
+    <span class="flex-1"></span>
+    <button hx-post="/cases/{{ c.id }}/delete"
+      hx-confirm="Delete case &quot;{{ c.name }}&quot;? (pinned items are kept)"
+      hx-target="#case-list" hx-swap="outerHTML"
+      class="text-slate-500 hover:text-red-400">delete</button>
+  </div>
+</div>
+{% endmacro %}
+
+<div id="case-list" class="space-y-6">
+  {% set open_cases = cases | selectattr('status', 'equalto', 'open') | list %}
+  {% set closed_cases = cases | selectattr('status', 'equalto', 'closed') | list %}
+
+  <div>
+    <h2 class="text-xs uppercase tracking-wide text-slate-500 mb-2">Open ({{ open_cases|length }})</h2>
+    {% if open_cases %}
+    <div class="grid gap-3 sm:grid-cols-2">
+      {% for c in open_cases %}{{ case_card(c, active_case) }}{% endfor %}
+    </div>
+    {% else %}
+    <div class="rounded-lg border border-dashed border-slate-700 p-6 text-center text-slate-400">
+      <p class="text-slate-300">No cases yet — a case is the home for one subject you're investigating.</p>
+      <p class="mt-1 text-sm text-slate-500">Create one above. Tip: fill the
+        <span class="text-slate-300">AI brief</span> and the AI will set up tracking words and starter questions.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if closed_cases %}
+  <div>
+    <h2 class="text-xs uppercase tracking-wide text-slate-500 mb-2">Archived ({{ closed_cases|length }})</h2>
+    <div class="grid gap-3 sm:grid-cols-2">
+      {% for c in closed_cases %}{{ case_card(c, active_case) }}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>

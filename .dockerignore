@@ -1,0 +1,9 @@
+.git
+.gitignore
+.venv
+.venv-smoke
+__pycache__
+*.py[cod]
+data
+.env
+README.md

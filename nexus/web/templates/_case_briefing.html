@@ -1,0 +1,51 @@
+{# AI-synthesised briefing for a case (swapped into #case-briefing). #}
+<div id="case-briefing" class="rounded-lg border border-violet-800/60 bg-violet-950/15 p-4">
+  <div class="flex items-center justify-between gap-2 mb-2">
+    <h3 class="text-sm font-medium text-violet-200">&#129504; AI briefing</h3>
+    <button hx-post="/cases/{{ case.id }}/brief" hx-target="#case-briefing" hx-swap="outerHTML"
+            hx-indicator="#case-brief-spin"
+            class="text-[11px] mono text-violet-400 hover:text-violet-200 border border-violet-800/60 rounded px-2 py-0.5">&#8635; Regenerate</button>
+    <span id="case-brief-spin" class="htmx-indicator text-[11px] mono text-violet-300">thinking&hellip;</span>
+  </div>
+  {% if briefing %}
+  <pre id="briefing-text" class="mt-2 whitespace-pre-wrap font-sans text-sm text-slate-200 leading-relaxed">{{ briefing }}</pre>
+  <p class="mt-2 text-[11px] text-slate-500">AI synthesis of {{ count }} tracked item(s) — verify against the sources before relying on it.</p>
+  <script>
+  (function() {
+    const items = {{ items_json | safe }};
+    const el = document.getElementById('briefing-text');
+    if (!el || !items.length) return;
+    const text = el.textContent;
+    const parts = text.split(/\b(Item\s+\d+)\b/gi);
+    if (parts.length <= 1) return;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < parts.length; i++) {
+      const m = parts[i].match(/^Item\s+(\d+)$/i);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        const item = items[n - 1];
+        if (item && item.id) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = parts[i];
+          btn.title = (item.title || '') + ' — click to open details';
+          btn.className = 'text-violet-300 hover:text-violet-100 underline underline-offset-2 cursor-pointer';
+          btn.onclick = (function(id) {
+            return function() {
+              htmx.ajax('GET', '/items/' + id + '/detail', {target: '#item-drawer-content', swap: 'innerHTML'});
+            };
+          })(item.id);
+          frag.appendChild(btn);
+          continue;
+        }
+      }
+      frag.appendChild(document.createTextNode(parts[i]));
+    }
+    el.textContent = '';
+    el.appendChild(frag);
+  })();
+  </script>
+  {% else %}
+  <p class="mt-1 text-sm text-slate-400">{{ error or "No briefing available." }}</p>
+  {% endif %}
+</div>

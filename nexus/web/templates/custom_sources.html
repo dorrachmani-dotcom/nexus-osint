@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Sources</h1>
+    <p class="text-sm text-slate-400">Where your data comes from.</p>
+    <div class="mt-2 flex gap-1 border-b border-slate-800">
+      <a href="/topics" class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px border-transparent text-slate-400 hover:text-slate-200">Feeds &amp; presets</a>
+      <a href="/sources/custom" class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px border-amber-500 text-amber-300 font-semibold">Custom APIs</a>
+    </div>
+  </div>
+  <div>
+    <p class="text-sm text-slate-400">
+      Add any public JSON API as a source. Describe it once — the base URL, how it
+      authenticates, and which field holds the text — and the collector scans it on
+      every run, just like a built-in source. Any API key you enter is saved to the
+      local <span class="mono text-amber-400">.env</span> file only (never the
+      database, never shown back).
+    </p>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div class="space-y-4">
+      <!-- AI assist -->
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-medium text-slate-300">&#9670; Let the AI set it up</h2>
+          {% if ai_enabled %}
+          <span class="px-2 py-0.5 rounded text-xs mono bg-emerald-950/60 text-emerald-300 border border-emerald-800">{{ active_provider }}</span>
+          {% else %}
+          <span class="px-2 py-0.5 rounded text-xs mono bg-slate-800 text-slate-500">AI off</span>
+          {% endif %}
+        </div>
+        {% if ai_enabled %}
+        <p class="text-xs text-slate-500">
+          Paste a link to the API docs and/or an example JSON response. The AI reads
+          it, works out how the API is called and where the content lives, then fills
+          in the form on the right for you to review before saving.
+        </p>
+        <form hx-post="/sources/custom/plan" hx-target="#custom-form-wrap" hx-swap="outerHTML"
+              hx-indicator="#plan-spin" class="space-y-2">
+          <div>
+            <label class="text-xs text-slate-400">Docs URL (optional)</label>
+            <input type="url" name="docs_url" placeholder="https://api.example.com/docs"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Sample JSON response (optional)</label>
+            <textarea name="sample" rows="5" placeholder='{"data":[{"text":"...","url":"..."}]}'
+                      class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs mono"></textarea>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Hint (optional)</label>
+            <input type="text" name="hint" placeholder="e.g. ACLED conflict-event API, needs an api_key query param"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+          </div>
+          <button class="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium rounded px-4 py-2 text-sm">
+            Draft the configuration
+            <span id="plan-spin" class="htmx-indicator">&#8230;</span>
+          </button>
+        </form>
+        {% else %}
+        <p class="text-xs text-slate-500">
+          No AI provider is connected, so the auto-setup is unavailable. You can still
+          add a source by filling in the fields on the right by hand. To enable
+          auto-setup, connect an AI on the
+          <a href="/settings" class="text-sky-400 hover:text-sky-300">Settings</a> page.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Manual / review form -->
+    {% include "_custom_source_form.html" %}
+  </div>
+
+  <div>
+    <h2 class="text-sm font-medium text-slate-300 mb-2">Your custom sources</h2>
+    {% include "_custom_source_list.html" %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,65 @@
+{# Reusable items table for PDF/HTML exports (feed export + case report).
+   Columns, in the order requested by analysts:
+     1. Published         — when the item was published (falls back to fetched)
+     2. Subject           — Personal (a named person) vs General (topic/org/place)
+     3. Link              — source name + clickable article URL
+     4. Summary           — the AI/condensed summary of the news item
+     5. Answers question  — how it answers a standing question, with a 0-100 score
+   Expects `items` (a list of enriched item dicts) in context. #}
+<table class="report-table">
+  <colgroup>
+    <col class="c-time" />
+    <col class="c-subj" />
+    <col class="c-link" />
+    <col class="c-sum" />
+    <col class="c-ans" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Published</th>
+      <th>Subject</th>
+      <th>Link</th>
+      <th>Summary</th>
+      <th>Answers our question (score)</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for it in items %}
+    {% set eg = it.entities_typed or {} %}
+    <tr>
+      <td class="c-time">{{ (it.published_at or it.fetched_at or '')[:16] or '—' }}</td>
+      <td class="c-subj">
+        {% if eg.people %}
+          <span class="tag tag-personal">Personal</span>
+        {% else %}
+          <span class="tag tag-general">General</span>
+        {% endif %}
+        {# Primary subject first (the named person when this is about someone),
+           then any organizations / locations for context. #}
+        {% if eg.people %}<div class="subj-names">{{ eg.people | join(', ') }}</div>{% endif %}
+        {% if eg.organizations %}<div class="subj-names muted">{{ eg.organizations | join(', ') }}</div>{% endif %}
+        {% if eg.locations %}<div class="subj-names muted">{{ eg.locations | join(', ') }}</div>{% endif %}
+      </td>
+      <td class="c-link">
+        <span class="src">{{ it.source }}</span>
+        {% if it.url %}<div><a href="{{ it.url | safe_url }}">{{ it.display_url or it.url }}</a></div>{% endif %}
+      </td>
+      <td class="c-sum">
+        {% if it.title %}<div class="sum-title">{{ it.title }}</div>{% endif %}
+        {% if it.summary %}<div>{{ it.summary }}</div>
+        {% elif it.content %}<div>{{ it.content[:300] }}{% if it.content|length > 300 %}…{% endif %}</div>{% endif %}
+        {% if it.translation and it.translation != it.summary %}<div class="translation"><strong>English translation:</strong> {{ it.translation }}</div>{% endif %}
+      </td>
+      <td class="c-ans">
+        {% if it.top_requirement and (it.top_requirement.score or 0) > 0 %}
+          <span class="score {% if it.top_requirement.score >= 70 %}score-high{% elif it.top_requirement.score >= 40 %}score-mid{% else %}score-low{% endif %}">{{ it.top_requirement.score }}/100</span>
+          <div class="ans-q">{{ it.top_requirement.question }}</div>
+          {% if it.top_requirement.rationale %}<div class="ans-rat">{{ it.top_requirement.rationale }}</div>{% endif %}
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>

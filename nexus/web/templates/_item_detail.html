@@ -1,0 +1,237 @@
+{% set threat = item.threat_level or 'none' %}
+<div class="space-y-5">
+
+  {# ── Quick actions ── #}
+  <div class="flex flex-wrap items-center gap-2 pb-3 border-b border-slate-800 text-xs mono">
+    {% if item.is_read %}
+    <button hx-post="/items/{{ item.id }}/unread" hx-swap="none"
+      hx-on::after-request="this.textContent='&#9711; Unread'"
+      class="rounded border border-emerald-800 hover:border-slate-600 text-emerald-400 px-2.5 py-1">
+      &#10003; Read
+    </button>
+    {% else %}
+    <button hx-post="/items/{{ item.id }}/read" hx-swap="none"
+      hx-on::after-request="this.textContent='&#10003; Read'"
+      class="rounded border border-slate-700 hover:border-emerald-600 hover:text-emerald-300 text-slate-300 px-2.5 py-1">
+      &#10003; Mark read
+    </button>
+    {% endif %}
+    {% if item.is_bookmarked %}
+    <button hx-post="/items/{{ item.id }}/unbookmark" hx-swap="none"
+      hx-on::after-request="this.textContent='&#9734; Bookmark'"
+      class="rounded border border-amber-700 hover:border-slate-600 text-amber-400 px-2.5 py-1">
+      &#9733; Bookmarked
+    </button>
+    {% else %}
+    <button hx-post="/items/{{ item.id }}/bookmark" hx-swap="none"
+      hx-on::after-request="this.textContent='&#9733; Bookmarked'"
+      class="rounded border border-slate-700 hover:border-amber-500 hover:text-amber-300 text-slate-300 px-2.5 py-1">
+      &#9734; Bookmark
+    </button>
+    {% endif %}
+    <button hx-post="/items/{{ item.id }}/dismiss" hx-swap="none"
+      hx-on::after-request="this.textContent='&#10005; Dismissed'"
+      class="rounded border border-slate-700 hover:border-rose-600 hover:text-rose-300 text-slate-400 px-2.5 py-1">
+      &#10005; Dismiss
+    </button>
+    {% if open_cases %}
+    <details class="relative">
+      <summary class="cursor-pointer list-none rounded border border-slate-700
+                       hover:border-amber-500 hover:text-amber-300 text-slate-300 px-2.5 py-1">
+        &#128204; Case
+      </summary>
+      <div class="absolute left-0 z-30 mt-1 w-52 rounded border border-slate-700 bg-slate-950 p-1.5 shadow-xl">
+        {% for c in open_cases %}
+        {% if c.id in pinned_case_ids %}
+        <span class="flex items-center gap-1 px-2 py-1 text-emerald-300">&#10003; {{ c.name }}</span>
+        {% else %}
+        <button hx-post="/cases/{{ c.id }}/items/{{ item.id }}/add" hx-swap="none"
+          hx-on::after-request="this.classList.add('text-emerald-300'); this.textContent='&#10003; ' + this.textContent"
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ c.name }}</button>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+    <button hx-post="/items/{{ item.id }}/verify" hx-target="#verify-result" hx-swap="innerHTML"
+      hx-indicator="#verify-spin"
+      class="rounded border border-slate-700 hover:border-emerald-600 hover:text-emerald-300 text-slate-300 px-2.5 py-1"
+      title="Cross-check this claim against your other collected items">&#10003; Verify</button>
+    <span id="verify-spin" class="htmx-indicator text-emerald-300">checking&hellip;</span>
+    <span class="flex-1"></span>
+    <button onclick="closeItemDrawer()" class="text-slate-500 hover:text-slate-300">&#10005; Close</button>
+  </div>
+  <div id="verify-result"></div>
+
+  {# ── Header ── #}
+  <div class="space-y-1">
+    <div class="flex flex-wrap items-center gap-1.5 text-[11px] mono">
+      <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">{{ item.source or '?' }}</span>
+      {% if threat != 'none' %}
+      <span class="px-1.5 py-0.5 rounded border
+        {% if threat in ['high','critical'] %}bg-red-950 text-red-300 border-red-800
+        {% elif threat == 'medium' %}bg-amber-950 text-amber-300 border-amber-800
+        {% else %}bg-slate-800 text-slate-300{% endif %}">&#9888; {{ threat }}</span>
+      {% endif %}
+      {% if item.reliability %}
+      <span class="px-1.5 py-0.5 rounded border
+        {% if item.reliability == 'official' %}bg-emerald-950 text-emerald-300 border-emerald-800
+        {% elif item.reliability == 'social' %}bg-sky-950 text-sky-300 border-sky-800
+        {% else %}bg-slate-800 text-slate-400 border-slate-700{% endif %}">{{ item.reliability }}</span>
+      {% endif %}
+      {% if item.confidence %}
+      <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">confidence: {{ item.confidence }}</span>
+      {% endif %}
+      <span class="ml-auto text-slate-500">{{ (item.published_at or item.fetched_at or '')[:16] }}</span>
+    </div>
+
+    {% if item.title %}
+    <h3 class="text-base font-semibold text-slate-100 leading-snug">{{ item.title }}</h3>
+    {% endif %}
+
+    {% if item.author %}
+    <p class="text-xs text-slate-500">By {{ item.author }}</p>
+    {% endif %}
+
+    {% if item.url %}
+    <div class="flex items-center gap-2">
+      <a href="{{ item.url | safe_url }}" target="_blank" rel="noopener"
+         class="text-xs text-sky-400 hover:text-sky-300 truncate">
+        &#128279; {{ item.url[:80] }}{% if item.url|length > 80 %}&hellip;{% endif %}
+      </a>
+      <button onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>{this.textContent='&#10003;';setTimeout(()=>{this.textContent='&#128203;'},1500)})"
+              data-url="{{ item.url | e }}"
+              class="shrink-0 text-slate-500 hover:text-emerald-400 text-[11px]"
+              title="Copy URL">&#128203;</button>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── AI summary ── #}
+  {% if item.summary %}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">AI summary</p>
+    <p class="text-sm text-slate-200 leading-relaxed">{{ item.summary }}</p>
+    {% if item.rationale %}
+    <p class="text-xs text-slate-500 border-t border-slate-800 pt-2 mt-2">{{ item.rationale }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Flags ── #}
+  {% if item.party or item.contradiction %}
+  <div class="flex flex-wrap gap-1.5 text-[11px]">
+    {% if item.party == 'first_party' %}
+    <span class="px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">Straight from the source</span>
+    {% elif item.party == 'third_party' %}
+    <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">Reported by others</span>
+    {% endif %}
+    {% if item.contradiction %}
+    <span class="px-1.5 py-0.5 rounded bg-fuchsia-950 text-fuchsia-300 border border-fuchsia-800">&#9873; Disputed / possible disinformation</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Watchlist hits ── #}
+  {% if wl_hits %}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Watchlist matches</p>
+    <div class="flex flex-wrap gap-1.5">
+      {% for h in wl_hits %}
+      <span class="px-2 py-0.5 rounded border border-amber-800/70 bg-amber-950/40 text-amber-300 text-xs">
+        &#128276; {{ h.label }} <span class="text-amber-600 text-[10px]">({{ h.kind }})</span>
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Cases ── #}
+  {% if cases %}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Pinned to cases</p>
+    <div class="flex flex-wrap gap-1.5">
+      {% for c in cases %}
+      <a href="/cases/{{ c.id }}" class="px-2 py-0.5 rounded border bg-slate-800 text-amber-300 border-amber-800 hover:border-amber-500 text-xs">
+        &#128193; {{ c.name }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Lists ── #}
+  {% if lists %}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">In triage lists</p>
+    <div class="flex flex-wrap gap-1.5">
+      {% for l in lists %}
+      <span class="px-2 py-0.5 rounded border text-xs
+        {% if l.color == 'emerald' %}bg-emerald-950 text-emerald-300 border-emerald-800
+        {% elif l.color == 'amber' %}bg-amber-950 text-amber-300 border-amber-800
+        {% elif l.color == 'sky' %}bg-sky-950 text-sky-300 border-sky-800
+        {% elif l.color == 'red' %}bg-red-950 text-red-300 border-red-800
+        {% else %}bg-slate-800 text-slate-300 border-slate-700{% endif %}">{{ l.name }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Translation ── #}
+  {% if item.translation %}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Translation</p>
+    <div class="rounded-lg border border-emerald-900/50 bg-emerald-950/10 p-3
+                text-sm text-emerald-100/90 leading-relaxed whitespace-pre-wrap">
+      {{ item.translation }}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Full content ── #}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
+      Full content
+      {% if item.language %}<span class="normal-case text-slate-600 text-[10px]">[{{ item.language }}]</span>{% endif %}
+    </p>
+    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-3
+                text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+      {{ item.content or '(no content)' }}
+    </div>
+  </div>
+
+  {# ── Named entities ── #}
+  {% set eg = item.entities_typed or {} %}
+  {% if eg.people or eg.organizations or eg.locations or eg.identifiers %}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Named entities</p>
+    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      {% if eg.people %}
+      <span class="text-slate-400">&#128100;
+        {% for p in eg.people %}<a href="/entity?name={{ p | urlencode }}" title="Open dossier: {{ p }}" class="text-slate-300 hover:text-amber-400">{{ p }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>{% endif %}
+      {% if eg.organizations %}
+      <span class="text-slate-400">&#127970;
+        {% for o in eg.organizations %}<a href="/entity?name={{ o | urlencode }}" title="Open dossier: {{ o }}" class="text-slate-300 hover:text-amber-400">{{ o }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>{% endif %}
+      {% if eg.locations %}
+      <span class="text-slate-400">&#128205;
+        {% for l in eg.locations %}<a href="/entity?name={{ l | urlencode }}" title="Open dossier: {{ l }}" class="text-slate-300 hover:text-amber-400">{{ l }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>{% endif %}
+      {% if eg.identifiers %}
+      <span class="text-slate-400">&#128273;
+        {% for i in eg.identifiers %}<a href="/entity?name={{ i | urlencode }}" title="Open dossier: {{ i }}" class="mono text-slate-300 hover:text-amber-400">{{ i }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Footer meta ── #}
+  <div class="border-t border-slate-800 pt-3 text-[11px] mono text-slate-600 space-y-1">
+    <div>Item ID: {{ item.id }}</div>
+    {% if item.fetched_at %}<div>Fetched: {{ item.fetched_at[:19] }}</div>{% endif %}
+    {% if item.published_at %}<div>Published: {{ item.published_at[:19] }}</div>{% endif %}
+    {% if item.dismissed %}<div class="text-rose-500">Dismissed from feed</div>{% endif %}
+  </div>
+
+</div>

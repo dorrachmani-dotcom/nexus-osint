@@ -1,0 +1,23 @@
+{% if result.error %}
+<div class="rounded border border-rose-900/60 bg-rose-950/30 p-2 text-xs text-rose-300">
+  {{ result.error }}
+</div>
+{% else %}
+<div class="rounded border border-emerald-900/60 bg-emerald-950/20 p-2 text-xs space-y-1">
+  <div class="text-emerald-300">
+    Fetched <span class="mono font-medium">{{ result.count }}</span> item{{ '' if result.count == 1 else 's' }}.
+  </div>
+  {% if result.sample_title %}
+  <div class="text-slate-300 truncate">
+    <span class="text-slate-500">First:</span> {{ result.sample_title }}
+  </div>
+  {% endif %}
+  {% if result.sample_url %}
+  <a href="{{ result.sample_url | safe_url }}" target="_blank" rel="noopener"
+     class="text-sky-400 hover:text-sky-300 mono truncate block">&#128279; {{ result.sample_url }}</a>
+  {% endif %}
+  {% if result.count == 0 %}
+  <div class="text-slate-500">The request succeeded but no items matched — check the items path and field mapping.</div>
+  {% endif %}
+</div>
+{% endif %}

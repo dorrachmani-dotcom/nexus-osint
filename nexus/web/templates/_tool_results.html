@@ -1,0 +1,61 @@
+{% if result is none %}
+  <div class="bg-rose-950/50 border border-rose-800 text-rose-200 rounded p-3 text-sm">
+    Unknown tool: <span class="mono">{{ tool }}</span>
+  </div>
+{% elif not result.available %}
+  <div class="bg-slate-900 border border-slate-700 text-slate-300 rounded p-3 text-sm">
+    <span class="mono">{{ result.tool }}</span> is not installed on this host — skipped.
+  </div>
+{% elif result.error %}
+  <div class="bg-rose-950/50 border border-rose-800 text-rose-200 rounded p-3 text-sm">
+    <span class="mono">{{ result.tool }}</span> failed: {{ result.error }}
+  </div>
+{% else %}
+  <div class="space-y-4">
+    <div class="text-sm text-slate-300">
+      <span class="mono text-amber-400">{{ result.tool }}</span>
+      found <strong>{{ result.findings|length }}</strong>
+      result(s) for <span class="mono">{{ result.target }}</span>.
+    </div>
+
+    {% if result.findings %}
+    <div class="overflow-x-auto border border-slate-800 rounded-lg">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-900 text-slate-400 text-left">
+          <tr>
+            <th class="px-3 py-2">Kind</th>
+            <th class="px-3 py-2">Value</th>
+            <th class="px-3 py-2">Label</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in result.findings %}
+          <tr class="border-t border-slate-800">
+            <td class="px-3 py-2"><span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 mono text-xs">{{ f.kind }}</span></td>
+            <td class="px-3 py-2 mono break-all">
+              {% if f.value.startswith('http') %}
+                <a href="{{ f.value | safe_url }}" target="_blank" rel="noopener" class="text-sky-400 hover:underline">{{ f.value }}</a>
+              {% else %}{{ f.value }}{% endif %}
+            </td>
+            <td class="px-3 py-2 text-slate-400">{{ f.label or '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {% if graph_html %}
+    <div>
+      <h2 class="text-sm font-medium text-slate-300 mb-2">Entity graph</h2>
+      <iframe class="w-full rounded-lg border border-slate-800 bg-slate-900"
+              style="height: 620px;" sandbox="allow-scripts"
+              srcdoc="{{ graph_html|e }}"></iframe>
+    </div>
+    {% elif result.findings %}
+    <p class="text-xs text-slate-500">
+      Graph rendering unavailable (networkx/pyvis not installed).
+    </p>
+    {% endif %}
+  </div>
+{% endif %}

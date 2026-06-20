@@ -1,0 +1,29 @@
+<div id="ollama-pull" class="text-xs"
+  {% if pull.status == 'running' %}
+  hx-get="/settings/ollama/pull/status" hx-trigger="load delay:1.5s" hx-swap="outerHTML"
+  {% endif %}>
+  {% if pull.status == 'running' %}
+  <div class="rounded border border-sky-800 bg-sky-950/30 px-3 py-2 space-y-1.5">
+    <p class="text-sky-300">
+      &#8681; Downloading <span class="mono">{{ pull.model }}</span> on this computer&hellip;
+      <span class="text-slate-400">{{ pull.detail }}</span>
+    </p>
+    <div class="h-2 w-full rounded bg-slate-800 overflow-hidden">
+      <div class="h-2 bg-sky-500 transition-all" style="width: {{ pull.percent }}%"></div>
+    </div>
+    <p class="text-slate-500">{{ pull.percent }}% &middot; This is a one-time download &mdash;
+      you can leave this page and it keeps going.</p>
+  </div>
+  {% elif pull.status == 'done' %}
+  <div class="rounded border border-emerald-800 bg-emerald-950/30 text-emerald-300 px-3 py-2 space-y-1">
+    <p>&#10003; <span class="mono">{{ pull.model }}</span> is downloaded and ready. AI
+      analysis will now run 100% on this machine.</p>
+    <button hx-post="/settings/ollama/check" hx-target="#ollama-check" hx-swap="outerHTML"
+      class="mt-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1 font-medium">Verify it's ready</button>
+  </div>
+  {% elif pull.status == 'error' %}
+  <div class="rounded border border-rose-800 bg-rose-950/30 text-rose-300 px-3 py-2">
+    &#10007; {{ pull.error or 'The download failed. Make sure Ollama is installed and running, then try again.' }}
+  </div>
+  {% endif %}
+</div>

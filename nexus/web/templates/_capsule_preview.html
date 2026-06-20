@@ -1,0 +1,60 @@
+<div id="capsule-preview" class="rounded-lg border border-sky-800 bg-slate-950/60 p-4 space-y-3">
+  {% if not analysis_enabled %}
+    <p class="text-sm text-amber-300">
+      The AI query builder needs an AI provider. Add a key on the
+      <a href="/settings" class="text-sky-400 hover:underline">Settings</a> page,
+      or just type the search terms yourself in the form above.
+    </p>
+  {% elif plan.error %}
+    <p class="text-sm text-amber-300">
+      The AI couldn't draft a plan this time. Try rephrasing your brief, or enter
+      the terms manually above.
+    </p>
+  {% elif not plan.queries %}
+    <p class="text-sm text-slate-400">
+      No queries were generated — try describing the subject in a bit more detail.
+    </p>
+  {% else %}
+    <div>
+      <h3 class="text-sm font-medium text-sky-200">Review the AI's plan for
+        “{{ name }}”</h3>
+      <p class="text-xs text-slate-400">
+        Edit anything below, then create the capsule. Each term is searched across
+        every connected source; each question is used to rank results in Intel.
+      </p>
+    </div>
+
+    <form hx-post="/topics/capsule" hx-target="#capsules" hx-swap="outerHTML"
+          hx-on::after-request="document.getElementById('capsule-preview').remove()"
+          class="space-y-3">
+      <input type="hidden" name="name" value="{{ name }}" />
+
+      <label class="block">
+        <span class="text-xs text-slate-400">Search queries
+          <span class="text-slate-600">(comma-separated — edit freely)</span></span>
+        <input name="terms" required value="{{ terms_value }}"
+               class="mt-1 w-full bg-slate-950 border border-sky-800 rounded px-3 py-2 text-sm mono
+                      focus:border-sky-500 focus:outline-none" />
+      </label>
+
+      <label class="block">
+        <span class="text-xs text-slate-400">Ranking questions
+          <span class="text-slate-600">(one per line — the AI scores results against these)</span></span>
+        <textarea name="questions" rows="{{ plan.requirements | length or 1 }}"
+                  class="mt-1 w-full bg-slate-950 border border-sky-800 rounded px-3 py-2 text-sm
+                         focus:border-sky-500 focus:outline-none">{{ questions_value }}</textarea>
+      </label>
+
+      <div class="flex items-center gap-2">
+        <button class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold rounded px-5 py-2 text-sm">
+          Create capsule
+        </button>
+        <button type="button"
+                onclick="document.getElementById('capsule-preview').remove()"
+                class="text-xs text-slate-400 hover:text-slate-200">
+          Discard
+        </button>
+      </div>
+    </form>
+  {% endif %}
+</div>

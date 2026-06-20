@@ -1,0 +1,59 @@
+<div id="case-items" class="space-y-3">
+  {% if items %}
+    {% for it in items %}
+    {% set threat = it.threat_level or 'none' %}
+    <article class="rounded-lg border border-slate-800 bg-slate-900/60 p-3{% if it.is_read %} opacity-60{% endif %}">
+      <div class="flex items-center gap-2 mb-1 text-[11px] mono">
+        <span class="text-slate-500">#{{ it.id }}</span>
+        <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">{{ it.source }}</span>
+        {% set rel = it.reliability or '' %}
+        {% if rel %}
+        <span class="px-1.5 py-0.5 rounded border
+          {% if rel == 'official' %}bg-emerald-950 text-emerald-300 border-emerald-800
+          {% elif rel == 'social' %}bg-sky-950 text-sky-300 border-sky-800
+          {% else %}bg-slate-800 text-slate-400 border-slate-700{% endif %}">{{ rel }}</span>
+        {% endif %}
+        {% if threat != 'none' %}<span class="px-1.5 py-0.5 rounded
+          {% if threat in ['high','critical'] %}bg-red-950 text-red-300 border border-red-800
+          {% elif threat == 'medium' %}bg-amber-950 text-amber-300 border border-amber-800
+          {% else %}bg-slate-800 text-slate-300{% endif %}">&#9888; {{ threat }}</span>{% endif %}
+        <span class="flex-1"></span>
+        <span class="text-slate-500">{{ (it.published_at or it.fetched_at)[:16] }}</span>
+        {% if case and case.id %}
+        <button hx-post="/cases/{{ case.id }}/items/{{ it.id }}/unpin"
+          hx-target="#case-items" hx-swap="outerHTML"
+          hx-confirm="Remove this item from the case?"
+          class="text-slate-500 hover:text-red-400" title="Remove from case">&times;</button>
+        {% endif %}
+      </div>
+      {% if it.title %}<h3 class="text-slate-100 text-sm font-semibold">{{ it.title }}</h3>{% endif %}
+      <p class="mt-1 text-sm text-slate-300">{{ it.summary or it.content[:240] }}</p>
+      <div class="mt-1.5 flex items-center gap-3 text-[11px] mono">
+        {% if it.url %}<a href="{{ it.url | safe_url }}" target="_blank" rel="noopener"
+            class="text-sky-400 hover:text-sky-300">&#128279; source</a>{% endif %}
+        <button hx-get="/items/{{ it.id }}/detail"
+          hx-target="#item-drawer-content" hx-swap="innerHTML"
+          class="text-slate-500 hover:text-sky-400" title="View full item details">&#8599; Details</button>
+        {% if it.is_read %}
+        <span class="text-emerald-400">&#10003; Read</span>
+        {% else %}
+        <button hx-post="/items/{{ it.id }}/read" hx-swap="none"
+          hx-on::after-request="this.textContent='✓ read'; this.disabled=true; this.className='text-emerald-400 cursor-default'; this.closest('article').classList.add('opacity-60')"
+          class="text-slate-500 hover:text-emerald-400">&#10003; Read</button>
+        {% endif %}
+        {% if it.is_bookmarked %}
+        <span class="text-amber-400">&#9733; Saved</span>
+        {% else %}
+        <button hx-post="/items/{{ it.id }}/bookmark" hx-swap="none"
+          hx-on::after-request="this.textContent='★ saved'; this.disabled=true; this.className='text-amber-400 cursor-default'"
+          class="text-slate-500 hover:text-amber-400">&#9733; Bookmark</button>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  {% else %}
+    <p class="text-sm text-slate-500">No items pinned yet — pin them from the
+      <a href="/cases/{{ case.id }}?tab=feed" class="text-amber-400 hover:underline">Live feed</a>
+      tab, or from the main feed using the pin button.</p>
+  {% endif %}
+</div>

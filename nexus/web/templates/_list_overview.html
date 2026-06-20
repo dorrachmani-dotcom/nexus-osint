@@ -1,0 +1,52 @@
+{# The grid of triage lists. Swapped after create/delete. #}
+<div id="list-overview">
+  {% if lists %}
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {% for l in lists %}
+    {% set c = l.color or 'slate' %}
+    <div class="rounded-lg border bg-slate-900/60 p-4
+      {% if c == 'emerald' %}border-emerald-800
+      {% elif c == 'amber' %}border-amber-800
+      {% elif c == 'red' %}border-red-800
+      {% elif c == 'sky' %}border-sky-800
+      {% elif c == 'indigo' %}border-indigo-800
+      {% elif c == 'fuchsia' %}border-fuchsia-800
+      {% elif c == 'teal' %}border-teal-800
+      {% elif c == 'orange' %}border-orange-800
+      {% else %}border-slate-700{% endif %}">
+      <div class="flex items-center justify-between gap-2">
+        <a href="/lists/{{ l.id }}" class="font-semibold text-slate-100 hover:text-amber-400 truncate">{{ l.name }}</a>
+        <div class="flex items-center gap-2 shrink-0">
+          <details class="relative">
+            <summary class="cursor-pointer list-none text-[11px] mono text-slate-600 hover:text-amber-400" title="Rename">&#9998;</summary>
+            <div class="absolute right-0 z-20 mt-1 w-52 rounded border border-slate-700 bg-slate-900 p-2 shadow-xl">
+              <form hx-post="/lists/{{ l.id }}/update" hx-target="#list-overview" hx-swap="outerHTML"
+                    class="flex gap-1.5">
+                <input name="name" required value="{{ l.name }}" maxlength="60"
+                       class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200" />
+                <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1 text-xs font-medium">Save</button>
+              </form>
+            </div>
+          </details>
+          <button hx-post="/lists/{{ l.id }}/delete" hx-target="#list-overview" hx-swap="outerHTML"
+            hx-confirm="Delete list &quot;{{ l.name }}&quot;? (items are kept)"
+            class="text-xs text-slate-500 hover:text-red-400">delete</button>
+        </div>
+      </div>
+      <div class="mt-1 flex items-center gap-2 text-xs mono text-slate-500">
+        <span>{{ l.item_count }} item{{ '' if l.item_count == 1 else 's' }}</span>
+        {% if l.last_item_at %}
+        <span class="text-slate-600">&middot; last added {{ l.last_item_at[:10] }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-lg border border-dashed border-slate-700 p-8 text-center text-slate-400">
+    <p class="mb-1 text-slate-300">No lists yet.</p>
+    <p class="text-sm text-slate-500">Create one above (e.g. "Very interesting", "Not interesting"),
+      then file items into it from the &#9733; List button on any feed card.</p>
+  </div>
+  {% endif %}
+</div>

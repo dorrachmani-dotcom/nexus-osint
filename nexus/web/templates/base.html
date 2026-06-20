@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus-OSINT</title>
+  <!-- A real multi-resolution .ico (the same app icon) first: Windows uses this
+       for the app-window title bar / taskbar, where an SVG data URI is ignored.
+       The inline SVG stays as a crisp fallback for the browser tab. -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23020617'/%3E%3Cpath d='M16 5 L27 16 L16 27 L5 16 Z' fill='%23fbbf24'/%3E%3C/svg%3E" />
+  <script>
+    // Apply the saved colour theme before first paint so there is no flash of
+    // the wrong theme. Default is dark; "light" is opt-in and remembered.
+    try { if (localStorage.getItem('nexus-theme') === 'light') document.documentElement.classList.add('light'); } catch (e) {}
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Design tokens for the whole app. Amber = brand/accent, slate = surfaces.
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { brand: { DEFAULT: '#fbbf24', soft: '#fcd34d', deep: '#b45309' } },
+          fontFamily: {
+            sans: ['system-ui', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+          },
+          boxShadow: {
+            glow: '0 0 0 1px rgba(251,191,36,.15), 0 8px 30px -12px rgba(251,191,36,.25)',
+          },
+          keyframes: {
+            fadeIn: { '0%': { opacity: 0, transform: 'translateY(4px)' }, '100%': { opacity: 1, transform: 'none' } },
+          },
+          animation: { fadeIn: 'fadeIn .25s ease-out both' },
+        },
+      },
+    };
+  </script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style type="text/tailwindcss">
+    @layer base {
+      html { @apply scroll-smooth; }
+      body {
+        @apply bg-slate-950 text-slate-200 antialiased;
+        /* Subtle depth: two faint radial glows over the dark base. */
+        background-image:
+          radial-gradient(60rem 40rem at 85% -10%, rgba(251,191,36,.06), transparent 60%),
+          radial-gradient(50rem 40rem at -10% 0%, rgba(56,189,248,.05), transparent 55%);
+        background-attachment: fixed;
+      }
+      ::selection { background: rgba(251,191,36,.30); color: #fff; }
+      :focus-visible { @apply outline-none ring-2 ring-amber-500/70 ring-offset-2 ring-offset-slate-950 rounded; }
+      ::-webkit-scrollbar { width: 11px; height: 11px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
+      ::-webkit-scrollbar-thumb:hover { background: #334155; background-clip: content-box; }
+    }
+    @layer components {
+      /* Monospace helper used across templates (kept as a stable class name). */
+      .mono { @apply font-mono; }
+      /* htmx loading indicators: hidden until a request is in flight. */
+      .htmx-indicator { opacity: 0; transition: opacity .2s; }
+      .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+      /* Top navigation links + active state. */
+      .nav-link { @apply px-2.5 py-1 rounded-md text-slate-400 hover:text-amber-300 hover:bg-slate-800/60 transition-colors; }
+      .nav-active { @apply text-amber-300 bg-slate-800/80 font-medium; }
+      /* Connection status chips. */
+      .chip { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] mono whitespace-nowrap; }
+      .chip-on { @apply border-emerald-700/70 text-emerald-300 bg-emerald-950/40; }
+      .chip-off { @apply border-slate-700/70 text-slate-500 bg-slate-900/40; }
+      /* Reusable building blocks pages can opt into. */
+      .card { @apply rounded-xl border border-slate-800 bg-slate-900/60 shadow-sm; }
+      .btn-primary { @apply inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold px-3.5 py-1.5 transition-colors shadow-sm; }
+      .btn-ghost { @apply inline-flex items-center gap-1.5 rounded-lg border border-slate-700 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm px-3 py-1.5 transition-colors; }
+    }
+  </style>
+
+  <!-- ===================================================================
+       LIGHT THEME
+       Plain-CSS override layer activated by `html.light`. The app is dark by
+       default; every page uses hardcoded slate utilities, so rather than add a
+       `dark:`/`light:` variant to ~20 templates we remap the exact utility
+       tokens here. Selectors use [class~="token"] (whole-word class match) so
+       opacity variants are matched and `:hover` variants are left untouched
+       unless we opt in. html.light specificity (>=0,2,1) beats single-class
+       utilities, so no !important is needed.
+       =================================================================== -->
+  <style>
+    /* ---- page shell -------------------------------------------------- */
+    html.light body {
+      color: #1e293b;
+      background-color: #f1f5f9;
+      background-image:
+        radial-gradient(60rem 40rem at 85% -10%, rgba(245,158,11,.10), transparent 60%),
+        radial-gradient(50rem 40rem at -10% 0%, rgba(14,165,233,.08), transparent 55%);
+    }
+    html.light ::selection { background: rgba(245,158,11,.30); color: #0f172a; }
+    html.light :focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(245,158,11,.7); }
+    html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; background-clip: content-box; }
+    html.light ::-webkit-scrollbar-thumb:hover { background: #94a3b8; background-clip: content-box; }
+
+    /* ---- surfaces (background-color) --------------------------------- */
+    html.light [class~="bg-slate-950"],
+    html.light [class~="bg-slate-950/40"],
+    html.light [class~="bg-slate-950/60"],
+    html.light [class~="bg-slate-950/80"],
+    html.light [class~="supports-[backdrop-filter]:bg-slate-950/60"] { background-color: #ffffff; }
+    html.light [class~="bg-slate-900"],
+    html.light [class~="bg-slate-900/30"],
+    html.light [class~="bg-slate-900/40"],
+    html.light [class~="bg-slate-900/50"],
+    html.light [class~="bg-slate-900/60"],
+    html.light [class~="bg-slate-900/70"],
+    html.light [class~="bg-slate-900/95"] { background-color: #f8fafc; }
+    html.light [class~="bg-slate-800"],
+    html.light [class~="bg-slate-800/80"] { background-color: #eef2f7; }
+    html.light [class~="bg-slate-700"] { background-color: #e2e8f0; }
+    html.light [class~="bg-slate-600"] { background-color: #cbd5e1; }
+
+    /* ---- text (color) ------------------------------------------------ */
+    html.light [class~="text-slate-100"] { color: #0f172a; }
+    html.light [class~="text-slate-200"] { color: #1e293b; }
+    html.light [class~="text-slate-300"] { color: #334155; }
+    html.light [class~="text-slate-400"] { color: #475569; }
+    html.light [class~="text-slate-500"] { color: #64748b; }
+    html.light [class~="text-slate-600"] { color: #64748b; }
+    /* text-slate-700 / text-slate-950 are already dark — leave for light bg. */
+
+    /* ---- borders ----------------------------------------------------- */
+    html.light [class~="border-slate-800"],
+    html.light [class~="border-slate-800/60"],
+    html.light [class~="border-slate-800/80"],
+    html.light [class~="divide-slate-800"],
+    html.light [class~="divide-slate-800/70"] { border-color: #e2e8f0; }
+    html.light [class~="border-slate-700"],
+    html.light [class~="border-slate-700/70"] { border-color: #cbd5e1; }
+    html.light [class~="border-slate-600"] { border-color: #94a3b8; }
+    html.light [class~="placeholder-slate-500"]::placeholder { color: #94a3b8; }
+
+    /* ---- accent tints: amber ----------------------------------------- */
+    html.light [class~="bg-amber-950"],
+    html.light [class~="bg-amber-950/10"],
+    html.light [class~="bg-amber-950/20"],
+    html.light [class~="bg-amber-950/30"],
+    html.light [class~="bg-amber-950/40"],
+    html.light [class~="bg-amber-950/60"],
+    html.light [class~="bg-amber-900/60"] { background-color: #fef3c7; }
+    html.light [class~="text-amber-200"] { color: #92400e; }
+    html.light [class~="text-amber-300"],
+    html.light [class~="text-amber-400"],
+    html.light [class~="text-amber-400/80"] { color: #b45309; }
+    html.light [class~="border-amber-700"],
+    html.light [class~="border-amber-700/50"],
+    html.light [class~="border-amber-700/60"],
+    html.light [class~="border-amber-800"],
+    html.light [class~="border-amber-900/60"] { border-color: #fcd34d; }
+
+    /* ---- accent tints: sky ------------------------------------------- */
+    html.light [class~="bg-sky-950"],
+    html.light [class~="bg-sky-950/20"],
+    html.light [class~="bg-sky-950/30"],
+    html.light [class~="bg-sky-950/40"],
+    html.light [class~="bg-sky-950/50"],
+    html.light [class~="bg-sky-950/60"] { background-color: #e0f2fe; }
+    html.light [class~="text-sky-100"],
+    html.light [class~="text-sky-200"],
+    html.light [class~="text-sky-300"],
+    html.light [class~="text-sky-300/80"],
+    html.light [class~="text-sky-300/90"],
+    html.light [class~="text-sky-400"],
+    html.light [class~="text-sky-500"] { color: #0369a1; }
+    html.light [class~="border-sky-700/50"],
+    html.light [class~="border-sky-700/60"],
+    html.light [class~="border-sky-800"],
+    html.light [class~="border-sky-900/70"] { border-color: #bae6fd; }
+
+    /* ---- accent tints: emerald --------------------------------------- */
+    html.light [class~="bg-emerald-950"],
+    html.light [class~="bg-emerald-950/20"],
+    html.light [class~="bg-emerald-950/30"],
+    html.light [class~="bg-emerald-950/40"],
+    html.light [class~="bg-emerald-950/60"],
+    html.light [class~="bg-emerald-900"] { background-color: #d1fae5; }
+    html.light [class~="text-emerald-200"],
+    html.light [class~="text-emerald-200/90"],
+    html.light [class~="text-emerald-300"],
+    html.light [class~="text-emerald-400"] { color: #047857; }
+    html.light [class~="border-emerald-700"],
+    html.light [class~="border-emerald-700/50"],
+    html.light [class~="border-emerald-700/70"],
+    html.light [class~="border-emerald-800"],
+    html.light [class~="border-emerald-800/60"],
+    html.light [class~="border-emerald-900/60"] { border-color: #a7f3d0; }
+
+    /* ---- accent tints: rose / red ------------------------------------ */
+    html.light [class~="bg-rose-950"],
+    html.light [class~="bg-rose-950/30"],
+    html.light [class~="bg-rose-950/50"],
+    html.light [class~="bg-rose-950/60"],
+    html.light [class~="bg-rose-900/70"] { background-color: #ffe4e6; }
+    html.light [class~="bg-red-950"] { background-color: #fee2e2; }
+    html.light [class~="text-rose-100"],
+    html.light [class~="text-rose-200"],
+    html.light [class~="text-rose-300"],
+    html.light [class~="text-rose-400"] { color: #be123c; }
+    html.light [class~="text-red-300"],
+    html.light [class~="text-red-400"] { color: #b91c1c; }
+    html.light [class~="border-rose-800"],
+    html.light [class~="border-rose-900/60"] { border-color: #fecdd3; }
+    html.light [class~="border-red-800"] { border-color: #fecaca; }
+
+    /* ---- accent tints: indigo ---------------------------------------- */
+    html.light [class~="bg-indigo-950"],
+    html.light [class~="bg-indigo-950/10"] { background-color: #e0e7ff; }
+    html.light [class~="text-indigo-300"] { color: #4338ca; }
+    html.light [class~="border-indigo-800"],
+    html.light [class~="border-indigo-900/60"] { border-color: #c7d2fe; }
+
+    /* ---- component classes ------------------------------------------- */
+    html.light .card { border-color: #e2e8f0; background-color: #ffffff; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+    html.light .nav-link { color: #475569; }
+    html.light .nav-active { color: #b45309; background-color: #fef3c7; }
+    html.light .chip-on { border-color: #6ee7b7; color: #047857; background-color: #ecfdf5; }
+    html.light .chip-off { border-color: #cbd5e1; color: #64748b; background-color: #f1f5f9; }
+    html.light .btn-ghost { border-color: #cbd5e1; color: #334155; }
+
+    /* ---- prominent hover states (only those used as raw utilities) ---- */
+    html.light .nav-link:hover { color: #b45309; background-color: #fef3c7; }
+    html.light .btn-ghost:hover { border-color: #f59e0b; color: #b45309; }
+    html.light [class~="hover:bg-slate-800"]:hover,
+    html.light [class~="hover:bg-slate-800/60"]:hover { background-color: #eef2f7; }
+    html.light [class~="hover:bg-slate-700"]:hover { background-color: #e2e8f0; }
+    html.light [class~="hover:bg-slate-900"]:hover { background-color: #f8fafc; }
+    html.light [class~="hover:text-slate-200"]:hover { color: #1e293b; }
+    html.light [class~="hover:text-slate-300"]:hover { color: #334155; }
+    html.light [class~="hover:text-amber-300"]:hover,
+    html.light [class~="hover:text-amber-400"]:hover { color: #b45309; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  {% set path = request.url.path if request else '/' %}
+  <header class="sticky top-0 z-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/60">
+    <div class="max-w-screen-2xl mx-auto px-5 py-2.5 flex items-center gap-4">
+      <a href="/" class="flex items-center gap-2.5 shrink-0 group">
+        <span class="grid place-items-center h-8 w-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 text-lg font-black shadow-glow group-hover:scale-105 transition-transform">&#9670;</span>
+        <span class="leading-none">
+          <span class="block text-amber-400 text-lg font-bold tracking-tight">Nexus-OSINT</span>
+          <span class="mono text-[10px] text-slate-500 hidden sm:block">local intelligence terminal</span>
+        </span>
+      </a>
+      {# Nav grouped by the workflow: Review (Brief/Feed) -> Investigate
+         (Cases/Graph) -> Collect (Sources). Less-used tools live under "More",
+         and config under "Setup", so the main flow stays uncluttered. #}
+      <nav class="flex flex-wrap items-center gap-0.5 text-sm">
+        <a href="/brief" class="nav-link {% if path.startswith('/brief') %}nav-active{% endif %}">Brief<span id="brief-badge" class="hidden ml-1 rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5"></span></a>
+        <a href="/attention" class="nav-link {% if path.startswith('/attention') %}nav-active{% endif %}" title="Needs your eyes — the few unread items that most warrant attention">&#128064; Focus<span id="attention-badge" class="hidden ml-1 rounded-full bg-sky-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5"></span></a>
+        <a href="/" class="nav-link {% if path == '/' or path.startswith('/intel') %}nav-active{% endif %}">Feed</a>
+        <a href="/cases" class="nav-link {% if path.startswith('/cases') %}nav-active{% endif %}">Cases</a>
+        <a href="/graph" class="nav-link {% if path.startswith('/graph') %}nav-active{% endif %}">Graph</a>
+        <span class="mx-1 h-4 w-px bg-slate-700/70" aria-hidden="true"></span>
+        <a href="/sources" class="nav-link {% if path.startswith('/sources') or path.startswith('/topics') %}nav-active{% endif %}">Sources</a>
+
+        <details class="relative">
+          <summary class="nav-link list-none cursor-pointer {% if path.startswith('/lists') or path.startswith('/tools') or path.startswith('/watchlists') or path.startswith('/requirements') %}nav-active{% endif %}">More &#9662;</summary>
+          <div class="absolute right-0 z-40 mt-1 w-44 rounded border border-slate-700 bg-slate-900 p-1 shadow-xl">
+            <a href="/lists" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Lists <span class="text-slate-500 text-xs">(triage lanes)</span></a>
+            <a href="/watchlists" class="flex items-center justify-between px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Watchlists<span id="watchlist-badge" class="hidden rounded-full bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 leading-none"></span></a>
+            <a href="/tools" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">OSINT tools</a>
+            <a href="/requirements" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Requirements</a>
+          </div>
+        </details>
+
+        <span class="mx-1 h-4 w-px bg-slate-700/70" aria-hidden="true"></span>
+        <details class="relative">
+          <summary class="nav-link list-none cursor-pointer {% if path.startswith('/settings') or path.startswith('/security') or path.startswith('/transfer') %}nav-active{% endif %}">Setup &#9662;</summary>
+          <div class="absolute right-0 z-40 mt-1 w-44 rounded border border-slate-700 bg-slate-900 p-1 shadow-xl">
+            <a href="/settings" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Settings &amp; keys</a>
+            <a href="/sources" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Sources</a>
+            <a href="/security" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Security center</a>
+            <a href="/transfer" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Transfer (air-gap)</a>
+          </div>
+        </details>
+        <a href="/guide" class="nav-link text-amber-400/80 hover:text-amber-300 {% if path.startswith('/guide') %}nav-active{% endif %}">Guide</a>
+      </nav>
+      <div class="flex-1"></div>
+      <button type="button" id="theme-toggle" onclick="nexusToggleTheme()"
+              class="nav-link text-base leading-none" title="Switch between light and dark">
+        <span class="theme-dark-icon">&#9788;</span><span class="theme-light-icon" style="display:none">&#9789;</span>
+      </button>
+      {% block actions %}{% endblock %}
+    </div>
+    {% if status %}
+    <div class="border-t border-slate-800/60 bg-slate-900/30">
+      <div class="max-w-screen-2xl mx-auto px-5 py-1.5 flex flex-wrap items-center gap-1.5"
+           title="Green = connected and ready. Grey = not set up yet (add its key on Settings).">
+        <span class="text-[11px] mono text-slate-500 mr-0.5">What's connected:</span>
+        {% for name, state in status.items() %}
+          <span class="chip {% if state == 'on' %}chip-on{% else %}chip-off{% endif %}">
+            <span class="h-1.5 w-1.5 rounded-full {% if state == 'on' %}bg-emerald-400{% else %}bg-slate-600{% endif %}"></span>{{ name }}
+          </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </header>
+
+  <main class="flex-1 w-full max-w-screen-2xl mx-auto px-5 py-6 animate-fadeIn">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-slate-800/60 mt-8">
+    <div class="max-w-screen-2xl mx-auto px-5 py-3 flex flex-wrap items-center justify-between gap-2 text-[11px] mono text-slate-600">
+      <span>&#9670; Nexus-OSINT &middot; local intelligence terminal</span>
+      <span class="flex items-center gap-1.5">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+        runs locally on 127.0.0.1 &middot; offline-capable &middot; your data never leaves this machine
+      </span>
+    </div>
+  </footer>
+
+  {# ---- In-dashboard analyst assistant (floating chat) -------------------- #}
+  {# A grounded helper that knows the product and can answer questions about the
+     collected data. Runs on whichever model the analyst configured (cloud API or
+     a local Ollama model). Pure client-side widget posting to /assistant/ask. #}
+  <div id="assistant-panel"
+       class="fixed bottom-20 left-5 z-40 w-[360px] max-w-[calc(100vw-2.5rem)]
+              hidden flex-col rounded-xl border border-slate-700 bg-slate-900
+              shadow-2xl" style="height:min(540px,75vh)">
+    <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-800 bg-slate-800/60 rounded-t-xl">
+      {# Sherlock mascot — an original friendly green "detective blob" with a
+         magnifying glass. Inline SVG (no extra asset to ship in the frozen build). #}
+      <svg viewBox="0 0 64 64" class="h-6 w-6 shrink-0" aria-hidden="true">
+        <path d="M32 7C19 7 13 18 13 32v16c0 3 3 4 5 2l3-3c1-1 3-1 4 0l3 3c1 1 3 1 4 0l3-3c1-1 3-1 4 0l3 3c2 2 5 1 5-2V32C51 18 45 7 32 7Z" fill="#22c55e"/>
+        <ellipse cx="32" cy="33" rx="14" ry="15" fill="#4ade80" opacity="0.45"/>
+        <circle cx="25" cy="27" r="6" fill="#fff"/><circle cx="39" cy="27" r="6" fill="#fff"/>
+        <circle cx="26" cy="28" r="2.6" fill="#0f172a"/><circle cx="40" cy="28" r="2.6" fill="#0f172a"/>
+        <path d="M26 39c2 3 10 3 12 0" stroke="#0f172a" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <circle cx="46" cy="45" r="7" fill="#bae6fd" stroke="#0f172a" stroke-width="3"/>
+        <line x1="51" y1="50" x2="58" y2="57" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round"/>
+      </svg>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold text-slate-100 leading-tight">Sherlock</div>
+        <div class="text-[10px] mono text-slate-500 leading-tight">your OSINT assistant — ask, or tell me to act</div>
+      </div>
+      <button type="button" onclick="nexusAssistantEnd()"
+              class="text-[11px] text-slate-400 hover:text-slate-100 px-2 py-0.5 rounded border border-slate-700"
+              title="End this conversation">End chat</button>
+      <button type="button" onclick="nexusAssistantToggle(false)"
+              class="text-slate-400 hover:text-slate-100 text-lg leading-none px-1" title="Close">&times;</button>
+    </div>
+    <div id="assistant-log" class="flex-1 overflow-y-auto px-3 py-3 space-y-3 text-sm">
+      <div class="assistant-msg-bot rounded-lg bg-slate-800 text-slate-200 px-3 py-2"
+           style="white-space:pre-wrap">Hi, I'm Sherlock — your OSINT assistant. I can explain how to use this workstation, answer questions about your collected data, and actually do things for you. Try: "open a case on Neymar &amp; the World Cup, add the related items, and make me a PDF."</div>
+    </div>
+    <div id="assistant-suggestions" class="px-2 pt-2 flex flex-wrap gap-1.5">
+      {% set _chips = [
+        ('Track a subject', 'Open a case on Neymar and set up its tracking words and starter questions'),
+        ('Add a question', "Add the question 'What is the latest on the transfer?' to this case"),
+        ('Open a sub-case', 'Open a sub-case for transfer rumors under this case'),
+        ('Build a report', 'Open a case on this subject, add the matching items, and make me a PDF')
+      ] %}
+      {% for label, prompt in _chips %}
+      <button type="button" class="asst-chip rounded-full border border-slate-700 bg-slate-800/70 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-[11px] px-2 py-0.5"
+              data-prompt="{{ prompt }}">{{ label }}</button>
+      {% endfor %}
+      <label class="ml-auto inline-flex items-center gap-1 text-[11px] text-slate-400 cursor-pointer"
+             title="Sourced answer: Sherlock cites the collected items its answer is based on, as clickable sources you can open and verify.">
+        <input type="checkbox" id="assistant-cite" class="accent-sky-500" checked />
+        &#128279; Sources
+      </label>
+      <label class="inline-flex items-center gap-1 text-[11px] text-slate-400 cursor-pointer"
+             title="Deep research: Sherlock runs several searches and reasons over the results before answering. Slower, but more thorough.">
+        <input type="checkbox" id="assistant-deep" class="accent-violet-500" />
+        &#129504; Deep
+      </label>
+    </div>
+    <script>
+      // Clicking a suggestion fills the input so users discover what Sherlock can do.
+      document.addEventListener('click', function (e) {
+        var chip = e.target && e.target.closest && e.target.closest('.asst-chip');
+        if (!chip) return;
+        var t = document.getElementById('assistant-input');
+        if (t) { t.value = chip.getAttribute('data-prompt') || ''; t.focus(); }
+      });
+    </script>
+    <form id="assistant-form" class="border-t border-slate-800 p-2 flex items-end gap-2">
+      <textarea id="assistant-input" rows="1" required
+                placeholder="Ask the assistant…"
+                class="flex-1 resize-none bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm
+                       text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-slate-500"
+                style="max-height:120px"></textarea>
+      <button type="submit" id="assistant-send"
+              class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-3 py-1.5 text-sm">
+        Send
+      </button>
+    </form>
+  </div>
+  <button type="button" id="assistant-launcher" onclick="nexusAssistantToggle()"
+          class="fixed bottom-5 left-5 z-40 h-12 w-12 rounded-full bg-slate-900 ring-2 ring-emerald-500/70
+                 hover:ring-emerald-400 shadow-lg flex items-center justify-center p-1.5"
+          title="Open Sherlock, your assistant" aria-label="Open Sherlock, your assistant">
+    {# Same original Sherlock mascot as the panel header, sized for the launcher. #}
+    <svg viewBox="0 0 64 64" class="h-full w-full" aria-hidden="true">
+      <path d="M32 7C19 7 13 18 13 32v16c0 3 3 4 5 2l3-3c1-1 3-1 4 0l3 3c1 1 3 1 4 0l3-3c1-1 3-1 4 0l3 3c2 2 5 1 5-2V32C51 18 45 7 32 7Z" fill="#22c55e"/>
+      <ellipse cx="32" cy="33" rx="14" ry="15" fill="#4ade80" opacity="0.45"/>
+      <circle cx="25" cy="27" r="6" fill="#fff"/><circle cx="39" cy="27" r="6" fill="#fff"/>
+      <circle cx="26" cy="28" r="2.6" fill="#0f172a"/><circle cx="40" cy="28" r="2.6" fill="#0f172a"/>
+      <path d="M26 39c2 3 10 3 12 0" stroke="#0f172a" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <circle cx="46" cy="45" r="7" fill="#bae6fd" stroke="#0f172a" stroke-width="3"/>
+      <line x1="51" y1="50" x2="58" y2="57" stroke="#0f172a" stroke-width="3.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  {# Action feedback. On success htmx swaps the result in, so success is already
+     visible; the only silent case is a FAILURE — a refused request, a server
+     error, or a dropped connection leaves the page unchanged and the operator
+     guessing. This surfaces those so a click that didn't work is never
+     invisible. No per-route wiring: it listens to htmx's own error events. #}
+  <div id="toast-host" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"
+       aria-live="polite" aria-atomic="true"></div>
+  <script>
+    // ---- colour theme toggle ----
+    function nexusSyncThemeIcon() {
+      var light = document.documentElement.classList.contains('light');
+      var sun = document.querySelector('.theme-dark-icon');
+      var moon = document.querySelector('.theme-light-icon');
+      if (sun) sun.style.display = light ? 'none' : 'inline';
+      if (moon) moon.style.display = light ? 'inline' : 'none';
+    }
+    function nexusToggleTheme() {
+      var isLight = document.documentElement.classList.toggle('light');
+      try { localStorage.setItem('nexus-theme', isLight ? 'light' : 'dark'); } catch (e) {}
+      nexusSyncThemeIcon();
+    }
+    document.addEventListener('DOMContentLoaded', nexusSyncThemeIcon);
+
+    // ---- failure toasts ----
+    (function () {
+      function toast(message) {
+        var host = document.getElementById('toast-host');
+        if (!host) return;
+        var el = document.createElement('div');
+        el.className = 'rounded-lg px-4 py-2.5 text-sm shadow-lg border max-w-xs ' +
+          'cursor-pointer transition-opacity duration-300 ' +
+          'bg-rose-950 border-rose-800 text-rose-100';
+        el.textContent = message;
+        el.title = 'Click to dismiss';
+        el.addEventListener('click', function () { el.remove(); });
+        host.appendChild(el);
+        setTimeout(function () {
+          el.style.opacity = '0';
+          setTimeout(function () { el.remove(); }, 300);
+        }, 5000);
+      }
+      // 4xx/5xx: the server answered but htmx won't swap an error response.
+      document.body.addEventListener('htmx:responseError', function () {
+        toast('That action did not go through. Please try again.');
+      });
+      // No answer at all: app stopped, or the connection dropped.
+      document.body.addEventListener('htmx:sendError', function () {
+        toast('Could not reach the local app — is it still running?');
+      });
+    })();
+
+    // ---- analyst assistant (floating chat) ----
+    (function () {
+      var history = [];  // [{role:'user'|'assistant', content:'...'}]
+
+      function el(id) { return document.getElementById(id); }
+
+      window.nexusAssistantToggle = function (force) {
+        var p = el('assistant-panel');
+        var launcher = el('assistant-launcher');
+        if (!p) return;
+        var show = (typeof force === 'boolean') ? force : p.classList.contains('hidden');
+        p.classList.toggle('hidden', !show);
+        p.classList.toggle('flex', show);
+        if (launcher) launcher.style.display = show ? 'none' : 'flex';
+        if (show) { var i = el('assistant-input'); if (i) i.focus(); }
+      };
+
+      // Safely render a bot message, turning "Item N" references into clickable
+      // links. Uses document.createDocumentFragment — no innerHTML, model output
+      // can never inject HTML. items is [{n, id, url, title}, ...] from the server.
+      function renderBotText(div, text, items) {
+        items = items || [];
+        var byN = {};
+        items.forEach(function (it) { if (it && it.n) byN[it.n] = it; });
+        // Split on word-boundary Item N tokens (handles "Item 1", "Items 1, 2", etc.)
+        var parts = text.split(/\b(Item\s+\d+)\b/gi);
+        var frag = document.createDocumentFragment();
+        for (var i = 0; i < parts.length; i++) {
+          var m = parts[i].match(/^Item\s+(\d+)$/i);
+          if (m) {
+            var n = parseInt(m[1], 10);
+            var it = byN[n];
+            if (it && it.url && /^https?:\/\//i.test(it.url)) {
+              var a = document.createElement('a');
+              a.href = it.url;
+              a.target = '_blank';
+              a.rel = 'noopener';
+              a.textContent = parts[i];
+              a.className = 'text-sky-400 underline hover:text-sky-300';
+              a.title = it.title || parts[i];
+              frag.appendChild(a);
+              continue;
+            }
+          }
+          frag.appendChild(document.createTextNode(parts[i]));
+        }
+        div.textContent = '';
+        div.appendChild(frag);
+      }
+
+      function addBubble(role, text, items) {
+        var log = el('assistant-log');
+        if (!log) return null;
+        var div = document.createElement('div');
+        div.style.whiteSpace = 'pre-wrap';
+        if (role === 'user') {
+          div.className = 'assistant-msg-user rounded-lg bg-amber-500/15 text-slate-100 px-3 py-2 ml-6';
+          div.textContent = text;  // user input: plain text only
+        } else {
+          div.className = 'assistant-msg-bot rounded-lg bg-slate-800 text-slate-200 px-3 py-2';
+          renderBotText(div, text, items);
+        }
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+        return div;
+      }
+
+      // Render the actions Sherlock actually performed (case made, items added,
+      // a report to open). Each becomes a clickable row; report rows auto-open.
+      function renderActions(actions) {
+        var log = el('assistant-log');
+        if (!log || !actions || !actions.length) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'space-y-1';
+        actions.forEach(function (a) {
+          if (!a || !a.label) return;
+          // A "navigate" action takes the analyst to a page in THIS window — a
+          // prominent amber button (not a new tab, never auto-fired so a click
+          // is always an explicit choice).
+          if (a.type === 'navigate' && a.url) {
+            var nav = document.createElement('a');
+            nav.href = a.url; // same-window navigation, no target=_blank
+            nav.className = 'block rounded-md border border-amber-500/70 bg-amber-500/15 ' +
+              'hover:bg-amber-500/25 px-3 py-2 text-xs font-semibold text-amber-200 ' +
+              'no-underline text-center';
+            nav.textContent = '➡️ ' + a.label;
+            wrap.appendChild(nav);
+            return;
+          }
+          var icon = a.type === 'report' ? '📄 '
+            : a.type === 'case_created' ? '🗂️ '
+            : a.type === 'items_added' ? '➕ '
+            : a.type === 'scan' ? '🔄 '
+            : a.type === 'search' ? '🔎 '
+            : a.type === 'watchlist' ? '🔔 '
+            : a.type === 'requirement' ? '🎯 '
+            : a.type === 'note' ? '📝 '
+            : a.type === 'evidence' ? '📸 '
+            : a.type === 'error' ? '⚠️ ' : '';
+          var row;
+          if (a.url) {
+            row = document.createElement('a');
+            row.href = a.url; row.target = '_blank'; row.rel = 'noopener';
+            row.className = 'block rounded-md border border-slate-700 bg-slate-800/70 ' +
+              'hover:bg-slate-700 px-3 py-2 text-xs text-slate-100 no-underline';
+          } else {
+            row = document.createElement('div');
+            row.className = 'block rounded-md border px-3 py-2 text-xs ' +
+              (a.type === 'error'
+                ? 'border-rose-800 bg-rose-950/40 text-rose-200'
+                : 'border-slate-700 bg-slate-800/70 text-slate-200');
+          }
+          row.textContent = icon + a.label;
+          wrap.appendChild(row);
+          // A search_feed action can carry a short list of matching items; render
+          // each as its own clickable link (new tab) under the summary row. Only
+          // http(s) hrefs are accepted (the server already filtered these).
+          if (a.items && a.items.length) {
+            a.items.forEach(function (it) {
+              if (!it || !it.title) return;
+              var safe = (typeof it.url === 'string' &&
+                          /^https?:\/\//i.test(it.url)) ? it.url : null;
+              var sub;
+              if (safe) {
+                sub = document.createElement('a');
+                sub.href = safe; sub.target = '_blank'; sub.rel = 'noopener';
+                sub.className = 'block rounded border border-slate-700/70 bg-slate-900/50 ' +
+                  'hover:bg-slate-800 px-3 py-1.5 ml-3 text-xs text-slate-200 no-underline';
+              } else {
+                sub = document.createElement('div');
+                sub.className = 'block rounded border border-slate-700/70 bg-slate-900/50 ' +
+                  'px-3 py-1.5 ml-3 text-xs text-slate-300';
+              }
+              sub.textContent = '• ' + it.title + (it.meta ? ('  (' + it.meta + ')') : '');
+              wrap.appendChild(sub);
+            });
+          }
+          // Honour "open this for me" (e.g. the PDF). Pop-up blockers may stop
+          // this; the clickable row above is always the reliable fallback.
+          if (a.open && a.url) { try { window.open(a.url, '_blank', 'noopener'); } catch (e) {} }
+        });
+        log.appendChild(wrap);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      // Show the sources an answer is based on: the collected items Sherlock
+      // cited as "(Item N)". Parsed from the answer text so the list reflects
+      // what the answer actually used; each becomes a clickable link (http(s)
+      // only — item URLs are source-derived and must never run as a scheme).
+      // Renders nothing when the answer cited no items (e.g. how-to guidance).
+      function renderSources(items, answerText) {
+        items = items || [];
+        if (!items.length || !answerText) return;
+        var byN = {};
+        items.forEach(function (it) { if (it && it.n) byN[it.n] = it; });
+        var cited = [], seen = {};
+        var re = /\bItem\s+(\d+)\b/gi, m;
+        while ((m = re.exec(answerText)) !== null) {
+          var n = parseInt(m[1], 10);
+          if (byN[n] && !seen[n]) { seen[n] = true; cited.push(byN[n]); }
+        }
+        if (!cited.length) return;
+        var log = el('assistant-log');
+        if (!log) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 space-y-1';
+        var head = document.createElement('div');
+        head.className = 'text-[10px] uppercase tracking-wide text-slate-500 font-semibold';
+        head.textContent = '🔗 Sources (' + cited.length + ')';
+        wrap.appendChild(head);
+        cited.forEach(function (it) {
+          var meta = [it.source, it.when].filter(Boolean).join(' · ');
+          var label = 'Item ' + it.n + ' · ' + (it.title || '(untitled)') + (meta ? ('  — ' + meta) : '');
+          var safe = (typeof it.url === 'string' && /^https?:\/\//i.test(it.url)) ? it.url : null;
+          var row;
+          if (safe) {
+            row = document.createElement('a');
+            row.href = safe; row.target = '_blank'; row.rel = 'noopener';
+            row.className = 'block rounded border border-slate-700/70 bg-slate-800/50 ' +
+              'hover:bg-slate-700 px-2 py-1 text-[11px] text-sky-300 no-underline';
+          } else {
+            row = document.createElement('div');
+            row.className = 'block rounded border border-slate-700/70 bg-slate-800/50 ' +
+              'px-2 py-1 text-[11px] text-slate-300';
+          }
+          row.textContent = label;
+          wrap.appendChild(row);
+        });
+        log.appendChild(wrap);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      function resetChat() {
+        history = [];
+        var log = el('assistant-log');
+        if (log) {
+          log.innerHTML = '';
+          var b = document.createElement('div');
+          b.className = 'assistant-msg-bot rounded-lg bg-slate-800 text-slate-200 px-3 py-2';
+          b.style.whiteSpace = 'pre-wrap';
+          b.textContent = "Fresh start. I'm Sherlock — ask me anything, or tell me to build a case, "
+            + "fill it with matching items, and make you a report.";
+          log.appendChild(b);
+        }
+      }
+
+      function saveTranscriptLocally() {
+        return fetch('/assistant/save-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript: history })
+        }).catch(function () {});
+      }
+
+      // Tear down any open end-chat dialog.
+      function closeEndDialog() {
+        var ov = el('assistant-end-modal');
+        if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+      }
+
+      // End the conversation. Offer an opt-in LOCAL save first via a clean in-app
+      // modal (no jarring native browser dialog). Saving keeps a record of the
+      // questions on THIS machine only — useful for retracing an investigation —
+      // and never sends anything anywhere.
+      window.nexusAssistantEnd = function () {
+        if (!history.length) { resetChat(); return; }
+        closeEndDialog();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'assistant-end-modal';
+        overlay.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4';
+
+        var card = document.createElement('div');
+        card.className = 'w-[340px] max-w-full rounded-xl border border-slate-700 bg-slate-900 '
+          + 'shadow-2xl text-slate-200 overflow-hidden';
+
+        var head = document.createElement('div');
+        head.className = 'px-4 py-3 border-b border-slate-800 text-sm font-semibold text-slate-100';
+        head.textContent = 'End this conversation?';
+
+        var body = document.createElement('div');
+        body.className = 'px-4 py-3 text-[13px] leading-relaxed text-slate-300 space-y-2';
+        var p1 = document.createElement('p');
+        p1.textContent = 'You can keep a copy of this chat — your questions and my replies — '
+          + 'as a local record of your investigation.';
+        var p2 = document.createElement('p');
+        p2.className = 'text-[12px] text-slate-400';
+        p2.textContent = 'It is saved only on this computer and never sent anywhere. '
+          + 'Handy for retracing your line of inquiry or handing notes to a colleague.';
+        body.appendChild(p1); body.appendChild(p2);
+
+        var actions = document.createElement('div');
+        actions.className = 'px-4 py-3 border-t border-slate-800 flex flex-col gap-2';
+
+        var bSave = document.createElement('button');
+        bSave.type = 'button';
+        bSave.className = 'w-full rounded bg-emerald-600 hover:bg-emerald-500 text-white '
+          + 'font-medium px-3 py-2 text-sm';
+        bSave.textContent = 'Save a copy & end';
+        bSave.onclick = function () { saveTranscriptLocally(); closeEndDialog(); resetChat(); };
+
+        var bPlain = document.createElement('button');
+        bPlain.type = 'button';
+        bPlain.className = 'w-full rounded border border-slate-600 hover:bg-slate-800 '
+          + 'text-slate-200 px-3 py-2 text-sm';
+        bPlain.textContent = 'End without saving';
+        bPlain.onclick = function () { closeEndDialog(); resetChat(); };
+
+        var bCancel = document.createElement('button');
+        bCancel.type = 'button';
+        bCancel.className = 'w-full text-slate-400 hover:text-slate-200 px-3 py-1 text-xs';
+        bCancel.textContent = 'Keep chatting';
+        bCancel.onclick = closeEndDialog;
+
+        actions.appendChild(bSave); actions.appendChild(bPlain); actions.appendChild(bCancel);
+        card.appendChild(head); card.appendChild(body); card.appendChild(actions);
+        overlay.appendChild(card);
+        // Click outside the card dismisses (same as "Keep chatting").
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) closeEndDialog(); });
+        document.body.appendChild(overlay);
+      };
+
+      function autosize(t) {
+        t.style.height = 'auto';
+        t.style.height = Math.min(t.scrollHeight, 120) + 'px';
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var form = el('assistant-form');
+        var input = el('assistant-input');
+        if (!form || !input) return;
+
+        input.addEventListener('input', function () { autosize(input); });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.requestSubmit();
+          }
+        });
+
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var q = input.value.trim();
+          if (!q) return;
+          var sendBtn = el('assistant-send');
+
+          addBubble('user', q);
+          history.push({ role: 'user', content: q });
+          input.value = '';
+          autosize(input);
+
+          var thinking = addBubble('assistant', 'Sherlock is thinking…');
+          thinking.classList.add('animate-pulse');
+          if (sendBtn) sendBtn.disabled = true;
+          // Reassure on a slow model, and never let the bubble hang forever.
+          var softTimer = setTimeout(function () {
+            if (thinking) thinking.textContent = 'Still working — the AI model is taking a little while…';
+          }, 18000);
+          var controller = new AbortController();
+          var hardTimer = setTimeout(function () { controller.abort(); }, 90000);
+
+          fetch('/assistant/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            // Send the current page so Sherlock knows what the analyst is looking
+            // at ("this", "here", "the current case" resolve to the open view).
+            body: JSON.stringify({
+              question: q,
+              history: history.slice(0, -1),
+              page: window.location.pathname + window.location.search,
+              deep: !!(document.getElementById('assistant-deep') || {}).checked,
+              cite: !!(document.getElementById('assistant-cite') || {}).checked
+            })
+          })
+            .then(function (r) {
+              // Read the body as text first so a non-JSON / error response
+              // (e.g. a 404 from an older app version) gives a clear message
+              // instead of the vague "could not answer that".
+              return r.text().then(function (t) {
+                var d = null;
+                try { d = JSON.parse(t); } catch (e) { d = null; }
+                if (!d || typeof d !== 'object') {
+                  d = {
+                    ok: false, actions: [],
+                    error: (r.status === 404
+                      ? 'Sherlock isn’t available on this version of the app — please update or restart it.'
+                      : 'Sherlock hit a problem (HTTP ' + r.status + '). Please try again.')
+                  };
+                }
+                return d;
+              });
+            })
+            .then(function (data) {
+              if (thinking) thinking.classList.remove('animate-pulse');
+              var msg = data.ok ? (data.answer || 'Done.')
+                : (data.error || 'Sorry, I could not answer that.');
+              if (thinking) renderBotText(thinking, msg, data.items || []);
+              if (data.ok && data.answer) renderSources(data.items || [], data.answer);
+              if (data.ok && data.answer) history.push({ role: 'assistant', content: data.answer });
+              if (data.ok && data.actions) renderActions(data.actions);
+              var log = el('assistant-log');
+              if (log) log.scrollTop = log.scrollHeight;
+            })
+            .catch(function (err) {
+              if (thinking) {
+                thinking.classList.remove('animate-pulse');
+                thinking.textContent = (err && err.name === 'AbortError')
+                  ? 'The AI took too long to answer — it may be busy. Please try again.'
+                  : 'Could not reach the local app. Is it still running?';
+              }
+            })
+            .finally(function () {
+              clearTimeout(softTimer); clearTimeout(hardTimer);
+              if (sendBtn) sendBtn.disabled = false;
+              input.focus();
+            });
+        });
+      });
+    })();
+  </script>
+
+  <script>
+    // Live "new since last visit" badge on the Brief nav tab — refreshed on load
+    // and every few minutes. Fail-silent (never blocks the page).
+    (function () {
+      var badge = document.getElementById('brief-badge');
+      function refresh() {
+        fetch('/brief/count', { headers: { 'Accept': 'application/json' } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            var n = d && d.total ? d.total : 0;
+            if (badge) {
+              if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.classList.remove('hidden'); }
+              else { badge.classList.add('hidden'); }
+            }
+            document.title = n > 0 ? '(' + n + ') ' + (window._nexusBaseTitle || 'Nexus') : (window._nexusBaseTitle || 'Nexus');
+          })
+          .catch(function () {});
+      }
+      window.nexusBriefRefresh = refresh;
+      if (badge) refresh();
+      setInterval(refresh, 180000);  // every 3 minutes
+    })();
+  </script>
+
+  <script>
+    // Live "Needs your eyes" count on the Focus nav tab. Fail-silent.
+    (function () {
+      var badge = document.getElementById('attention-badge');
+      if (!badge) return;
+      function refresh() {
+        fetch('/attention/count', { headers: { 'Accept': 'application/json' } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            var n = d && d.total ? d.total : 0;
+            if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.classList.remove('hidden'); }
+            else { badge.classList.add('hidden'); }
+          })
+          .catch(function () {});
+      }
+      window.nexusAttentionRefresh = refresh;
+      refresh();
+      setInterval(refresh, 180000);  // every 3 minutes
+    })();
+  </script>
+
+  {# ── Item detail drawer ──────────────────────────────────────────────────── #}
+  <div id="item-drawer"
+       class="fixed inset-y-0 right-0 z-50 w-full sm:w-[540px] bg-slate-950 border-l border-slate-800
+              shadow-2xl overflow-y-auto translate-x-full transition-transform duration-200">
+    <div class="sticky top-0 z-10 bg-slate-950/95 backdrop-blur flex items-center justify-between
+                px-4 py-3 border-b border-slate-800">
+      <span class="text-sm font-medium text-slate-200">Item details</span>
+      <button onclick="closeItemDrawer()" class="text-slate-500 hover:text-slate-200 text-xl leading-none">&times;</button>
+    </div>
+    <div id="item-drawer-content" class="p-4 text-sm text-slate-500">
+      Select an item and click Details to view it here.
+    </div>
+  </div>
+  <div id="item-drawer-overlay"
+       class="fixed inset-0 z-40 bg-black/50 hidden"
+       onclick="closeItemDrawer()"></div>
+  <script>
+    function openItemDrawer() {
+      document.getElementById('item-drawer').classList.remove('translate-x-full');
+      document.getElementById('item-drawer-overlay').classList.remove('hidden');
+    }
+    function closeItemDrawer() {
+      document.getElementById('item-drawer').classList.add('translate-x-full');
+      document.getElementById('item-drawer-overlay').classList.add('hidden');
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeItemDrawer();
+    });
+    // Open drawer automatically after htmx loads content into it.
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+      if (e.target && e.target.id === 'item-drawer-content') openItemDrawer();
+    });
+  </script>
+
+  <script>
+    // Watchlist hit badge — red dot on the Watchlists nav item for unseen alerts.
+    (function () {
+      var badge = document.getElementById('watchlist-badge');
+      if (!badge) return;
+      function refresh() {
+        fetch('/watchlists/count', { headers: { 'Accept': 'application/json' } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            var n = d && d.total ? d.total : 0;
+            if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.classList.remove('hidden'); }
+            else { badge.classList.add('hidden'); }
+          })
+          .catch(function () {});
+      }
+      refresh();
+      setInterval(refresh, 180000);
+    })();
+  </script>
+
+  <script>window._nexusBaseTitle = document.title || 'Nexus';</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<div id="watchlist-list" class="space-y-2">
+  {% if watchlists %}
+    {% for w in watchlists %}
+    <div class="flex items-center gap-3 rounded border bg-slate-900/60 px-3 py-2
+                {% if w.enabled %}border-slate-800{% else %}border-slate-800/40 opacity-50{% endif %}">
+      <span class="px-1.5 py-0.5 rounded text-xs
+                   {% if w.enabled %}bg-slate-800 text-slate-200{% else %}bg-slate-800/60 text-slate-500{% endif %}">{{ w.label }}</span>
+      <span class="mono text-xs {% if w.enabled %}text-slate-400{% else %}text-slate-600{% endif %}">{{ w.kind }}: {{ w.pattern }}</span>
+      <span class="text-[11px] mono text-slate-500">{{ w.hit_count }} hit(s)</span>
+      {% if not w.enabled %}
+      <span class="text-[11px] mono text-slate-600 border border-slate-700 rounded px-1.5 py-0.5">paused</span>
+      {% endif %}
+      <span class="flex-1"></span>
+      {% if w.kind == 'keyword' %}
+      <a href="/?q={{ w.pattern | urlencode }}" title="Search feed for this pattern"
+         class="text-[11px] mono text-slate-600 hover:text-amber-400">&#8594; feed</a>
+      {% endif %}
+      <button hx-post="/watchlists/{{ w.id }}/toggle" hx-target="#watchlist-list" hx-swap="outerHTML"
+              class="text-xs text-slate-500 hover:text-amber-400">
+        {% if w.enabled %}pause{% else %}resume{% endif %}</button>
+      <button hx-post="/watchlists/{{ w.id }}/delete" hx-target="#watchlist-list" hx-swap="outerHTML"
+              hx-confirm="Delete the &quot;{{ w.label }}&quot; watchlist and its alerts?"
+              class="text-xs text-slate-500 hover:text-rose-400">remove</button>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="text-sm text-slate-500">No watchlists yet. Add a keyword, crypto wallet, or phone number above and you'll be alerted whenever it shows up in a scan.</p>
+  {% endif %}
+</div>

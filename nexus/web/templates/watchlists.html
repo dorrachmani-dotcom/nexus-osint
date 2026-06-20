@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<script>
+  (function () {
+    var b = document.getElementById('watchlist-badge');
+    if (b) { b.textContent = ''; b.classList.add('hidden'); }
+  })();
+</script>
+<section class="space-y-6">
+  <div class="space-y-4">
+    <div>
+      <h1 class="text-lg font-semibold text-slate-100">Watchlists &amp; alerts</h1>
+      <p class="text-sm text-slate-400 mt-1">
+        Your silent tripwires. Every time the system scans for new items, it checks
+        every incoming article, post, or report against your watchlist. The moment
+        something matches, the item is flagged with a red <span class="inline-block px-1.5 py-0.5 rounded bg-rose-900/70 text-rose-200 text-[11px] font-medium">ALERT</span> tag — so
+        you notice it instantly without reading everything yourself.
+      </p>
+    </div>
+
+    {# --- What you can monitor --- #}
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1">
+        <div class="text-xs font-semibold text-amber-300">&#128269; Keyword</div>
+        <p class="text-xs text-slate-300">A word or phrase. Matches anywhere in the title, body, or AI summary — case-insensitive.</p>
+        <p class="text-[11px] mono text-slate-500 mt-1">
+          Examples:<br/>
+          <span class="text-slate-400">"John Smith"</span><br/>
+          <span class="text-slate-400">"money laundering"</span><br/>
+          <span class="text-slate-400">"offshore account"</span>
+        </p>
+        <p class="text-[11px] text-slate-500 mt-1">Best for: names of people, companies, places, or specific terms you need to catch immediately.</p>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1">
+        <div class="text-xs font-semibold text-sky-300">&#128296; Regex</div>
+        <p class="text-xs text-slate-300">A pattern using regular expressions. Catches flexible formats — dates, codes, IDs — that a simple keyword would miss.</p>
+        <p class="text-[11px] mono text-slate-500 mt-1">
+          Examples:<br/>
+          <span class="text-slate-400">\b\d{9}\b</span> <span class="text-slate-500">(9-digit ID)</span><br/>
+          <span class="text-slate-400">passport\s*\d+</span><br/>
+          <span class="text-slate-400">\+\d{7,15}</span> <span class="text-slate-500">(intl. phone)</span>
+        </p>
+        <p class="text-[11px] text-slate-500 mt-1">Best for: document numbers, registration plates, email addresses, or any structured data.</p>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1">
+        <div class="text-xs font-semibold text-violet-300">&#128176; Crypto wallet</div>
+        <p class="text-xs text-slate-300">A full wallet address (Bitcoin, Ethereum, Tron, etc.). Flags any article that mentions it — even in a long list of addresses.</p>
+        <p class="text-[11px] mono text-slate-500 mt-1 break-all">
+          Examples:<br/>
+          <span class="text-slate-400">1A1zP1eP5QGefi<br/>2TWLZjsfseoFs9</span><br/>
+          <span class="text-slate-400">0x742d35Cc6634<br/>C0532925a3b844</span>
+        </p>
+        <p class="text-[11px] text-slate-500 mt-1">Best for: following the money — tracking wallets linked to sanctioned entities, ransomware groups, or suspects.</p>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1">
+        <div class="text-xs font-semibold text-emerald-300">&#128222; Phone number</div>
+        <p class="text-xs text-slate-300">A phone number in any common format. Recognised with or without country code, spaces, or dashes.</p>
+        <p class="text-[11px] mono text-slate-500 mt-1">
+          Examples:<br/>
+          <span class="text-slate-400">+1-555-867-5309</span><br/>
+          <span class="text-slate-400">(555) 123-4567</span><br/>
+          <span class="text-slate-400">+44 20 7946 0958</span>
+        </p>
+        <p class="text-[11px] text-slate-500 mt-1">Best for: numbers tied to suspects, shell companies, or known threat actors — surfaces every mention across sources.</p>
+      </div>
+    </div>
+
+    {# --- How it works --- #}
+    <div class="rounded-lg border border-slate-700/60 bg-slate-900/30 px-4 py-3 text-sm text-slate-400">
+      <span class="font-medium text-slate-300">How it works:</span>
+      Every scan checks new items against all your watchlist entries automatically, with no extra steps.
+      A matching item is tagged <span class="inline-block px-1.5 py-0.5 rounded bg-rose-900/70 text-rose-200 text-[11px] font-medium">ALERT</span> in the feed and logged below under "Recent alerts" —
+      with the exact watchlist entry that triggered it so you know why it fired.
+      One watchlist entry can trigger across any source: news, social media, or custom feeds.
+    </div>
+  </div>
+
+  <form hx-post="/watchlists" hx-target="#watchlist-list" hx-swap="outerHTML"
+        hx-on::after-request="this.reset()"
+        class="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] items-end
+               bg-slate-900 border border-slate-800 rounded-lg p-4">
+    <label class="block">
+      <span class="text-xs text-slate-400">Label</span>
+      <input name="label" required
+             class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+    </label>
+    <label class="block">
+      <span class="text-xs text-slate-400">Pattern</span>
+      <input name="pattern" required
+             class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+    </label>
+    <label class="block">
+      <span class="text-xs text-slate-400">Kind</span>
+      <select name="kind" class="mt-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+        {% for k in kinds %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-1.5 text-sm">
+      Add
+    </button>
+  </form>
+
+  {% include "_watchlist_list.html" %}
+
+  <div>
+    <h2 class="text-sm font-medium text-slate-300 mb-2">Recent alerts</h2>
+    {% if hits %}
+    <div class="space-y-2">
+      {% for h in hits %}
+      <div class="wl-hit rounded border border-amber-900/60 bg-amber-950/20 p-3">
+        <div class="flex items-center gap-2 text-[11px] mono">
+          <span class="px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200">{{ h.label }}</span>
+          <span class="text-slate-500">{{ h.kind }}: {{ h.pattern }}</span>
+          <span class="flex-1"></span>
+          <span class="text-slate-500">{{ h.hit_at[:16] }}</span>
+        </div>
+        <p class="mt-1 text-sm text-slate-200">{{ h.title or h.summary or h.content[:160] }}</p>
+        <div class="mt-2 flex items-center gap-3 text-[11px] mono">
+          {% if h.url %}<a href="{{ h.url | safe_url }}" target="_blank" rel="noopener"
+              class="text-sky-400 hover:text-sky-300">&#128279; source</a>{% endif %}
+          <button hx-get="/items/{{ h.item_id }}/detail"
+              hx-target="#item-drawer-content" hx-swap="innerHTML"
+              class="text-slate-500 hover:text-sky-400">&#8599; Details</button>
+          <button hx-post="/items/{{ h.item_id }}/read" hx-swap="none"
+              hx-on::after-request="this.closest('.wl-hit').style.opacity='0.4'; this.disabled=true"
+              class="text-slate-500 hover:text-emerald-400">&#10003; Mark read</button>
+          {% if active_case %}
+          <button hx-post="/cases/{{ active_case.id }}/items/{{ h.item_id }}/add" hx-swap="none"
+              hx-on::after-request="this.textContent='✓ pinned'; this.disabled=true; this.className='text-emerald-400 cursor-default'"
+              class="text-amber-400 hover:text-amber-300"
+              title="Pin to active case: {{ active_case.name }}">&#128204; &rarr; {{ active_case.name }}</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-slate-500">No alerts yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

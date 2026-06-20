@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block actions %}
+<button
+  hx-post="/intel/scan"
+  hx-target="#intel-feed"
+  hx-swap="outerHTML"
+  hx-include="#intel-filters"
+  hx-indicator="#scan-spin"
+  class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold">
+  Manual scan
+</button>
+<span id="scan-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
+<details class="relative inline-block" id="intel-export-menu">
+  <summary title="Download the ranked items matching the current filters"
+    class="cursor-pointer list-none rounded border border-slate-600 hover:border-amber-500
+           hover:text-amber-300 px-2.5 py-1.5 text-sm text-slate-300">&#11015; Export &#9662;</summary>
+  <div class="absolute right-0 z-30 mt-1 w-48 rounded border border-slate-700 bg-slate-900 p-1.5 shadow-xl">
+    <button type="button" data-format="csv"
+      class="intel-export-opt block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#128202; CSV (spreadsheet)</button>
+    <button type="button" data-format="json"
+      class="intel-export-opt block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#123;&#125; JSON (data)</button>
+  </div>
+</details>
+<script>
+document.addEventListener('click', function (e) {
+  var opt = e.target && e.target.closest && e.target.closest('.intel-export-opt');
+  if (!opt) return;
+  e.preventDefault();
+  var form = document.getElementById('intel-filters');
+  var params = new URLSearchParams(new FormData(form));
+  params.set('format', opt.getAttribute('data-format') || 'csv');
+  var url = '/intel/export?' + params.toString();
+  var win = window.open(url, '_blank');
+  if (!win || win.closed || typeof win.closed === 'undefined') window.location.href = url;
+  var menu = document.getElementById('intel-export-menu');
+  if (menu) menu.removeAttribute('open');
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3 inline-flex rounded-lg border border-slate-700 overflow-hidden text-sm">
+  <a href="/brief" class="px-3 py-1.5 text-slate-300 hover:bg-slate-800">Brief</a>
+  <a href="/" class="px-3 py-1.5 text-slate-300 hover:bg-slate-800">Latest</a>
+  <span class="px-3 py-1.5 bg-amber-500 text-slate-950 font-semibold">Most relevant</span>
+</div>
+<div class="mb-2">
+  <h1 class="text-lg font-semibold text-slate-100">Feed &mdash; most relevant</h1>
+  <p class="text-sm text-slate-400">
+    The same feed, ranked by how well each item answers your
+    <a href="/requirements" class="text-sky-400 hover:text-sky-300">intelligence questions</a>.
+    Filter by a single question, a minimum relevance, and a date range.
+  </p>
+</div>
+
+<form id="intel-filters"
+  hx-get="/intel/feed"
+  hx-target="#intel-feed"
+  hx-swap="outerHTML"
+  hx-trigger="submit, change, keyup changed delay:350ms from:input[name='q']"
+  class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+  <input type="search" name="q" value="{{ filters.q }}" placeholder="Search within Intel…"
+    class="lg:col-span-4 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm
+           placeholder-slate-500 focus:border-amber-500 outline-none" />
+  <select name="requirement_id" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm">
+    <option value="">All requirements</option>
+    {% for r in requirements %}
+      <option value="{{ r.id }}" {% if filters.requirement_id == r.id|string %}selected{% endif %}>
+        {{ r.question[:70] }}</option>
+    {% endfor %}
+  </select>
+  <select name="min_score" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm">
+    {% for v, lbl in [(1,'Any relevance'),(40,'Score ≥ 40'),(60,'Score ≥ 60'),(80,'Strong ≥ 80')] %}
+      <option value="{{ v }}" {% if filters.min_score == v|string %}selected{% endif %}>{{ lbl }}</option>
+    {% endfor %}
+  </select>
+  <div class="flex gap-2">
+    <input type="date" name="since" value="{{ filters.since }}"
+      title="From date"
+      class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm
+             text-slate-300 focus:border-amber-500 outline-none" />
+    <input type="date" name="until" value="{{ filters.until }}"
+      title="To date"
+      class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm
+             text-slate-300 focus:border-amber-500 outline-none" />
+  </div>
+</form>
+
+<div id="intel-feed">
+  {% include "_intel_feed.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{# Case hub -> Questions tab: this case's intelligence questions (PIRs) and the
+   items the AI scored as answering them. htmx swaps this whole block. #}
+<div id="case-questions" class="space-y-4">
+
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+    <h2 class="text-sm font-medium text-slate-200">Intelligence questions</h2>
+    <p class="text-xs text-slate-400">
+      The questions for this investigation. The AI ranks every collected item against each one.
+    </p>
+
+    {% if questions %}
+    <ul class="space-y-1.5">
+      {% for r in questions %}
+      <li class="flex items-center justify-between gap-2 rounded border border-slate-800 bg-slate-950/40 px-3 py-1.5">
+        <span class="text-sm text-slate-200">{{ r.question }}</span>
+        <span class="flex items-center gap-2">
+          <a href="/intel?requirement_id={{ r.id }}"
+             class="text-[11px] mono {% if r.match_count %}text-sky-400 hover:text-sky-300{% else %}text-slate-500{% endif %}"
+             title="View matching items in Intel">{{ r.match_count }} hit{{ '' if r.match_count == 1 else 's' }}</a>
+          <button hx-post="/cases/{{ case.id }}/questions/{{ r.id }}/delete"
+                  hx-target="#case-questions" hx-swap="outerHTML"
+                  hx-confirm="Remove this question from the case?"
+                  title="Remove this question" class="text-slate-500 hover:text-rose-300 text-xs">&times;</button>
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-xs text-slate-500">No questions yet — add one to start ranking items by relevance.</p>
+    {% endif %}
+
+    <div class="flex flex-wrap items-end gap-2">
+      <form hx-post="/cases/{{ case.id }}/questions" hx-target="#case-questions" hx-swap="outerHTML"
+            hx-on::after-request="this.reset()" class="flex flex-1 items-center gap-2 min-w-[260px]">
+        <input name="question" required placeholder="e.g. What is the status of the transfer?"
+               class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+        <button class="text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-3 py-1.5">Add</button>
+      </form>
+      <form hx-post="/cases/{{ case.id }}/questions/generate" hx-target="#case-questions" hx-swap="outerHTML"
+            hx-indicator="#case-q-gen-spin" class="flex items-center gap-2">
+        <button {% if not analysis_enabled %}disabled title="Needs an AI model (Settings)"{% endif %}
+          class="text-sm rounded px-3 py-1.5 {% if analysis_enabled %}bg-emerald-700 hover:bg-emerald-600 text-white{% else %}bg-slate-800 text-slate-500 cursor-not-allowed{% endif %}">
+          &#10024; AI suggest</button>
+        <span id="case-q-gen-spin" class="htmx-indicator mono text-xs text-emerald-400">thinking&hellip;</span>
+      </form>
+    </div>
+  </div>
+
+  {% if question_items %}
+  {% set current_case = case %}
+  <div class="space-y-1">
+    <h3 class="text-xs font-medium text-slate-400">Most relevant items</h3>
+    {% for it in question_items %}{% include "_feed_item.html" %}{% endfor %}
+  </div>
+  {% else %}
+  <p class="text-xs text-slate-500">No items have been scored for these questions yet. Run a scan with an AI model configured.</p>
+  {% endif %}
+</div>

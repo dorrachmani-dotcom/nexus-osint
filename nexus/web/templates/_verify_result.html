@@ -1,0 +1,39 @@
+{# Result of a claim-verification check, swapped into #verify-result. #}
+{% if not v.ok %}
+<div class="rounded border border-amber-800 bg-amber-950/30 text-amber-200 text-xs px-3 py-2">{{ v.error }}</div>
+{% else %}
+<div class="rounded border px-3 py-2 space-y-2 text-xs
+  {% if v.verdict == 'corroborated' %}border-emerald-800 bg-emerald-950/20
+  {% elif v.verdict == 'disputed' %}border-fuchsia-800 bg-fuchsia-950/20
+  {% else %}border-slate-700 bg-slate-900/60{% endif %}">
+  <div class="font-semibold
+    {% if v.verdict == 'corroborated' %}text-emerald-300
+    {% elif v.verdict == 'disputed' %}text-fuchsia-300
+    {% else %}text-slate-300{% endif %}">
+    {% if v.verdict == 'corroborated' %}&#10003; Corroborated by other sources
+    {% elif v.verdict == 'disputed' %}&#9873; Disputed — contradicting sources found
+    {% elif v.verdict == 'single-source' %}&#9888; Single source — not cross-checkable yet
+    {% else %}&#9711; Uncorroborated — no other item addresses this{% endif %}
+  </div>
+  {% if v.note %}<p class="text-slate-300">{{ v.note }}</p>{% endif %}
+  {% if v.corroborating %}
+  <div>
+    <span class="text-emerald-400">Corroborating ({{ v.corroborating|length }}):</span>
+    {% for c in v.corroborating %}
+    <a href="{{ c.url | safe_url }}" target="_blank" rel="noopener"
+       class="block text-sky-400 hover:text-sky-300 truncate">&bull; {{ c.title or '(untitled)' }} <span class="text-slate-500">({{ c.source }})</span></a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if v.contradicting %}
+  <div>
+    <span class="text-fuchsia-400">Contradicting ({{ v.contradicting|length }}):</span>
+    {% for c in v.contradicting %}
+    <a href="{{ c.url | safe_url }}" target="_blank" rel="noopener"
+       class="block text-sky-400 hover:text-sky-300 truncate">&bull; {{ c.title or '(untitled)' }} <span class="text-slate-500">({{ c.source }})</span></a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <p class="text-[10px] text-slate-600">AI-assisted cross-check over your collected items — review the sources before relying on it.</p>
+</div>
+{% endif %}

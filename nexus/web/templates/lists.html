@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-5">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Triage lists</h1>
+    <p class="text-sm text-slate-400">Your personal lanes for sorting the feed —
+      e.g. "Very interesting", "Interesting", "Not interesting". An item can sit in many lists.</p>
+  </div>
+
+  <form hx-post="/lists" hx-target="#list-overview" hx-swap="outerHTML"
+        class="grid gap-3 sm:grid-cols-[2fr_1fr_auto] items-end
+               bg-slate-900 border border-slate-800 rounded-lg p-4">
+    <label class="block">
+      <span class="text-xs text-slate-400">List name</span>
+      <input name="name" required maxlength="60" placeholder="e.g. Very interesting"
+             class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+    </label>
+    <label class="block">
+      <span class="text-xs text-slate-400">Color</span>
+      <select name="color" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+        {% for c in ['slate','emerald','amber','red','sky','indigo','fuchsia','teal','orange'] %}
+        <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-1.5 text-sm">
+      Create list
+    </button>
+  </form>
+
+  {% include "_list_overview.html" %}
+</section>
+{% endblock %}

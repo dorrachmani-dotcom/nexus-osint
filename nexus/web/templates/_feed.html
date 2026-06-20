@@ -1,0 +1,89 @@
+{# Feed item list — rendered standalone so htmx can swap it after a scan. #}
+<div id="feed">
+  {% if scan_stats %}
+  {% set update = scan_stats.get('_update') %}
+  <div class="mb-4 rounded border border-emerald-800 bg-emerald-950/20 px-3 py-2 text-xs text-slate-300">
+    <span class="text-emerald-400 font-medium">&check; Scan finished.</span>
+    {% if update %}
+    <span class="text-slate-200 font-medium">
+      {{ update.new }} new item{{ '' if update.new == 1 else 's' }}
+      {% if update.since %}since last update (&middot; {{ update.since[:16]|replace('T', ' ') }} UTC){% else %}(first update &middot; full pull){% endif %}.
+    </span>
+    {% endif %}
+    <span class="mono text-slate-400">
+    {% for src, st in scan_stats.items() %}
+      {% if not src.startswith('_') %}
+      <span class="text-amber-400">{{ src }}</span>
+      {% if st.error %}<span class="text-red-400">error</span>
+      {% else %}+{{ st.new }} new{% endif %}{% if not loop.last %} &middot; {% endif %}
+      {% endif %}
+    {% endfor %}
+    </span>
+  </div>
+  {% endif %}
+
+  {# Defaults so sub-views that reuse this partial (lists, capsule boards) need
+     not pass every pagination/filter key — a missing var must never 500. #}
+  {% set filters = filters|default({}) %}
+  {% set scoped = topic_scoped|default(false) %}
+  <div class="mb-3 flex flex-wrap items-center gap-3 text-xs mono text-slate-500">
+    {% if items %}
+    <label class="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-slate-200">
+      <input type="checkbox" id="bulk-all" class="accent-amber-500" />
+      Select all {{ items|length }}
+    </label>
+    <span class="h-3 w-px bg-slate-700"></span>
+    {% endif %}
+    <span>
+      {% if scoped %}Showing items that match your topics{% elif filters.q %}Showing search results{% else %}Showing everything collected{% endif %}
+      {% set shown = matched|default(count) %}
+      &middot; {{ shown }} match{{ '' if shown == 1 else 'es' }}
+      &middot; {{ count }} collected in total
+    </span>
+  </div>
+
+  {% if items %}
+  <div id="feed-items" class="space-y-3">
+    {% include "_feed_page.html" %}
+  </div>
+  {% else %}
+  {% set active_filters = filters and (filters.q or filters.source or filters.threat
+       or filters.since or filters.until or filters.window or filters.unread) %}
+  {% if scoped and count > 0 and not active_filters %}
+  {# Items exist but none match the analyst's topics — offer the firehose. #}
+  <div class="rounded-lg border border-dashed border-slate-700 p-8 text-center text-slate-400">
+    <p class="mb-1 text-slate-300">Nothing matches the topics you follow yet.</p>
+    <p class="text-sm text-slate-500">You have {{ count }} item{{ '' if count == 1 else 's' }} collected.
+      Add or broaden a topic on
+      <a href="/topics" class="text-amber-400 hover:underline">Topics</a>,
+      or look at everything that was collected.</p>
+    <div class="mt-4">
+      <a href="/?scope=all" class="rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-sm px-4 py-1.5">Show everything</a>
+    </div>
+  </div>
+  {% elif active_filters and count > 0 %}
+  {# You have items — they just don't match the current search/filters. #}
+  <div class="rounded-lg border border-dashed border-slate-700 p-8 text-center text-slate-400">
+    <p class="mb-1 text-slate-300">No items match your current search and filters.</p>
+    <p class="text-sm text-slate-500">You have {{ count }} item{{ '' if count == 1 else 's' }} collected —
+      try widening the time window, clearing the search box, or removing a filter.</p>
+    <div class="mt-4">
+      <a href="/" class="rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-sm px-4 py-1.5">Clear all filters</a>
+    </div>
+  </div>
+  {% else %}
+  {# Genuinely nothing collected yet — first-run guidance. #}
+  <div class="rounded-lg border border-dashed border-slate-700 p-8 text-center text-slate-400">
+    <p class="mb-1 text-slate-300">Nothing here yet.</p>
+    <p class="text-sm text-slate-500">Head to
+      <a href="/topics" class="text-amber-400 hover:underline">Topics</a>
+      to choose what to follow (try a one-click bundle), then run a scan.</p>
+    <div class="mt-4">
+      <button hx-post="/scan" hx-target="#feed" hx-swap="outerHTML" hx-indicator="#empty-spin"
+        class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">Run a scan</button>
+      <span id="empty-spin" class="htmx-indicator mono text-xs text-amber-400 ml-2">scanning&hellip;</span>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>

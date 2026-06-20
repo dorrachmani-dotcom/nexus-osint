@@ -1,0 +1,64 @@
+<div id="settings-left" class="space-y-3">
+  <h2 class="text-sm font-medium text-slate-300">AI provider</h2>
+  {% include "_provider_status.html" %}
+
+  {% include "_secrets_form.html" %}
+
+  {# --- Keyless English translation: keeps the feed English with no AI key --- #}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-sm font-medium text-slate-300">English translation (no AI key)</h2>
+      {% if libretranslate_enabled %}
+      <span class="px-2 py-0.5 rounded text-xs mono bg-emerald-950/60 text-emerald-300 border border-emerald-800">on</span>
+      {% else %}
+      <span class="px-2 py-0.5 rounded text-xs mono bg-slate-800 text-slate-500">off</span>
+      {% endif %}
+    </div>
+    <p class="text-xs text-slate-500">
+      The feed always reads in English. When an AI provider is connected it does the
+      translating. Without one, point this at a free
+      <span class="mono text-slate-400">LibreTranslate</span> server and non-English
+      items are rendered to English automatically — no API key needed. Leave blank to
+      turn it off. Must be a public address (a private/loopback URL is refused).
+    </p>
+    <form hx-post="/settings/translation" hx-target="#settings-left" hx-swap="outerHTML"
+          class="flex items-center gap-2">
+      <input type="url" name="libretranslate_url" value="{{ libretranslate_url }}"
+             placeholder="https://libretranslate.com"
+             class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono
+                    focus:border-sky-500 focus:outline-none" />
+      <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-1.5 text-sm whitespace-nowrap">
+        Save
+      </button>
+    </form>
+    {% if translation_msg %}
+    <p class="text-xs {% if translation_saved %}text-emerald-300{% else %}text-rose-300{% endif %}">{{ translation_msg }}</p>
+    {% endif %}
+    <p class="text-[11px] text-slate-600">
+      Tip: <span class="mono">https://libretranslate.com</span> is a public instance; for
+      heavy use, self-host one and put its address here. An offline option
+      (<span class="mono">argostranslate</span>) is also used automatically if installed.
+    </p>
+  </div>
+
+  <h2 class="text-sm font-medium text-slate-300 pt-2">Active capabilities</h2>
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2 text-sm">
+    {% for name, state in status.items() %}
+    <div class="flex items-center justify-between">
+      <span class="mono text-slate-300">{{ name }}</span>
+      <span class="px-2 py-0.5 rounded text-xs mono
+        {% if state == 'on' %}bg-emerald-950/60 text-emerald-300 border border-emerald-800
+        {% else %}bg-slate-800 text-slate-500{% endif %}">{{ state }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-sm space-y-1">
+    <div class="flex justify-between"><span class="text-slate-400">Claude model</span><span class="mono">{{ claude_model }}</span></div>
+    <div class="flex justify-between"><span class="text-slate-400">Gemini model</span><span class="mono">{{ gemini_model }}</span></div>
+    <div class="flex justify-between"><span class="text-slate-400">OpenAI model</span><span class="mono">{{ openai_model }}</span></div>
+    <div class="flex justify-between"><span class="text-slate-400">Local model (Ollama)</span><span class="mono">{{ ollama_model }}</span></div>
+    <div class="flex justify-between"><span class="text-slate-400">Translation target</span><span class="mono">{{ translation_target_lang }}</span></div>
+    <div class="flex justify-between"><span class="text-slate-400">Max items / run</span><span class="mono">{{ max_items }}</span></div>
+    <div class="flex justify-between"><span class="text-slate-400">RSS feeds</span><span class="mono">{{ rss_feeds|length }}</span></div>
+  </div>
+</div>

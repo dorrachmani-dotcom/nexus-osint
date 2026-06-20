@@ -1,0 +1,48 @@
+# Runtime data: DB, evidence screenshots, exports, telegram session
+/data/
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-smoke/
+*.egg-info/
+.pytest_cache/
+
+# Packaged Windows build artifacts (PyInstaller + Inno Setup output).
+# The installer is generated locally and shipped via USB, never committed.
+/installer/build/
+/installer/dist/
+/installer/Output/
+/installer/_chromium_src/
+/installer/_build.log
+/installer/_smoke.log
+/installer/_smoke.log.err
+/installer/_iscc.log
+/installer/*.log
+*.spec.bak
+
+# PyInstaller's default output dirs if a build is ever run from the repo root
+# (without --distpath/--workpath pointing under installer/).
+/build/
+/dist/
+
+# Linux one-file build outputs (produced on a Linux box by build_linux.sh).
+/installer/dist-linux/
+/installer/build-linux/
+/installer/_chromium_src_linux/
+/.venv-build-linux/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Local agent/tooling state (plans, settings) — never part of the project
+.claude/
+
+# Personal owner's guide (for the operator only — never shipped; the local copy
+# must never reach the English-only product/installer).
+/personal-guide/

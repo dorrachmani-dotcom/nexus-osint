@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-5">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Plug &amp; Play OSINT tools</h1>
+    <p class="text-sm text-slate-400">
+      Runs installed CLI tools against a target and pulls their findings into a
+      local entity graph. Tools that are not installed are shown as unavailable.
+    </p>
+  </div>
+
+  {% set available_count = adapters | selectattr('available') | list | length %}
+  {% if available_count == 0 %}
+  <div class="rounded-lg border border-amber-900/60 bg-amber-950/10 p-4 text-sm text-slate-300 space-y-1">
+    <p class="text-amber-200 font-medium">No OSINT tools are installed on this machine yet.</p>
+    <p class="text-slate-400">These are separate free command-line programs (Sherlock, Maigret, theHarvester,
+      and more). They come <span class="font-medium">pre-installed automatically</span> when you run Nexus with
+      Docker — the easiest option, nothing else to do. The rest of Nexus works fully without them; this page
+      simply stays empty until a tool is available.</p>
+    <p class="text-slate-500">Running Nexus directly (not Docker)? Any of these tools you install on your
+      system is detected automatically and appears below — no configuration needed.</p>
+  </div>
+  {% endif %}
+
+  <form hx-post="/tools/run" hx-target="#tool-results" hx-indicator="#tool-busy"
+        class="grid gap-3 sm:grid-cols-[1fr_1fr_auto] items-end
+               bg-slate-900 border border-slate-800 rounded-lg p-4">
+    <label class="block">
+      <span class="text-xs text-slate-400">Tool</span>
+      <select name="tool" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+        {% for a in adapters %}
+        <option value="{{ a.name }}" {% if not a.available %}disabled{% endif %}>
+          {{ a.name }}{% if not a.available %} (not installed){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="block">
+      <span class="text-xs text-slate-400">Target (username, email, phone, domain, or URL)</span>
+      <input name="target" required placeholder="e.g. johndoe, example.com, or a video URL"
+             class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+    </label>
+    <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-1.5 text-sm">
+      Run
+    </button>
+  </form>
+
+  <div id="tool-busy" class="htmx-indicator text-sm text-amber-400">Running tool… this can take a while.</div>
+  <div id="tool-results"></div>
+
+  {# ---------------- Install guide (plain language, non-technical) ---------- #}
+  <details class="rounded-lg border border-slate-800 bg-slate-900/40 p-4" {% if available_count == 0 %}open{% endif %}>
+    <summary class="cursor-pointer text-base font-semibold text-slate-100">
+      &#128295; How to install these tools (and what each one is for)
+    </summary>
+
+    <div class="mt-3 space-y-4 text-sm">
+      <div class="rounded border border-emerald-900/60 bg-emerald-950/20 p-3">
+        <p class="text-emerald-200 font-medium">Easiest way — Docker (everything included)</p>
+        <p class="text-slate-400 mt-1">
+          If you run Nexus with Docker, <span class="text-slate-200">all of these tools are already installed</span>
+          inside it — there's nothing to do. Install the tools below only if you run Nexus directly on your computer.
+        </p>
+      </div>
+
+      <div class="rounded border border-slate-800 bg-slate-950/40 p-3">
+        <p class="text-slate-200 font-medium">One-time setup for the manual route</p>
+        <ol class="mt-1 list-decimal list-inside text-slate-400 space-y-0.5">
+          <li>Install <span class="text-slate-200">Python</span> from <span class="mono">python.org</span> (tick "Add to PATH").</li>
+          <li>Open a terminal and run once: <code class="mono bg-slate-800 px-1 rounded">python -m pip install --user pipx</code> then <code class="mono bg-slate-800 px-1 rounded">python -m pipx ensurepath</code>.</li>
+          <li>Close and reopen the terminal. Now you can install any Python tool below with one line.</li>
+          <li>After installing a tool, <span class="text-slate-200">reopen Nexus</span> — it detects it automatically.</li>
+        </ol>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        {% for t in tool_guide %}
+        <div class="rounded border border-slate-800 bg-slate-950/40 p-3">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-medium text-slate-100">{{ t.title }}</span>
+            {% if installed.get(t.key) %}
+            <span class="text-[10px] rounded px-1.5 py-0.5 bg-emerald-900/50 text-emerald-300">installed</span>
+            {% else %}
+            <span class="text-[10px] rounded px-1.5 py-0.5 bg-slate-800 text-slate-400">not installed</span>
+            {% endif %}
+          </div>
+          <p class="mt-1 text-slate-400">{{ t.what }}</p>
+          <p class="mt-1 text-xs text-slate-500"><span class="text-slate-400">Use it to:</span> {{ t.who }}</p>
+          <div class="mt-2 text-xs">
+            <span class="text-slate-400">Install:</span>
+            <code class="mono bg-slate-800 text-slate-200 px-1 rounded break-all">{{ t.install }}</code>
+          </div>
+          {% if t.note %}<p class="mt-1 text-[11px] text-amber-300/80">{{ t.note }}</p>{% endif %}
+          <p class="mt-1 text-[11px] text-slate-500">Example target: <span class="mono">{{ t.example }}</span></p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <p class="text-xs text-slate-500">
+        Only investigate targets you're authorised to. These tools query public sources; use them lawfully and ethically.
+      </p>
+    </div>
+  </details>
+</section>
+{% endblock %}

@@ -1,0 +1,331 @@
+{# A single feed card. Rendered in the feed loop and re-rendered on its own
+   (targeting #item-<id>) after read/list mutations so the card updates live. #}
+{% set threat = it.threat_level or 'none' %}
+{% set rel = it.reliability or 'unverified' %}
+<article id="item-{{ it.id }}"
+  class="rounded-lg border bg-slate-900/60 hover:border-slate-700 transition p-4
+  {% if it.dismissed %}border-slate-800/30 opacity-30 hover:opacity-70
+  {% elif it.is_read %}border-slate-800/60 opacity-60{% else %}border-slate-800{% endif %}">
+
+  {# --- Layer 1: dense metadata row --- #}
+  <div class="flex flex-wrap items-center gap-1.5 mb-2 text-[11px] mono">
+    {# Bulk-select checkbox (drives the bulk-triage bar above the feed). #}
+    <input type="checkbox" name="item_ids" value="{{ it.id }}"
+      class="bulk-select accent-amber-500 cursor-pointer" title="Select for bulk action" />
+    {# Where it came from / which collector (API/SRC) #}
+    <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">{{ it.source }}</span>
+
+    {# Source-reliability tier #}
+    <span class="px-1.5 py-0.5 rounded border
+      {% if rel == 'official' %}bg-emerald-950 text-emerald-300 border-emerald-800
+      {% elif rel == 'social' %}bg-sky-950 text-sky-300 border-sky-800
+      {% elif rel == 'aggregator' %}bg-slate-800 text-slate-300 border-slate-700
+      {% else %}bg-amber-950/40 text-amber-300 border-amber-800{% endif %}"
+      title="Source reliability (heuristic)">{{ rel }}</span>
+
+    {% if threat != 'none' %}
+    <span class="px-1.5 py-0.5 rounded
+      {% if threat in ['high','critical'] %}bg-red-950 text-red-300 border border-red-800
+      {% elif threat == 'medium' %}bg-amber-950 text-amber-300 border border-amber-800
+      {% else %}bg-slate-800 text-slate-300{% endif %}">&#9888; {{ threat }}</span>
+    {% endif %}
+
+    {# Who is speaking: the subject themselves, or someone reporting on them #}
+    {% if it.party == 'first_party' %}
+    <span class="px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800" title="First-party: the author is describing their own actions or words">straight from the source</span>
+    {% elif it.party == 'third_party' %}
+    <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400" title="Third-party: someone reporting on another person or group">reported by others</span>
+    {% endif %}
+
+    {# Disinformation / contradiction flag #}
+    {% if it.contradiction %}
+    <span class="px-1.5 py-0.5 rounded bg-fuchsia-950 text-fuchsia-300 border border-fuchsia-800" title="Possible disinformation / contradicts established facts">&#9873; disputed</span>
+    {% endif %}
+
+    {# AI confidence #}
+    {% if it.confidence %}
+    <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400" title="How confident the AI is in this assessment">confidence: {{ it.confidence }}</span>
+    {% endif %}
+
+    {% if it.shared_count and it.shared_count > 1 %}
+    <span class="px-1.5 py-0.5 rounded bg-orange-950 text-orange-300 border border-orange-800">&#128293; Echoed {{ it.shared_count }} times</span>
+    {% endif %}
+
+    {# Cross-source corroboration: independent confirmation raises trust. #}
+    {% if it.source_count and it.source_count > 1 %}
+    <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800"
+          title="The same story appears across {{ it.source_count }} independent sources — more likely reliable">
+      &#10003; Confirmed by {{ it.source_count }} sources</span>
+    {% else %}
+    <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700"
+          title="Only one source carries this so far — corroborate before trusting">Single source</span>
+    {% endif %}
+
+    {# Evidence already captured #}
+    {% if it.evidence_captured %}
+    <span class="px-1.5 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800" title="Screenshot archived in the Evidence Vault">&#128247; evidence</span>
+    {% endif %}
+
+    {% if it.is_read %}
+    <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-500" title="You marked this read">read</span>
+    {% endif %}
+
+    <span class="flex-1"></span>
+    <span class="text-slate-500" title="{{ (it.published_at or it.fetched_at)[:16] }}">{{ it.relative_time or (it.published_at or it.fetched_at)[:16] }}</span>
+  </div>
+
+  {% if it.title %}<h2 class="text-slate-100 font-semibold leading-snug">{{ it.title }}</h2>{% endif %}
+
+  {# --- Body text. English is ALWAYS the primary reading: an AI summary first,
+     else an English translation (AI or keyless fallback), else the original
+     content (which is English when no translation was needed). The original-
+     language text is always kept accessible, but demoted behind a disclosure so
+     the feed reads in English at a glance. --- #}
+  {% if it.summary %}
+    {# AI summary is English and answers the intelligence questions. #}
+    <p class="mt-1 text-sm text-slate-300">{{ it.summary }}</p>
+    {% if it.translation %}
+      <p class="mt-1 text-xs text-slate-400 border-l-2 border-emerald-800/60 pl-2">{{ it.translation }}</p>
+    {% endif %}
+    <details class="mt-1">
+      <summary class="cursor-pointer text-[11px] text-slate-500 hover:text-slate-300 list-none">Show original{% if it.language %} [{{ it.language }}]{% endif %}</summary>
+      <p class="mt-1 text-xs text-slate-500">{{ it.content[:320] }}{% if it.content|length > 320 %}&hellip;{% endif %}</p>
+    </details>
+  {% elif it.translation %}
+    {# No AI summary, but we have an English rendering — show it as PRIMARY and
+       keep the original one click away. #}
+    <p class="mt-1 text-sm text-slate-200">{{ it.translation }}</p>
+    <details class="mt-1">
+      <summary class="cursor-pointer text-[11px] text-slate-500 hover:text-slate-300 list-none">Show original{% if it.language %} [{{ it.language }}]{% endif %}</summary>
+      <p class="mt-1 text-xs text-slate-500">{{ it.content[:320] }}{% if it.content|length > 320 %}&hellip;{% endif %}</p>
+    </details>
+  {% else %}
+    {# No summary, no translation: the content itself is the primary text (an
+       English item, or one awaiting translation). #}
+    <p class="mt-1 text-sm text-slate-300">{{ it.content[:320] }}{% if it.content|length > 320 %}&hellip;{% endif %}</p>
+  {% endif %}
+
+  {# --- Best matching standing question (priority intelligence requirement) ---
+       Only surface this when the item actually answers one of the standing
+       questions. A low score (e.g. a Neymar result scored against a cyber
+       question) is just noise, so we hide the banner below a relevance floor. #}
+  {% if it.top_requirement and (it.top_requirement.score or 0) >= 40 %}
+  <div class="mt-2 text-[11px] rounded border border-amber-900/60 bg-amber-950/20 px-2 py-1"
+       title="How well this item answers one of your standing questions (0–100)">
+    <span class="mono text-amber-400">Answers your question &middot; {{ it.top_requirement.score }}/100</span>
+    <span class="text-slate-300">{{ it.top_requirement.question }}</span>
+    {% if it.top_requirement.rationale %}<span class="text-slate-500">— {{ it.top_requirement.rationale }}</span>{% endif %}
+  </div>
+  {% endif %}
+
+  {# --- Named entities, grouped by type --- #}
+  {% set eg = it.entities_typed or {} %}
+  {% if eg.people or eg.organizations or eg.locations or eg.identifiers %}
+  <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+    {% if eg.people %}
+    <span class="text-slate-400">&#128100;
+      {% for p in eg.people %}<a href="/entity?name={{ p | urlencode }}" title="Open dossier: {{ p }}" class="text-slate-300 hover:text-amber-400">{{ p }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+    </span>{% endif %}
+    {% if eg.organizations %}
+    <span class="text-slate-400">&#127970;
+      {% for o in eg.organizations %}<a href="/entity?name={{ o | urlencode }}" title="Open dossier: {{ o }}" class="text-slate-300 hover:text-amber-400">{{ o }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+    </span>{% endif %}
+    {% if eg.locations %}
+    <span class="text-slate-400">&#128205;
+      {% for l in eg.locations %}<a href="/entity?name={{ l | urlencode }}" title="Open dossier: {{ l }}" class="text-slate-300 hover:text-amber-400">{{ l }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+    </span>{% endif %}
+    {% if eg.identifiers %}
+    <span class="text-slate-400">&#128273;
+      {% for i in eg.identifiers %}<a href="/entity?name={{ i | urlencode }}" title="Open dossier: {{ i }}" class="mono text-slate-300 hover:text-amber-400">{{ i }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+    </span>{% endif %}
+  </div>
+  {% endif %}
+
+  {# --- Related coverage: other sources in the same cluster --- #}
+  {% if it.related %}
+  <div class="mt-2 text-[11px] text-slate-500">
+    <span class="text-slate-400">Also reported on:</span>
+    {% for r in it.related %}
+      {% if r.url %}<a href="{{ r.url | safe_url }}" target="_blank" rel="noopener" class="text-sky-500 hover:text-sky-300">{{ r.source }}{% if r.host %} ({{ r.host }}){% endif %}</a>{% else %}<span class="text-slate-400">{{ r.source }}</span>{% endif %}{% if not loop.last %} &middot; {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# --- Triage list membership badges --- #}
+  {% if it.lists %}
+  <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+    {% for l in it.lists %}
+    <span class="px-1.5 py-0.5 rounded border
+      {% if l.color == 'emerald' %}bg-emerald-950 text-emerald-300 border-emerald-800
+      {% elif l.color == 'amber' %}bg-amber-950 text-amber-300 border-amber-800
+      {% elif l.color == 'red' %}bg-red-950 text-red-300 border-red-800
+      {% elif l.color == 'sky' %}bg-sky-950 text-sky-300 border-sky-800
+      {% elif l.color == 'indigo' %}bg-indigo-950 text-indigo-300 border-indigo-800
+      {% elif l.color == 'fuchsia' %}bg-fuchsia-950 text-fuchsia-300 border-fuchsia-800
+      {% elif l.color == 'teal' %}bg-teal-950 text-teal-300 border-teal-800
+      {% elif l.color == 'orange' %}bg-orange-950 text-orange-300 border-orange-800
+      {% else %}bg-slate-800 text-slate-300 border-slate-700{% endif %}">
+      {{ l.name }}
+      <button hx-post="/lists/{{ l.id }}/items/{{ it.id }}/remove"
+        hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+        {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+        class="ml-1 text-slate-400 hover:text-red-300" title="Remove from {{ l.name }}">&times;</button>
+    </span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# --- Investigation case membership badges --- #}
+  {% if it.cases %}
+  <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+    {% for cs in it.cases %}
+    <a href="/cases/{{ cs.id }}"
+      class="px-1.5 py-0.5 rounded border bg-slate-800 hover:border-amber-700
+      {% if cs.priority == 'high' %}text-red-300 border-red-800
+      {% elif cs.priority == 'low' %}text-slate-400 border-slate-700
+      {% else %}text-amber-300 border-amber-800{% endif %}"
+      title="Pinned to case &quot;{{ cs.name }}&quot; ({{ cs.priority }} priority)">&#128193; {{ cs.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# --- Layer 2: provenance + actions --- #}
+  <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px] mono text-slate-500">
+    {% if it.author %}<span title="Who published it">{{ it.author }}</span>{% endif %}
+    {% if it.language %}<span class="text-slate-600">[{{ it.language }}]</span>{% endif %}
+    {% if it.url %}<a href="{{ it.url | safe_url }}" target="_blank" rel="noopener"
+        class="text-sky-400 hover:text-sky-300" title="{{ it.url }}">&#128279; {{ it.display_url or 'View source' }}</a>{% endif %}
+    <span class="flex-1"></span>
+
+    {# Read / unread toggle #}
+    {% if it.is_read %}
+    <button hx-post="/items/{{ it.id }}/unread" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+      class="text-slate-400 hover:text-emerald-400" title="Mark unread">&#9711; Unread</button>
+    {% else %}
+    <button hx-post="/items/{{ it.id }}/read" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+      class="text-slate-400 hover:text-emerald-400" title="Mark read">&#10003; Read</button>
+    {% endif %}
+
+    {# Dismiss / restore — removes the item from the default feed view #}
+    {% if it.dismissed %}
+    <button hx-post="/items/{{ it.id }}/undismiss" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+      class="text-slate-600 hover:text-slate-300" title="Restore to feed">&#8635; Restore</button>
+    {% else %}
+    <button hx-post="/items/{{ it.id }}/dismiss" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+      class="text-slate-400 hover:text-rose-400" title="Not relevant — hide from feed">&#10005; Dismiss</button>
+    {% endif %}
+
+    {# Add-to-list menu (native disclosure, no JS needed) #}
+    <details class="relative">
+      <summary class="cursor-pointer text-slate-400 hover:text-amber-400 list-none">&#9733; List</summary>
+      <div class="absolute right-0 z-10 mt-1 w-52 rounded border border-slate-700 bg-slate-900 p-2 shadow-xl">
+        {% if all_lists %}
+        <div class="space-y-1">
+          {% set member_ids = it.lists | map(attribute='id') | list %}
+          {% for l in all_lists %}
+          {% if l.id in member_ids %}
+          <button hx-post="/lists/{{ l.id }}/items/{{ it.id }}/remove"
+            hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+            {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+            class="block w-full text-left px-2 py-1 rounded text-emerald-300 hover:bg-slate-800">&#10003; {{ l.name }}</button>
+          {% else %}
+          <button hx-post="/lists/{{ l.id }}/items/{{ it.id }}/add"
+            hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+            {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+            class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ l.name }}</button>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <div class="my-2 border-t border-slate-800"></div>
+        {% endif %}
+        <form hx-post="/lists/quick-add/{{ it.id }}" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+          class="flex gap-1">
+          {% if current_case %}<input type="hidden" name="case_id" value="{{ current_case.id }}" />{% endif %}
+          <input name="name" placeholder="New list…" maxlength="60"
+            class="flex-1 min-w-0 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-slate-200 placeholder-slate-500" />
+          <button type="submit" class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1 font-medium">Add</button>
+        </form>
+      </div>
+    </details>
+
+    {# Active-case one-click pin: only when a working case is set and the item
+       isn't already in it. Files the item straight into the active case. #}
+    {% if active_case %}
+    {% set case_ids = it.cases | map(attribute='id') | list %}
+    {% if active_case.id not in case_ids %}
+    <button hx-post="/cases/{{ active_case.id }}/items/{{ it.id }}/add"
+      hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+      {% if current_case %}hx-vals='{"context_case_id": "{{ current_case.id }}"}'{% endif %}
+      class="text-amber-400 hover:text-amber-300"
+      title="Pin to active case: {{ active_case.name }}">&#128204; &rarr; {{ active_case.name }}</button>
+    {% endif %}
+    {% endif %}
+
+    {# Add-to-case menu (mirrors the list menu) #}
+    {% if current_case %}
+      {% set _incase = it.cases | map(attribute='id') | list %}
+      {% if current_case.id in _incase %}
+      <span class="text-emerald-300" title="Already pinned to this case">&#128204; In this case</span>
+      {% else %}
+      <button hx-post="/cases/{{ current_case.id }}/items/{{ it.id }}/add"
+        hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+        hx-vals='{"context_case_id": "{{ current_case.id }}"}'
+        class="text-amber-400 hover:text-amber-300 font-medium"
+        title="Pin this item into the case you're working in">&#128204; Pin to this case</button>
+      {% endif %}
+    {% endif %}
+
+    <details class="relative">
+      <summary class="cursor-pointer text-slate-400 hover:text-amber-400 list-none">&#128193; Case</summary>
+      <div class="absolute right-0 z-10 mt-1 w-56 rounded border border-slate-700 bg-slate-900 p-2 shadow-xl">
+        {% if all_cases %}
+        <div class="space-y-1">
+          {% set in_case_ids = it.cases | map(attribute='id') | list %}
+          {% for cs in all_cases %}
+          {% if cs.id in in_case_ids %}
+          <button hx-post="/cases/{{ cs.id }}/items/{{ it.id }}/remove"
+            hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+            {% if current_case %}hx-vals='{"context_case_id": "{{ current_case.id }}"}'{% endif %}
+            class="block w-full text-left px-2 py-1 rounded text-emerald-300 hover:bg-slate-800">&#10003; {{ cs.name }}</button>
+          {% else %}
+          <button hx-post="/cases/{{ cs.id }}/items/{{ it.id }}/add"
+            hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+            {% if current_case %}hx-vals='{"context_case_id": "{{ current_case.id }}"}'{% endif %}
+            class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ cs.name }}</button>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <div class="my-2 border-t border-slate-800"></div>
+        {% endif %}
+        <form hx-post="/cases/quick-add/{{ it.id }}" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+          class="flex gap-1">
+          {% if current_case %}<input type="hidden" name="context_case_id" value="{{ current_case.id }}" />{% endif %}
+          <input name="name" placeholder="New case…" maxlength="120"
+            class="flex-1 min-w-0 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-slate-200 placeholder-slate-500" />
+          <button type="submit" class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1 font-medium">Add</button>
+        </form>
+      </div>
+    </details>
+
+    <button hx-get="/items/{{ it.id }}/detail"
+      hx-target="#item-drawer-content" hx-swap="innerHTML"
+      class="text-slate-400 hover:text-sky-400" title="View full item details">&#8599; Details</button>
+    {% if it.is_bookmarked %}
+    <button hx-post="/items/{{ it.id }}/unbookmark" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+      class="text-amber-400 hover:text-amber-300" title="Remove bookmark">&#9733; Saved</button>
+    {% else %}
+    <button hx-post="/items/{{ it.id }}/bookmark" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+      class="text-slate-400 hover:text-amber-400">&#9733; Bookmark</button>
+    {% endif %}
+    <button hx-post="/items/{{ it.id }}/evidence" hx-swap="outerHTML"
+      hx-indicator="#ev-{{ it.id }}"
+      class="text-slate-400 hover:text-sky-400">&#128247; Evidence</button>
+    <span id="ev-{{ it.id }}" class="htmx-indicator text-slate-500">capturing…</span>
+  </div>
+</article>

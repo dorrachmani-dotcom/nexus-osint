@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Case report — {{ case.name }}</title>
+  <style>
+    @page { size: a4 landscape; margin: 12mm; }
+    body { font-family: "DejaVu Sans", Arial, sans-serif; color: #1a1a1a; font-size: 10px; line-height: 1.45; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    h2 { font-size: 14px; margin: 20px 0 8px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
+    h3 { font-size: 12px; margin: 0 0 4px; }
+    .muted { color: #666; }
+    .meta { margin-bottom: 12px; font-size: 11px; color: #666; }
+
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th, .report-table td { border: 1px solid #cfd6dd; padding: 5px 6px; vertical-align: top; text-align: left; }
+    .report-table thead th { background: #1f2937; color: #fff; font-size: 9px; }
+    .report-table tbody tr:nth-child(even) td { background: #f6f8fa; }
+    col.c-time { width: 11%; }
+    col.c-subj { width: 16%; }
+    col.c-link { width: 15%; }
+    col.c-sum  { width: 34%; }
+    col.c-ans  { width: 24%; }
+    .c-time { color: #555; font-size: 9px; }
+    .sum-title { font-weight: bold; margin-bottom: 2px; }
+    .translation { margin-top: 3px; padding-left: 6px; border-left: 2px solid #6aa84f; color: #444; }
+    .src { font-weight: bold; color: #333; }
+    .tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 8px; font-weight: bold; }
+    .tag-personal { background: #e7e0ff; color: #4527a0; }
+    .tag-general { background: #e3eefc; color: #11468a; }
+    .subj-names { margin-top: 2px; }
+    .score { display: inline-block; padding: 1px 6px; border-radius: 10px; font-weight: bold; font-size: 9px; }
+    .score-high { background: #fde2e2; color: #a30000; }
+    .score-mid { background: #fff3d6; color: #8a5a00; }
+    .score-low { background: #eef1f4; color: #555; }
+    .ans-q { font-style: italic; color: #333; margin-top: 3px; }
+    .ans-rat { color: #555; margin-top: 2px; }
+    a { color: #0a58ca; text-decoration: none; word-break: break-all; }
+
+    .evidence { border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; page-break-inside: avoid; }
+    .evidence img { max-width: 100%; border: 1px solid #ccc; margin-top: 6px; }
+    .hash { font-family: "DejaVu Sans Mono", monospace; font-size: 9px; word-break: break-all; color: #444; }
+    .ocr { background: #f5f7fa; border-left: 3px solid #888; padding: 6px 8px; margin-top: 6px; }
+    .note { background: #fffef0; border: 1px solid #ece8c0; border-radius: 4px; padding: 6px 8px; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>{{ case.name }}</h1>
+  <div class="meta">
+    {% if case.description %}{{ case.description }}<br/>{% endif %}
+    Case opened {{ case.created_at[:16] }} &middot; Report generated {{ generated_at }}
+    &middot; {{ items|length }} item(s), {{ notes|length }} note(s)
+  </div>
+
+  <h2>Items of interest</h2>
+  {% if items %}
+    {% include "_report_table.html" %}
+  {% else %}
+    <p class="muted">No items pinned to this case.</p>
+  {% endif %}
+
+  {% set has_evidence = items | selectattr('evidence') | list %}
+  {% if has_evidence %}
+  <h2>Evidence (screenshots &amp; integrity hashes)</h2>
+  {% for it in items %}
+    {% if it.evidence %}
+    <div class="evidence">
+      <h3>{{ it.title or ('Item #' ~ it.id) }}</h3>
+      {% if it.url %}<div class="muted"><a href="{{ it.url | safe_url }}">{{ it.url }}</a></div>{% endif %}
+      {% for ev in it.evidence %}
+        <img src="{{ ev.abs_path }}" alt="evidence screenshot" />
+        <div class="hash">SHA-256: {{ ev.sha256 }} &middot; captured {{ ev.captured_at[:19] }}</div>
+        {% if ev.ocr_text %}
+        <div class="ocr"><strong>Text read from screenshot (OCR):</strong><br />{{ ev.ocr_text }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  <h2>Researcher notes</h2>
+  {% if notes %}
+    {% for n in notes %}
+    <div class="note">
+      {{ n.body }}
+      <div class="muted">{{ n.created_at[:16] }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">No notes recorded.</p>
+  {% endif %}
+</body>
+</html>

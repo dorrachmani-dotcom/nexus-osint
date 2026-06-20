@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-5">
+
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">&#128064; Needs your eyes</h1>
+    <p class="text-sm text-slate-400 mt-1">
+      The unread items that most warrant attention right now — ranked by how well they
+      answer your standing questions, threat level, disputes, watchlist hits, and
+      cross-source corroboration. Everything else stays in the
+      <a href="/" class="text-amber-400 hover:underline">full feed</a>.
+    </p>
+  </div>
+
+  {% if items %}
+  <div class="space-y-4">
+    {% set current_case = none %}
+    {% for it in items %}
+    <div class="space-y-1">
+      {% if it.reasons %}
+      <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+        <span class="text-slate-500">Why this surfaced:</span>
+        {% for r in it.reasons %}
+        <span class="rounded-full border border-amber-800/70 bg-amber-950/30 text-amber-200 px-2 py-0.5">{{ r }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% include "_feed_item.html" %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-lg border border-dashed border-slate-700 p-10 text-center text-slate-400 space-y-2">
+    <p class="text-slate-300 font-medium">&#10003; You're all caught up</p>
+    <p class="text-sm">No unread items are above the attention threshold right now. New
+      high-signal items — ones that answer your questions, carry a high threat, look
+      disputed, or hit a watchlist — will appear here.</p>
+    <p class="text-xs"><a href="/" class="text-amber-400 hover:underline">Open the full feed &rarr;</a></p>
+  </div>
+  {% endif %}
+
+</section>
+{% endblock %}

@@ -1,0 +1,279 @@
+{# Case hub — Live feed tab.
+   Two kinds of tracking words:
+     Search words  — actively searched every scan.
+     Alert words   — passive flags on already-arriving items.
+   Sub-cases inherit parent's search words (shown read-only).
+
+   The feed is a TRIAGE QUEUE by default (unread only). #}
+<div id="case-feed-tab" class="space-y-4" data-unread="{{ unread_count }}">
+
+  {# ── Tracking words panel ─────────────────────────────────────────────── #}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-4">
+    <div class="flex items-center justify-between gap-2">
+      <h2 class="text-sm font-medium text-slate-200">Tracking words</h2>
+      <div class="flex items-center gap-2">
+        <button hx-post="/cases/{{ case.id }}/read-all" hx-target="#case-feed-tab" hx-swap="outerHTML"
+                class="text-xs rounded border border-slate-600 hover:border-emerald-500 hover:text-emerald-300 text-slate-300 px-2.5 py-1.5"
+                title="Mark every tracked item as reviewed">&#10003; Mark all read</button>
+        <button hx-post="/cases/{{ case.id }}/scan" hx-target="#case-feed-tab" hx-swap="outerHTML"
+                hx-indicator="#case-scan-spin"
+                class="text-xs rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-3 py-1.5">
+          &#128260; Scan now</button>
+      </div>
+    </div>
+
+    {# Inherited words (sub-case only, read-only) #}
+    {% if inherited_terms %}
+    <div class="rounded border border-slate-700/50 bg-slate-800/30 px-3 py-2 space-y-1.5">
+      <p class="text-[11px] text-slate-500">
+        Inherited from
+        {% if parent %}<a href="/cases/{{ parent.id }}" class="text-slate-300 hover:text-amber-400">{{ parent.name }}</a>{% else %}parent case{% endif %}
+        — searched automatically:
+      </p>
+      <div class="flex flex-wrap gap-1.5">
+        {% for t in inherited_terms %}
+        <span class="inline-flex items-center rounded-full border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-xs text-slate-400">{{ t }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Search words (required) #}
+    <div class="space-y-2">
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block w-2 h-2 rounded-full bg-sky-500"></span>
+        <span class="text-xs font-medium text-slate-300">Search words</span>
+        <span class="text-[11px] text-slate-500">— searched in every scan</span>
+      </div>
+      {% if terms %}
+      <div class="flex flex-wrap gap-1.5">
+        {% for t in terms %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-sky-950/60 border border-sky-800 pl-2 pr-1 py-0.5 text-xs text-sky-200">
+          <form hx-post="/cases/{{ case.id }}/terms/{{ t.id }}/edit"
+                hx-target="#case-feed-tab" hx-swap="outerHTML" class="inline-flex items-center">
+            <input name="term" value="{{ t.term }}" aria-label="Edit search word"
+                   dir="auto" size="{{ (t.term|length) + 1 }}"
+                   class="bg-transparent text-sky-100 focus:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-sky-500 rounded px-1 w-auto max-w-[16rem]" />
+          </form>
+          <button hx-post="/cases/{{ case.id }}/terms/{{ t.id }}/delete"
+                  hx-target="#case-feed-tab" hx-swap="outerHTML"
+                  hx-confirm="Remove &quot;{{ t.term }}&quot;?"
+                  title="Remove" class="text-sky-400 hover:text-rose-300">&times;</button>
+        </span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-500">No search words yet — add some below or generate with AI.</p>
+      {% endif %}
+
+      <div class="flex flex-wrap items-end gap-2">
+        <form hx-post="/cases/{{ case.id }}/terms" hx-target="#case-feed-tab" hx-swap="outerHTML"
+              hx-on::after-request="this.reset()" class="flex items-center gap-2">
+          <input type="hidden" name="kind" value="required" />
+          <input name="terms" required placeholder="add search words (comma-separated)"
+                 class="w-64 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs" />
+          <button class="text-xs bg-sky-700 hover:bg-sky-600 text-white rounded px-2 py-1">Add</button>
+        </form>
+        <form hx-post="/cases/{{ case.id }}/terms/generate" hx-target="#case-feed-tab" hx-swap="outerHTML"
+              hx-indicator="#case-gen-spin" class="flex items-center gap-2">
+          <input name="brief" placeholder="one-line brief (optional)"
+                 class="w-56 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs" />
+          <button {% if not analysis_enabled %}disabled title="Needs an AI model (Settings)"{% endif %}
+            class="text-xs rounded px-2 py-1 {% if analysis_enabled %}bg-emerald-700 hover:bg-emerald-600 text-white{% else %}bg-slate-800 text-slate-500 cursor-not-allowed{% endif %}">
+            &#10024; AI suggest</button>
+          <span id="case-gen-spin" class="htmx-indicator mono text-xs text-emerald-400">thinking&hellip;</span>
+        </form>
+        <form hx-post="/cases/{{ case.id }}/terms/translate" hx-target="#case-feed-tab" hx-swap="outerHTML"
+              hx-indicator="#case-lang-spin" hx-on::after-request="this.reset()" class="flex items-center gap-2">
+          <input name="language" required placeholder="add in language (e.g. French)"
+                 class="w-52 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs" />
+          <button {% if not analysis_enabled %}disabled title="Needs an AI model (Settings)"{% endif %}
+            class="text-xs rounded px-2 py-1 {% if analysis_enabled %}bg-violet-700 hover:bg-violet-600 text-white{% else %}bg-slate-800 text-slate-500 cursor-not-allowed{% endif %}">
+            &#127760; Add language</button>
+          <span id="case-lang-spin" class="htmx-indicator mono text-xs text-violet-300">translating&hellip;</span>
+        </form>
+        {% if terms %}
+        <details class="relative">
+          <summary class="cursor-pointer list-none text-xs rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 px-2 py-1 text-slate-300">&#11015; Export &#9662;</summary>
+          <div class="absolute left-0 z-30 mt-1 w-44 rounded border border-slate-700 bg-slate-900 p-1.5 shadow-xl">
+            <a href="/cases/{{ case.id }}/report?scope=live&format=pdf" target="_blank" class="block px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800">&#128196; PDF</a>
+            <a href="/cases/{{ case.id }}/report?scope=live&format=html" target="_blank" class="block px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800">&#127760; HTML</a>
+            <a href="/cases/{{ case.id }}/report?scope=live&format=csv" class="block px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800">&#128202; CSV</a>
+            <a href="/cases/{{ case.id }}/report?scope=live&format=json" class="block px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800">&#123;&#125; JSON</a>
+          </div>
+        </details>
+        {% endif %}
+        <span id="case-scan-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
+      </div>
+    </div>
+
+    {# Supplement words (alert kind) #}
+    <div class="space-y-2 pt-2 border-t border-slate-800/60">
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+        <span class="text-xs font-medium text-slate-300">Supplement words</span>
+        <span class="text-[11px] text-slate-500">— flag items that already mention these, no extra search needed</span>
+      </div>
+      {% if alert_terms %}
+      <div class="flex flex-wrap gap-1.5">
+        {% for t in alert_terms %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-amber-950/50 border border-amber-800/70 pl-2 pr-1 py-0.5 text-xs text-amber-200">
+          <form hx-post="/cases/{{ case.id }}/terms/{{ t.id }}/edit"
+                hx-target="#case-feed-tab" hx-swap="outerHTML" class="inline-flex items-center">
+            <input name="term" value="{{ t.term }}" aria-label="Edit alert word"
+                   dir="auto" size="{{ (t.term|length) + 1 }}"
+                   class="bg-transparent text-amber-100 focus:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded px-1 w-auto max-w-[16rem]" />
+          </form>
+          <button hx-post="/cases/{{ case.id }}/terms/{{ t.id }}/delete"
+                  hx-target="#case-feed-tab" hx-swap="outerHTML"
+                  hx-confirm="Remove alert word &quot;{{ t.term }}&quot;?"
+                  title="Remove" class="text-amber-400 hover:text-rose-300">&times;</button>
+        </span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-500">No alert words yet.</p>
+      {% endif %}
+      <form hx-post="/cases/{{ case.id }}/terms" hx-target="#case-feed-tab" hx-swap="outerHTML"
+            hx-on::after-request="this.reset()" class="flex items-center gap-2">
+        <input type="hidden" name="kind" value="alert" />
+        <input name="terms" required placeholder="add alert words (comma-separated)"
+               class="w-64 bg-slate-950 border border-amber-900/50 rounded px-2 py-1 text-xs" />
+        <button class="text-xs bg-amber-900/60 hover:bg-amber-800/60 text-amber-200 border border-amber-800/60 rounded px-2 py-1">Add alert</button>
+      </form>
+    </div>
+  </div>
+
+  {# ── Filter bar + items queue ─────────────────────────────────────────── #}
+  <div id="case-feed-items">
+
+    {# Filter bar — submits to GET /cases/{id}/feed, swaps whole tab #}
+    <form hx-get="/cases/{{ case.id }}/feed" hx-target="#case-feed-tab" hx-swap="outerHTML"
+          hx-trigger="submit, change, keyup changed delay:350ms from:input[name='q']"
+          class="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2
+                 flex flex-wrap items-center gap-x-3 gap-y-2 mb-3 text-xs">
+
+      {# Text search #}
+      <label class="flex items-center gap-1.5 text-slate-400 flex-1 min-w-[180px]">
+        <span>&#128269;</span>
+        <input name="q" value="{{ feed_q }}" placeholder="search within case…"
+               class="flex-1 bg-transparent border-b border-slate-700 focus:border-amber-500
+                      outline-none text-slate-200 placeholder-slate-600 py-0.5" />
+      </label>
+
+      <div class="flex flex-wrap items-center gap-2">
+        {# Show mode #}
+        <label class="flex items-center gap-1 text-slate-500">
+          Show
+          <select name="show"
+                  class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs">
+            <option value="unread"   {% if feed_show == 'unread' %}selected{% endif %}>Unread</option>
+            <option value="all"      {% if feed_show == 'all' %}selected{% endif %}>All</option>
+            <option value="reviewed" {% if feed_show == 'reviewed' %}selected{% endif %}>Reviewed</option>
+          </select>
+        </label>
+
+        {# Source #}
+        <label class="flex items-center gap-1 text-slate-500">
+          Source
+          <select name="source"
+                  class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs">
+            <option value="" {% if not feed_source %}selected{% endif %}>All</option>
+            <option value="rss"      {% if feed_source == 'rss' %}selected{% endif %}>RSS</option>
+            <option value="serpapi"  {% if feed_source == 'serpapi' %}selected{% endif %}>SERPAPI</option>
+            <option value="reddit"   {% if feed_source == 'reddit' %}selected{% endif %}>Reddit</option>
+            <option value="twitter"  {% if feed_source == 'twitter' %}selected{% endif %}>Twitter</option>
+            <option value="telegram" {% if feed_source == 'telegram' %}selected{% endif %}>Telegram</option>
+          </select>
+        </label>
+
+        {# Date range #}
+        <label class="flex items-center gap-1 text-slate-500">
+          From
+          <select name="since"
+                  class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs">
+            <option value=""      {% if not feed_since %}selected{% endif %}>All time</option>
+            <option value="today" {% if feed_since == 'today' %}selected{% endif %}>Today</option>
+            <option value="week"  {% if feed_since == 'week' %}selected{% endif %}>Last 7 days</option>
+            <option value="month" {% if feed_since == 'month' %}selected{% endif %}>Last 30 days</option>
+          </select>
+        </label>
+
+        {# Sort #}
+        <label class="flex items-center gap-1 text-slate-500">
+          Sort
+          <select name="sort"
+                  class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs">
+            <option value="newest" {% if feed_sort != 'oldest' %}selected{% endif %}>Newest first</option>
+            <option value="oldest" {% if feed_sort == 'oldest' %}selected{% endif %}>Oldest first</option>
+          </select>
+        </label>
+
+        <button type="submit"
+                class="rounded bg-slate-800 hover:bg-slate-700 border border-slate-700
+                       hover:border-amber-500 text-slate-200 hover:text-amber-300 px-3 py-1">
+          Filter
+        </button>
+        {% if feed_q or feed_source or feed_since or feed_sort == 'oldest' or feed_show != 'unread' %}
+        <a href="/cases/{{ case.id }}/feed"
+           hx-get="/cases/{{ case.id }}/feed" hx-target="#case-feed-tab" hx-swap="outerHTML"
+           class="text-slate-600 hover:text-rose-400 text-[11px]">&#10005; reset</a>
+        {% endif %}
+      </div>
+
+      {# Unread badge — far right #}
+      <span class="ml-auto mono text-[11px] whitespace-nowrap
+                   {% if feed_show == 'reviewed' %}text-slate-500
+                   {% elif unread_count %}text-amber-400{% else %}text-emerald-400{% endif %}">
+        {% if feed_show == 'reviewed' %}
+          reviewed items
+        {% elif unread_count %}
+          {{ unread_count }} unread
+        {% else %}
+          &#10003; all caught up
+        {% endif %}
+      </span>
+    </form>
+
+    {# Items #}
+    {% if live_items %}
+    {% set current_case = case %}
+    <div class="space-y-3">
+      {% for it in live_items %}{% include "_feed_item.html" %}{% endfor %}
+    </div>
+    {% else %}
+    <div class="rounded-lg border border-dashed border-slate-700 p-8 text-center">
+      {% if feed_show == 'reviewed' %}
+      <p class="text-slate-400">No reviewed items{% if feed_q or feed_source or feed_since %} match this filter{% endif %}.</p>
+      {% elif unread_count == 0 and not (feed_q or feed_source or feed_since) %}
+      <p class="text-emerald-300 font-medium">&#10003; Queue is empty</p>
+      <p class="mt-1 text-sm text-slate-500">
+        All items reviewed. New material appears here after the next scan.
+        <a href="/cases/{{ case.id }}/feed?show=all"
+           hx-get="/cases/{{ case.id }}/feed?show=all" hx-target="#case-feed-tab" hx-swap="outerHTML"
+           class="text-sky-400 hover:underline ml-1">View all items &rarr;</a>
+      </p>
+      {% elif feed_q or feed_source or feed_since %}
+      <p class="text-slate-300">No items match this filter.</p>
+      <p class="mt-1 text-sm text-slate-500">Try a wider date range, different source, or clear the search.</p>
+      {% else %}
+      <p class="mb-1 text-slate-300">No tracked items yet.</p>
+      <p class="text-sm text-slate-500">Add search words above, then run a scan.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Reviewed archive — lazy-loaded on demand ──────────────────────────── #}
+  <div id="case-reviewed-section">
+    <button hx-get="/cases/{{ case.id }}/reviewed"
+            hx-target="#case-reviewed-section"
+            hx-swap="outerHTML"
+            hx-indicator="#archive-spin"
+            class="w-full mt-2 rounded border border-slate-800 hover:border-slate-600
+                   text-[11px] mono text-slate-600 hover:text-slate-400 py-2 text-center">
+      &#128448; Show reviewed archive
+    </button>
+    <span id="archive-spin" class="htmx-indicator block text-center text-[11px] mono text-slate-500 py-1">loading&hellip;</span>
+  </div>
+</div>

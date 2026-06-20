@@ -1,0 +1,220 @@
+{% macro kind_icon(k) %}{% if k == 'person' %}&#128100;{% elif k == 'organization' %}&#127970;{% elif k == 'location' %}&#128205;{% elif k == 'identifier' %}&#128273;{% else %}&#11835;{% endif %}{% endmacro %}
+
+{% if data.entity_count == 0 %}
+<div class="rounded-lg border border-dashed border-slate-700 p-10 text-center text-slate-500 space-y-2">
+  <p class="text-slate-300 font-medium">No entities to map yet</p>
+  <p class="text-sm">The graph builds from names the AI extracts from each item.
+    Collect and analyse some items first — then try widening the time window.</p>
+</div>
+
+{% else %}
+<div class="space-y-6">
+
+  {# ── Summary line ────────────────────────────────────────────────────────── #}
+  <p class="text-sm text-slate-400">
+    Built from <strong class="text-slate-200">{{ data.item_count }}</strong> analysed item(s),
+    linking <strong class="text-slate-200">{{ data.entity_count }}</strong>
+    distinct people, groups, and places.
+    {% if data.entity_count > data.nodes|length %}
+      Showing the {{ data.nodes|length }} most-mentioned.
+    {% endif %}
+    <span class="text-slate-600 text-xs ml-1">Click any name to search items that mention it.</span>
+  </p>
+
+  {# ── Connection map (visual first) ───────────────────────────────────────── #}
+  {% if graph_html %}
+  <div class="rounded-lg border border-slate-700 overflow-hidden">
+    <iframe class="w-full bg-slate-950"
+            style="height:560px;" sandbox="allow-scripts"
+            srcdoc="{{ graph_html|e }}"></iframe>
+  </div>
+  {% else %}
+  <div class="rounded-lg border border-dashed border-slate-700 px-6 py-4 text-xs text-slate-500">
+    Interactive map unavailable — install <span class="mono">networkx</span> and
+    <span class="mono">pyvis</span> to enable it. The ranked tables below still work.
+  </div>
+  {% endif %}
+
+  {# ── Kind filter pills ──────────────────────────────────────────────────── #}
+  <div class="flex flex-wrap items-center gap-2" id="kind-filters">
+    <span class="text-xs text-slate-500">Show:</span>
+    {% for kind, icon, label in [('person','👤','People'),('organization','🏢','Orgs'),('location','📍','Places'),('identifier','🔑','Identifiers'),('','⬡','Other')] %}
+    <button type="button" data-kind="{{ kind }}"
+            onclick="toggleKind(this)"
+            class="kind-pill rounded-full border px-2.5 py-0.5 text-xs
+                   bg-amber-500 text-slate-950 border-amber-500 font-semibold">
+      {{ icon }} {{ label }}
+    </button>
+    {% endfor %}
+    <button type="button" onclick="resetKinds()"
+            class="ml-2 text-xs text-slate-600 hover:text-slate-300">Reset</button>
+  </div>
+  <script>
+  (function () {
+    var hidden = new Set();
+    var ON  = ['bg-amber-500','text-slate-950','border-amber-500','font-semibold'];
+    var OFF = ['bg-slate-800','text-slate-400','border-slate-700'];
+    window.toggleKind = function (btn) {
+      var kind = btn.getAttribute('data-kind');
+      if (hidden.has(kind)) {
+        hidden.delete(kind);
+        OFF.forEach(function(c){btn.classList.remove(c);}); ON.forEach(function(c){btn.classList.add(c);});
+      } else {
+        hidden.add(kind);
+        ON.forEach(function(c){btn.classList.remove(c);}); OFF.forEach(function(c){btn.classList.add(c);});
+      }
+      applyFilter();
+    };
+    window.resetKinds = function () {
+      hidden.clear();
+      document.querySelectorAll('.kind-pill').forEach(function (b) {
+        OFF.forEach(function(c){b.classList.remove(c);}); ON.forEach(function(c){b.classList.add(c);});
+      });
+      applyFilter();
+    };
+    function applyFilter() {
+      document.querySelectorAll('[data-entity-kind]').forEach(function (el) {
+        el.style.display = hidden.has(el.getAttribute('data-entity-kind')) ? 'none' : '';
+      });
+    }
+  })();
+  </script>
+
+  {# ── Ranked tables ───────────────────────────────────────────────────────── #}
+  <div class="grid gap-4 md:grid-cols-2">
+
+    {# Most mentioned #}
+    <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+      <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+        &#128293; Talked about most
+      </h2>
+      {% if data.most_mentioned %}
+      <ol class="space-y-2">
+        {% for e in data.most_mentioned %}
+        {% set search_url = '/entity?name=' ~ (e.name | urlencode) %}
+        <li class="flex items-baseline gap-2" data-entity-kind="{{ e.kind or '' }}">
+          <span class="text-slate-600 mono text-[11px] w-5 shrink-0 text-right">{{ loop.index }}</span>
+          <span class="text-slate-500 text-xs shrink-0" title="{{ e.kind }}">{{ kind_icon(e.kind) }}</span>
+          <a href="{{ search_url }}" class="flex-1 text-sm text-slate-200 hover:text-amber-300 truncate"
+             title="Search items mentioning {{ e.name }}">{{ e.name }}</a>
+          <span class="shrink-0 mono text-xs text-amber-400 tabular-nums">{{ e.mentions }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p class="text-xs text-slate-600">Nothing yet.</p>
+      {% endif %}
+    </div>
+
+    {# Most connected #}
+    <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+      <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+        &#128279; Most connected
+      </h2>
+      {% if data.most_connected %}
+      <ol class="space-y-2">
+        {% for e in data.most_connected %}
+        {% set search_url = '/entity?name=' ~ (e.name | urlencode) %}
+        <li class="flex items-baseline gap-2" data-entity-kind="{{ e.kind or '' }}">
+          <span class="text-slate-600 mono text-[11px] w-5 shrink-0 text-right">{{ loop.index }}</span>
+          <span class="text-slate-500 text-xs shrink-0" title="{{ e.kind }}">{{ kind_icon(e.kind) }}</span>
+          <a href="{{ search_url }}" class="flex-1 text-sm text-slate-200 hover:text-sky-300 truncate"
+             title="Search items mentioning {{ e.name }}">{{ e.name }}</a>
+          <span class="shrink-0 mono text-xs text-sky-400 tabular-nums">{{ e.connections }} link{{ '' if e.connections == 1 else 's' }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p class="text-xs text-slate-600">No co-occurring connections yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Strongest relationships #}
+  {% if data.top_relationships %}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+      &#8596; Strongest relationships
+    </h2>
+    <div class="space-y-2">
+      {% for r in data.top_relationships %}
+      {% set url_a = '/entity?name=' ~ (r.source | urlencode) %}
+      {% set url_b = '/entity?name=' ~ (r.target | urlencode) %}
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-slate-600 mono text-[11px] w-5 text-right shrink-0">{{ loop.index }}</span>
+        <a href="{{ url_a }}" class="text-slate-200 hover:text-amber-300 truncate">{{ r.source }}</a>
+        <span class="text-slate-600 shrink-0">&harr;</span>
+        <a href="{{ url_b }}" class="text-slate-200 hover:text-amber-300 truncate">{{ r.target }}</a>
+        <span class="ml-auto shrink-0 mono text-xs text-emerald-400 tabular-nums">
+          {{ r.weight }} shared
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Entity merge / alias panel ──────────────────────────────────────────── #}
+  <details class="rounded-lg border border-slate-800">
+    <summary class="cursor-pointer list-none px-4 py-3 text-xs font-medium text-slate-400
+                    hover:text-amber-300 flex items-center gap-2 select-none">
+      <span>&#9878; Merge duplicate names</span>
+      {% if aliases %}
+      <span class="text-slate-600">({{ aliases|length }} active)</span>
+      {% endif %}
+      <span class="ml-auto text-slate-600 font-normal">e.g. collapse "Messi" into "Lionel Messi"</span>
+    </summary>
+    <div class="px-4 pb-4 space-y-4 border-t border-slate-800">
+      <p class="text-[11px] text-slate-500 mt-3">
+        Define an alias so two names collapse into one node. The graph redraws immediately.
+      </p>
+      <form hx-post="/graph/alias" hx-target="#graph-results" hx-swap="outerHTML"
+            class="flex flex-wrap items-end gap-2">
+        <input type="hidden" name="q"      value="{{ filters.q or '' }}" />
+        <input type="hidden" name="source" value="{{ filters.source or '' }}" />
+        <input type="hidden" name="threat" value="{{ filters.threat or '' }}" />
+        <input type="hidden" name="window" value="{{ filters.window or '' }}" />
+        {% if case %}<input type="hidden" name="case" value="{{ case.id }}" />{% endif %}
+        <label class="block">
+          <span class="text-[11px] text-slate-500">Alias (duplicate)</span>
+          <input name="alias" required placeholder="e.g. Messi"
+                 class="mt-1 block w-36 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs" />
+        </label>
+        <span class="text-slate-600 self-end pb-2 text-sm">&rarr;</span>
+        <label class="block">
+          <span class="text-[11px] text-slate-500">Canonical (keep this)</span>
+          <input name="canonical" required placeholder="e.g. Lionel Messi"
+                 class="mt-1 block w-44 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs" />
+        </label>
+        <button class="self-end rounded bg-amber-700 hover:bg-amber-600 text-slate-950
+                       text-xs font-semibold px-3 py-1.5">Merge</button>
+      </form>
+
+      {% if aliases %}
+      <div class="space-y-1">
+        {% for a in aliases %}
+        <div class="flex items-center gap-3 text-xs py-1 border-b border-slate-800/60 last:border-0">
+          <span class="text-slate-500 w-32 truncate">{{ a.alias }}</span>
+          <span class="text-slate-600">&rarr;</span>
+          <span class="text-slate-300 flex-1">{{ a.canonical }}</span>
+          <form hx-post="/graph/alias/{{ a.id }}/delete"
+                hx-target="#graph-results" hx-swap="outerHTML" class="inline"
+                hx-confirm="Remove the alias &quot;{{ a.alias }}&quot; &rarr; &quot;{{ a.canonical }}&quot;?">
+            <input type="hidden" name="q"      value="{{ filters.q or '' }}" />
+            <input type="hidden" name="source" value="{{ filters.source or '' }}" />
+            <input type="hidden" name="threat" value="{{ filters.threat or '' }}" />
+            <input type="hidden" name="window" value="{{ filters.window or '' }}" />
+            {% if case %}<input type="hidden" name="case" value="{{ case.id }}" />{% endif %}
+            <button class="text-slate-700 hover:text-red-400" title="Remove">&times;</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-700">No aliases yet.</p>
+      {% endif %}
+    </div>
+  </details>
+
+</div>
+{% endif %}

@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block actions %}
+  {% set is_active = active_case and active_case.id == case.id %}
+  {% if is_active %}
+  <form action="/cases/{{ case.id }}/deactivate" method="post" class="inline">
+    <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium rounded px-3 py-1.5"
+            title="You're working in this case — Sherlock's 'this/here' point here. Click to stop.">&#10003; Working here</button>
+  </form>
+  {% else %}
+  <form action="/cases/{{ case.id }}/activate" method="post" class="inline">
+    <button class="border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm rounded px-3 py-1.5"
+            title="Make this your active case so Sherlock's 'this/here' and new pins default to it">Work in this case</button>
+  </form>
+  {% endif %}
+  {% if case.status == 'closed' %}
+  <form action="/cases/{{ case.id }}/reopen" method="post" class="inline">
+    <button class="border border-emerald-700 hover:border-emerald-500 hover:text-emerald-300 text-emerald-600 text-sm rounded px-3 py-1.5"
+            title="Reopen this archived case">&#8635; Reopen</button>
+  </form>
+  {% else %}
+  <form action="/cases/{{ case.id }}/close" method="post" class="inline">
+    <button class="border border-slate-600 hover:border-rose-500 hover:text-rose-300 text-slate-400 text-sm rounded px-3 py-1.5"
+            title="Archive this case — it stays readable but is marked closed">&#10006; Close case</button>
+  </form>
+  {% endif %}
+  <a href="/cases/{{ case.id }}?tab=graph"
+     class="border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm rounded px-3 py-1.5"
+     title="Relationship graph of this case's tracked items">&#128376; Graph</a>
+  <details class="relative inline-block">
+    <summary class="cursor-pointer list-none bg-sky-600 hover:bg-sky-500 text-white text-sm rounded px-3 py-1.5">
+      &#11015; Export &#9662;</summary>
+    <div class="absolute right-0 z-30 mt-1 w-56 rounded border border-slate-700 bg-slate-900 p-1.5 shadow-xl">
+      <div class="px-2 py-1 text-[10px] uppercase tracking-wide text-slate-500">Pinned dossier</div>
+      <a href="/cases/{{ case.id }}/report?format=pdf" target="_blank"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#128196; PDF report</a>
+      <a href="/cases/{{ case.id }}/report?format=html" target="_blank"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#127760; HTML report</a>
+      <a href="/cases/{{ case.id }}/report?format=csv"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#128202; CSV (spreadsheet)</a>
+      <a href="/cases/{{ case.id }}/report?format=json"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#123;&#125; JSON (data)</a>
+      <div class="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-slate-500">Tracked items (live)</div>
+      <a href="/cases/{{ case.id }}/report?scope=live&format=pdf" target="_blank"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#128196; PDF report</a>
+      <a href="/cases/{{ case.id }}/report?scope=live&format=html" target="_blank"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#127760; HTML report</a>
+      <a href="/cases/{{ case.id }}/report?scope=live&format=csv"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#128202; CSV (spreadsheet)</a>
+      <a href="/cases/{{ case.id }}/report?scope=live&format=json"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#123;&#125; JSON (data)</a>
+      <div class="my-1 border-t border-slate-800"></div>
+      <a href="/cases/{{ case.id }}/obsidian"
+         class="block px-2 py-1 rounded text-sm text-violet-300 hover:bg-slate-800"
+         title="A Markdown vault with [[wikilinks]] — open in Obsidian to see the graph">&#128279; Obsidian vault (.zip)</a>
+      <a href="/cases/{{ case.id }}/evidence-manifest"
+         class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800"
+         title="Chain-of-custody list of captured screenshots with their SHA-256 hashes">&#128221; Evidence manifest (.txt)</a>
+    </div>
+  </details>
+{% endblock %}
+{% block content %}
+<section class="space-y-5">
+  <div>
+    {% if is_subcase and parent %}
+    <a href="/cases/{{ parent.id }}" class="text-xs text-slate-500 hover:text-amber-400">&larr; {{ parent.name }}</a>
+    {% else %}
+    <a href="/cases" class="text-xs text-slate-500 hover:text-amber-400">&larr; All cases</a>
+    {% endif %}
+    <div class="mt-1 flex flex-wrap items-center gap-2">
+      <form hx-post="/cases/{{ case.id }}/update" hx-target="body" hx-swap="none" class="inline">
+        <input type="hidden" name="priority" value="{{ 'medium' if case.priority == 'high' else 'high' }}" />
+        <button type="submit"
+                title="{{ 'Starred — click to unstar' if case.priority == 'high' else 'Click to star this case' }}"
+                class="{{ 'text-amber-400 hover:text-amber-300' if case.priority == 'high' else 'text-slate-600 hover:text-amber-400' }} text-lg leading-none">
+          {{ '&#9733;' if case.priority == 'high' else '&#9734;' }}
+        </button>
+      </form>
+      <h1 id="case-name-text" class="text-lg font-semibold text-slate-100">{{ case.name }}</h1>
+      {% if is_subcase %}<span class="px-1.5 py-0.5 rounded border text-[11px] bg-slate-800 text-slate-400 border-slate-700">sub-case</span>{% endif %}
+      <span class="px-1.5 py-0.5 rounded border text-[11px]
+        {% if case.status == 'closed' %}bg-slate-800 text-slate-400 border-slate-700
+        {% else %}bg-emerald-950 text-emerald-300 border-emerald-800{% endif %}">{{ 'archived' if case.status == 'closed' else case.status }}</span>
+      <details id="case-rename-details" class="relative">
+        <summary class="cursor-pointer list-none text-[11px] mono text-slate-600 hover:text-amber-400">&#9998;</summary>
+        <div class="absolute left-0 z-20 mt-1 w-72 rounded-lg border border-slate-700 bg-slate-900 p-3 shadow-xl">
+          <form hx-post="/cases/{{ case.id }}/update" hx-target="body" hx-swap="none"
+                hx-on::after-request="var v=this.querySelector('[name=name]').value.trim();
+                  if(v){document.getElementById('case-name-text').textContent=v;document.title=v+' — Nexus';}
+                  document.getElementById('case-rename-details').open=false;"
+                class="space-y-2">
+            <label class="block text-[11px] text-slate-400">Rename case</label>
+            <input name="name" required value="{{ case.name }}" maxlength="120"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200" />
+            <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 text-xs font-medium">Save</button>
+          </form>
+        </div>
+      </details>
+    </div>
+    <div class="flex items-start gap-2 mt-1">
+      <p id="case-desc-text" class="flex-1 text-sm {% if case.description %}text-slate-400{% else %}text-slate-600 italic{% endif %}">
+        {{ case.description or 'No description — click ✎ to add one.' }}
+      </p>
+      <details id="case-desc-details" class="relative shrink-0">
+        <summary class="cursor-pointer list-none text-[11px] mono text-slate-600 hover:text-amber-400">&#9998;</summary>
+        <div class="absolute z-20 mt-1 w-80 rounded-lg border border-slate-700 bg-slate-900 p-3 shadow-xl">
+          <form hx-post="/cases/{{ case.id }}/update" hx-target="body" hx-swap="none"
+                hx-on::after-request="var v=this.querySelector('[name=description]').value.trim();
+                  var p=document.getElementById('case-desc-text');
+                  p.textContent=v||'No description — click ✎ to add one.';
+                  p.className='flex-1 text-sm '+(v?'text-slate-400':'text-slate-600 italic');
+                  document.getElementById('case-desc-details').open=false;"
+                class="space-y-2">
+            <label class="block text-[11px] text-slate-400">Description</label>
+            <textarea name="description" rows="3"
+                      class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200">{{ case.description or '' }}</textarea>
+            <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 text-xs font-medium">Save</button>
+          </form>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  {# --- Tab bar: one subject, everything in one place --- #}
+  <div class="flex flex-wrap gap-1 border-b border-slate-800">
+    <a href="/cases/{{ case.id }}?tab=feed"
+       class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px flex items-center gap-1.5
+       {% if tab == 'feed' %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}">
+      &#128225; Live feed
+      <span id="feed-unread-badge"
+            class="rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5 leading-none{% if not unread_count %} hidden{% endif %}">{{ unread_count or '' }}</span>
+    </a>
+    <a href="/cases/{{ case.id }}?tab=pinned"
+       class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px
+       {% if tab == 'pinned' %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}">&#128204; Pinned</a>
+    <a href="/cases/{{ case.id }}?tab=questions"
+       class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px
+       {% if tab == 'questions' %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}">&#10067; Questions</a>
+    {% if not is_subcase %}
+    <a href="/cases/{{ case.id }}?tab=subcases"
+       class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px
+       {% if tab == 'subcases' %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}">&#128193; Sub-cases{% if subcases %} ({{ subcases|length }}){% endif %}</a>
+    {% endif %}
+    <a href="/cases/{{ case.id }}?tab=timeline"
+       class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px
+       {% if tab == 'timeline' %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}">&#128336; Timeline</a>
+    <a href="/cases/{{ case.id }}?tab=graph"
+       class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px
+       {% if tab == 'graph' %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}"
+       title="Relationship graph of this case's tracked items">&#128376; Graph</a>
+  </div>
+
+  {% if tab == 'feed' %}
+    {% include "_case_feed_tab.html" %}
+
+  {% elif tab == 'questions' %}
+    {% include "_case_questions.html" %}
+
+  {% elif tab == 'subcases' and not is_subcase %}
+    {% include "_case_subcases.html" %}
+
+  {% elif tab == 'timeline' %}
+    <div id="case-timeline"
+         hx-get="/cases/{{ case.id }}/timeline"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <p class="text-xs text-slate-500 py-4">Loading timeline…</p>
+    </div>
+
+  {% elif tab == 'graph' %}
+    {# Per-case relationship graph: the entities the AI extracts from THIS case's
+       tracked items, scoped to its words. Lazy-loaded (the graph can be heavy).
+       The #graph-results wrapper is what the in-partial filter/alias forms target. #}
+    <div id="graph-results"
+         hx-get="/graph/build?case={{ case.id }}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <p class="text-xs text-slate-500 py-4">Building this case's relationship graph…</p>
+    </div>
+
+  {% else %}
+    {# --- Pinned dossier (curated items + researcher notes) --- #}
+    {% if connections %}
+    <div class="rounded-lg border border-indigo-900/60 bg-indigo-950/10 p-4">
+      <h2 class="text-sm font-medium text-indigo-300">&#128279; Connected cases</h2>
+      <p class="text-xs text-slate-500 mb-2">Other investigations that share items or named entities with this one.</p>
+      <div class="grid gap-2 sm:grid-cols-2">
+        {% for cn in connections %}
+        <div class="rounded border border-slate-800 bg-slate-900/60 p-3">
+          <a href="/cases/{{ cn.id }}" class="text-slate-100 font-medium hover:text-amber-400">{{ cn.name }}</a>
+          <span class="text-[10px] mono text-slate-500">[{{ cn.status }}]</span>
+          {% if cn.shared_items %}<p class="mt-1 text-[11px] text-emerald-300">{{ cn.shared_items|length }} shared item(s)</p>{% endif %}
+          {% if cn.shared_entities %}<p class="mt-1 text-[11px] text-slate-400">Shared entities:
+            <span class="text-slate-300">{{ cn.shared_entities|join(', ') }}</span></p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  {# --- AI briefing (lazy, collapses after generation) --- #}
+  <div id="case-briefing" class="rounded-lg border border-violet-900/40 bg-violet-950/10 px-4 py-3 flex items-center gap-3">
+    <span class="text-[11px] text-violet-300">&#129504; AI briefing</span>
+    <button hx-post="/cases/{{ case.id }}/brief" hx-target="#case-briefing" hx-swap="outerHTML"
+            hx-indicator="#brief-spin"
+            {% if not analysis_enabled %}disabled title="Needs an AI model — add one in Settings"{% endif %}
+            class="text-[11px] rounded border {% if analysis_enabled %}border-violet-700 hover:bg-violet-900/40 text-violet-200{% else %}border-slate-700 text-slate-500 cursor-not-allowed{% endif %} px-2.5 py-1">
+      Generate
+    </button>
+    <span id="brief-spin" class="htmx-indicator text-[11px] mono text-violet-300">thinking&hellip;</span>
+  </div>
+
+    <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div class="space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-sm font-medium text-slate-300">Pinned items{% if items %} <span class="text-slate-500 font-normal">({{ items|length }})</span>{% endif %}</h2>
+          <form hx-post="/cases/{{ case.id }}/items" hx-target="#case-items" hx-swap="outerHTML"
+                hx-on::after-request="this.reset()" class="flex items-center gap-2">
+            <input name="item_id" type="number" min="1" required placeholder="item id"
+                   class="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs mono" />
+            <button class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded px-2 py-1">Add</button>
+          </form>
+        </div>
+        <input type="search" name="q" value="{{ q or '' }}" placeholder="Search within this case…"
+               hx-get="/cases/{{ case.id }}" hx-trigger="keyup changed delay:300ms, search"
+               hx-target="#case-items" hx-select="#case-items" hx-swap="outerHTML"
+               class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+        {% include "_case_items.html" %}
+      </div>
+
+      <div class="space-y-3">
+        <h2 class="text-sm font-medium text-slate-300">Researcher notes</h2>
+        <form hx-post="/cases/{{ case.id }}/notes" hx-target="#notes" hx-swap="outerHTML"
+              hx-on::after-request="this.reset()" class="space-y-2">
+          <textarea name="body" rows="3" required placeholder="Add a note…"
+                    class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm"></textarea>
+          <button class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-3 py-1.5 text-sm">
+            Save note
+          </button>
+        </form>
+        {% include "_notes.html" %}
+      </div>
+    </div>
+  {% endif %}
+</section>
+<script>
+  document.body.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail.target.id !== 'case-feed-tab') return;
+    var count = parseInt(e.detail.target.dataset.unread, 10) || 0;
+    var badge = document.getElementById('feed-unread-badge');
+    if (!badge) return;
+    if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
+    else { badge.classList.add('hidden'); }
+    if (typeof window.nexusBriefRefresh === 'function') window.nexusBriefRefresh();
+  });
+</script>
+{% endblock %}

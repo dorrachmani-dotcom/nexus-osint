@@ -1,0 +1,27 @@
+{% set labels = {1: 'High', 2: 'Medium', 3: 'Low'} %}
+<div id="requirement-list" class="space-y-2">
+  {% if requirements %}
+    {% for r in requirements %}
+    <div class="flex items-center gap-3 rounded border border-slate-800 bg-slate-900/60 px-3 py-2
+                {% if not r.enabled %}opacity-60{% endif %}">
+      <span class="px-1.5 py-0.5 rounded text-[11px] mono
+        {% if r.priority == 1 %}bg-rose-950 text-rose-300 border border-rose-800
+        {% elif r.priority == 3 %}bg-slate-800 text-slate-400
+        {% else %}bg-amber-950 text-amber-300 border border-amber-800{% endif %}">
+        {{ labels.get(r.priority, 'Medium') }}</span>
+      <span class="text-sm text-slate-200 flex-1">{{ r.question }}</span>
+      <a href="/intel?requirement_id={{ r.id }}"
+         class="text-[11px] mono {% if r.match_count %}text-sky-400 hover:text-sky-300{% else %}text-slate-500{% endif %}"
+         title="View matching items in Intel">{{ r.match_count }} match(es)</a>
+      <button hx-post="/requirements/{{ r.id }}/toggle" hx-target="#requirement-list" hx-swap="outerHTML"
+              class="text-xs text-slate-500 hover:text-amber-400">
+        {% if r.enabled %}pause{% else %}resume{% endif %}</button>
+      <button hx-post="/requirements/{{ r.id }}/delete" hx-target="#requirement-list" hx-swap="outerHTML"
+              hx-confirm="Delete this requirement and its scores?"
+              class="text-xs text-slate-500 hover:text-rose-400">remove</button>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="text-sm text-slate-500">No requirements yet. Add one above to start ranking items by relevance.</p>
+  {% endif %}
+</div>

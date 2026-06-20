@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Transfer station</h1>
+    <p class="text-sm text-slate-400 max-w-3xl">
+      Move intelligence between an online collection machine and an offline
+      (air-gapped) analysis machine. <strong class="text-slate-300">Export</strong>
+      a portable bundle to a USB stick on the collecting machine, carry it over,
+      then <strong class="text-slate-300">import</strong> it on the offline machine
+      to receive every new item. Re-running the export only carries what changed,
+      so a daily routine stays small and fast. Source links are preserved inside
+      the bundle for reference, even though they will not open while offline.
+    </p>
+  </div>
+
+  {% if import_result %}
+  <div class="rounded-lg border border-emerald-800/60 bg-emerald-950/20 p-4">
+    <h2 class="text-sm font-semibold text-emerald-300">Bundle imported</h2>
+    <div class="mt-2 grid gap-2 sm:grid-cols-3 text-sm">
+      <div class="rounded border border-slate-800 bg-slate-900 px-3 py-2">
+        <div class="text-2xl font-semibold text-slate-100">{{ import_result.new_items }}</div>
+        <div class="text-xs text-slate-400">new items added</div>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-900 px-3 py-2">
+        <div class="text-2xl font-semibold text-slate-100">{{ import_result.analyses_added }}</div>
+        <div class="text-xs text-slate-400">analyses added</div>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-900 px-3 py-2">
+        <div class="text-2xl font-semibold text-slate-100">{{ import_result.evidence_added }}</div>
+        <div class="text-xs text-slate-400">evidence files added</div>
+      </div>
+    </div>
+    <p class="mt-2 text-xs text-slate-500 mono">
+      {{ import_result.total_in_bundle }} item(s) in bundle ·
+      {{ import_result.skipped_items }} already present ·
+      {{ import_result.scores_added }} question score(s) added
+    </p>
+  </div>
+  {% endif %}
+
+  {% if import_error %}
+  <div class="rounded-lg border border-rose-800/60 bg-rose-950/20 p-4">
+    <h2 class="text-sm font-semibold text-rose-300">Import failed</h2>
+    <p class="mt-1 text-sm text-slate-300">{{ import_error }}</p>
+  </div>
+  {% endif %}
+
+  {% if import_scan %}
+    {% set vc = {'clean': 'emerald', 'suspicious': 'amber', 'dangerous': 'rose'} %}
+    {% set color = vc.get(import_scan.verdict, 'slate') %}
+    <div class="rounded-lg border border-{{ color }}-800/60 bg-{{ color }}-950/20 p-4 space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold text-{{ color }}-300">
+          {% if import_scan.verdict == 'clean' %}&#10003; Safety check passed
+          {% elif import_scan.verdict == 'suspicious' %}&#9888; Safety check &mdash; review before trusting
+          {% else %}&#10006; Safety check failed &mdash; import blocked{% endif %}
+        </h2>
+        <span class="text-[11px] mono text-slate-400">{{ import_scan.filename }}</span>
+      </div>
+      <p class="text-xs text-slate-400">
+        {% if import_scan.verdict == 'dangerous' %}
+          This bundle was <strong>not</strong> imported because the check flagged it as
+          dangerous. Nothing from it was added to your data.
+        {% elif import_scan.verdict == 'suspicious' %}
+          The bundle was scanned before import. The items below are worth a look.
+        {% else %}
+          The bundle was scanned on this machine before import &mdash; no problems found.
+        {% endif %}
+      </p>
+      {% if import_scan.findings %}
+      <ul class="space-y-1">
+        {% for f in import_scan.findings %}
+        <li class="text-xs
+          {% if f.level == 'danger' %}text-rose-300
+          {% elif f.level == 'warn' %}text-amber-300
+          {% else %}text-slate-400{% endif %}">
+          &bull; {{ f.message }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if import_scan.scanners %}
+      <div class="text-[10px] text-slate-500">Checked with: {{ import_scan.scanners | join(', ') }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="grid gap-6 lg:grid-cols-2 items-start">
+
+    <!-- EXPORT -->
+    <form action="/transfer/export" method="post"
+          class="space-y-4 bg-slate-900 border border-slate-800 rounded-lg p-5">
+      <div>
+        <h2 class="text-base font-semibold text-slate-100">&#11014; Export a bundle</h2>
+        <p class="text-xs text-slate-400 mt-1">
+          Run this on the collecting machine, then save the file to your USB stick.
+        </p>
+      </div>
+
+      <label class="block">
+        <span class="text-xs text-slate-400">What to include</span>
+        <select name="scope" id="export-scope"
+                onchange="document.getElementById('export-case-wrap').style.display = this.value === 'case' ? 'block' : 'none';"
+                class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+          <option value="all">Everything ({{ total_items }} item{{ '' if total_items == 1 else 's' }})</option>
+          <option value="case">A single case</option>
+        </select>
+      </label>
+
+      <div id="export-case-wrap" style="display:none">
+        <label class="block">
+          <span class="text-xs text-slate-400">Case</span>
+          <select name="case_id"
+                  class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+            {% for c in cases %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+            {% else %}
+            <option value="" disabled>No cases yet</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <label class="flex items-start gap-2">
+        <input type="checkbox" name="only_new" value="1"
+               class="mt-0.5 accent-amber-500" />
+        <span class="text-sm text-slate-300">
+          Only new items since the last export
+          <span class="block text-xs text-slate-500">
+            Recommended for a daily routine — keeps the bundle small.
+            {% if last_export %}
+              Last export: <span class="mono">{{ last_export[:16] }}</span> UTC.
+            {% else %}
+              No export has been run yet.
+            {% endif %}
+          </span>
+        </span>
+      </label>
+
+      <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-2 text-sm">
+        Download bundle
+      </button>
+    </form>
+
+    <!-- IMPORT -->
+    <form action="/transfer/import" method="post" enctype="multipart/form-data"
+          class="space-y-4 bg-slate-900 border border-slate-800 rounded-lg p-5">
+      <div>
+        <h2 class="text-base font-semibold text-slate-100">&#11015; Import a bundle</h2>
+        <p class="text-xs text-slate-400 mt-1">
+          Run this on the offline machine. New items, analyses, scores and evidence
+          are merged in. Importing the same bundle twice is safe — duplicates are
+          skipped automatically.
+        </p>
+      </div>
+
+      <label class="block">
+        <span class="text-xs text-slate-400">Bundle file (<span class="mono">.nexusbundle</span>)</span>
+        <input type="file" name="bundle" required accept=".nexusbundle,.zip,application/zip"
+               class="mt-1 w-full text-sm text-slate-300 file:mr-3 file:rounded file:border-0
+                      file:bg-slate-700 file:px-3 file:py-1.5 file:text-sm file:text-slate-100
+                      hover:file:bg-slate-600" />
+      </label>
+
+      <button class="bg-sky-600 hover:bg-sky-500 text-white font-medium rounded px-4 py-2 text-sm">
+        Import bundle
+      </button>
+    </form>
+
+  </div>
+
+  <p class="text-xs text-slate-600 max-w-3xl">
+    Bundles never contain API keys or settings — only collected items, their
+    analysis, question scores and captured evidence. They are ordinary ZIP files
+    with a <span class="mono">.nexusbundle</span> name.
+  </p>
+
+  <!-- DEEP, STEP-BY-STEP GUIDE -->
+  <details class="rounded-lg border border-slate-800 bg-slate-900/60 p-5 max-w-3xl" open>
+    <summary class="cursor-pointer text-base font-semibold text-slate-100 select-none">
+      How the two-machine workflow works (full guide)
+    </summary>
+
+    <div class="mt-4 space-y-5 text-sm text-slate-300">
+      <div>
+        <p>
+          The idea is to keep your sensitive analysis machine completely offline
+          (air-gapped) while still feeding it fresh intelligence. One machine does
+          the collecting; the other does the analysis. A USB stick carries the data
+          across the gap.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-semibold text-amber-300">Machine A — the online collector</h3>
+        <p class="text-slate-400 mt-1">Connected to the internet. Gathers and organizes everything.</p>
+        <ol class="mt-2 list-decimal list-inside space-y-1">
+          <li>Add your sources and run a <strong>Scan</strong> so new items are collected and analyzed as usual.</li>
+          <li>Open this <strong>Transfer</strong> page.</li>
+          <li>Under <strong>Export a bundle</strong>, choose <em>Everything</em> or a single <em>Case</em>.</li>
+          <li>For a daily routine, tick <strong>“Only new items since the last export.”</strong>
+              This carries just the new items collected since last time, so the file stays small and fast.</li>
+          <li>Click <strong>Download bundle</strong> and copy the
+              <span class="mono">.nexusbundle</span> file to a USB stick.</li>
+        </ol>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-semibold text-sky-300">Machine B — the offline analysis station</h3>
+        <p class="text-slate-400 mt-1">Never connected to any network. Runs the same app.</p>
+        <ol class="mt-2 list-decimal list-inside space-y-1">
+          <li>Plug in the USB stick and open this <strong>Transfer</strong> page.</li>
+          <li>Under <strong>Import a bundle</strong>, pick the
+              <span class="mono">.nexusbundle</span> file and click <strong>Import bundle</strong>.</li>
+          <li>Every new item is merged in — with its summary, translation, entities,
+              question scores and evidence screenshots — and a short summary of what
+              was added is shown.</li>
+          <li>The new items now appear in the feed and search like anything else.</li>
+        </ol>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-semibold text-emerald-300">A daily routine (example)</h3>
+        <p class="mt-1">
+          Say you track one subject every day. Each morning on Machine A: Scan →
+          Transfer → tick <em>Only new items since the last export</em> → Download →
+          carry the small bundle to Machine B → Import. Machine B steadily builds the
+          full picture while never touching the internet.
+        </p>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-semibold text-slate-200">Good to know</h3>
+        <ul class="mt-1 list-disc list-inside space-y-1 text-slate-400">
+          <li><strong>Safe to repeat:</strong> importing the same bundle twice adds nothing new — duplicates are detected by content and skipped.</li>
+          <li><strong>No secrets travel:</strong> bundles contain only collected data and its analysis — never API keys or settings.</li>
+          <li><strong>Links stay, but stay offline:</strong> article links are preserved for reference; on an offline machine they simply won't open, which is expected.</li>
+          <li><strong>Both directions work:</strong> you can also export from B and import into A if you ever need to move data the other way.</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</section>
+{% endblock %}

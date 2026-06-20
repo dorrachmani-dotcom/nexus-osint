@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block actions %}
+{% if terms %}
+<form hx-post="/investigation/scan" hx-target="#feed" hx-swap="outerHTML"
+      hx-indicator="#scan-spin" class="inline">
+  <input type="hidden" name="name" value="{{ name }}" />
+  <button class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold">
+    Scan &amp; refresh
+  </button>
+</form>
+<span id="scan-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <a href="/topics" class="text-xs text-slate-500 hover:text-amber-400">&larr; Back to Topics</a>
+  <h1 class="mt-1 text-xl font-semibold text-slate-100">{{ name }}</h1>
+  {% if terms %}
+  <div class="mt-2 flex flex-wrap gap-1.5">
+    {% for t in terms %}
+    <span class="rounded-full border border-sky-800 bg-sky-950/50 text-sky-200 px-2.5 py-0.5 text-xs mono">{{ t }}</span>
+    {% endfor %}
+  </div>
+  <p class="mt-2 text-xs text-slate-500">
+    Showing items that mention <span class="text-slate-300">any</span> of these terms, across every source.
+    Edit the terms on <a href="/topics" class="text-amber-400 hover:underline">Topics</a>,
+    or open the <a href="/" class="text-amber-400 hover:underline">full feed</a>.
+  </p>
+  {% endif %}
+
+  {% if sub_questions %}
+  <div class="mt-4 rounded-lg border border-sky-900/70 bg-sky-950/20 p-3">
+    <h2 class="text-sm font-medium text-sky-200">Sub-questions</h2>
+    <p class="text-xs text-slate-500 mb-2">
+      The intelligence questions under this investigation. The AI ranks every
+      collected item against each — click one to see the items that answer it.
+    </p>
+    <ul class="space-y-1.5">
+      {% for q in sub_questions %}
+      <li class="flex items-center justify-between gap-3 rounded border border-slate-800 bg-slate-900/60 px-3 py-2">
+        <a href="/intel?requirement_id={{ q.id }}"
+           class="text-sm text-slate-200 hover:text-sky-300">{{ q.question }}</a>
+        <span class="shrink-0 mono text-[11px] {% if q.match_count %}text-sky-300{% else %}text-slate-600{% endif %}">
+          {{ q.match_count }} hits
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+
+{% if terms %}
+<div id="feed">
+  {% include "_feed.html" %}
+</div>
+{% else %}
+<div class="rounded-lg border border-dashed border-slate-700 p-8 text-center text-slate-400">
+  <p class="mb-1 text-slate-300">This investigation has no terms yet.</p>
+  <p class="text-sm text-slate-500">
+    Add some on <a href="/topics" class="text-amber-400 hover:underline">Topics</a>, then run a scan.
+  </p>
+</div>
+{% endif %}
+{% endblock %}

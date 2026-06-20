@@ -1,0 +1,94 @@
+{% set names = {'anthropic': 'Anthropic (Claude)', 'gemini': 'Google (Gemini)', 'openai': 'OpenAI (ChatGPT)', 'ollama': 'Local model (Ollama)', 'off': 'Off (no AI)'} %}
+<div id="provider-status" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+  <div class="flex items-center justify-between text-sm">
+    <span class="text-slate-400">Active AI provider</span>
+    <span class="px-2 py-0.5 rounded text-xs mono
+      {% if active_provider != 'off' %}bg-emerald-950/60 text-emerald-300 border border-emerald-800
+      {% else %}bg-slate-800 text-slate-500{% endif %}">{{ names.get(active_provider, active_provider) }}</span>
+  </div>
+
+  <form hx-post="/settings/provider" hx-target="#provider-status" hx-swap="outerHTML"
+        class="flex items-end gap-2">
+    <label class="block flex-1">
+      <span class="text-xs text-slate-400">Choose provider</span>
+      <select name="provider" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+        {% for p in provider_choices %}
+        <option value="{{ p }}" {% if chosen_provider == p %}selected{% endif %}>
+          {{ names.get(p, p) }}{% if p == 'anthropic' and not claude_enabled %} — no key{% elif p == 'gemini' and not gemini_enabled %} — no key{% elif p == 'openai' and not openai_enabled %} — no key{% elif p == 'ollama' %} — runs offline, no key{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-1.5 text-sm">
+      Apply
+    </button>
+  </form>
+
+  {% if chosen_provider == 'ollama' %}
+  <div class="rounded border border-emerald-900/60 bg-emerald-950/20 p-3 space-y-3 text-xs">
+    <p class="text-emerald-300 font-medium">&#128274; Fully local &mdash; nothing leaves this computer, no key, free.</p>
+
+    <div class="space-y-1.5">
+      <p class="text-slate-300"><span class="font-medium text-slate-200">Step 1.</span>
+        Install the free <span class="font-medium">Ollama</span> app once from
+        <a href="https://ollama.com/download" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">ollama.com/download</a>
+        (Windows / Mac / Linux). After installing, it runs quietly in the background &mdash; you never open it.</p>
+    </div>
+
+    <div class="space-y-1.5">
+      <p class="text-slate-300"><span class="font-medium text-slate-200">Step 2.</span>
+        Pick a model for your computer and download it right here &mdash;
+        <span class="text-emerald-300">no terminal needed:</span></p>
+      <form hx-post="/settings/ollama/pull" hx-target="#ollama-pull" hx-swap="outerHTML"
+            class="flex flex-wrap items-end gap-2">
+        <label class="block flex-1 min-w-[12rem]">
+          <span class="text-slate-400">Model</span>
+          <select name="model" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+            {% for m in ollama_recommended %}
+            <option value="{{ m.name }}" {% if ollama_model == m.name %}selected{% endif %}>{{ m.label }} &middot; {{ m.size }}, needs {{ m.ram }}</option>
+            {% endfor %}
+            {% set known = ollama_recommended | map(attribute='name') | list %}
+            {% if ollama_model and ollama_model not in known %}
+            <option value="{{ ollama_model }}" selected>{{ ollama_model }} (current)</option>
+            {% endif %}
+          </select>
+        </label>
+        <button class="rounded bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 font-medium">Download model</button>
+      </form>
+      <div id="ollama-pull"></div>
+      <p class="text-slate-500">Bigger models are smarter but heavier. Not sure? Keep the recommended
+        <span class="mono">gemma4:e4b</span>. <a href="/guide" class="text-sky-400 hover:text-sky-300">Which fits my computer? &rarr;</a></p>
+    </div>
+
+    <div class="space-y-1.5">
+      <p class="text-slate-300"><span class="font-medium text-slate-200">Step 3.</span>
+        Confirm it's ready &mdash; when this turns green, scans analyse with your local model.</p>
+      <button hx-post="/settings/ollama/check" hx-target="#ollama-check" hx-swap="outerHTML"
+        class="rounded bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1 font-medium">Test connection</button>
+      <div id="ollama-check"></div>
+    </div>
+
+    <p class="text-slate-500">Server: <span class="mono">{{ ollama_base_url }}</span> &middot;
+      Active model: <span class="mono">{{ ollama_model }}</span>. Your model choice is saved instantly &mdash; no restart.</p>
+  </div>
+  {% endif %}
+  {% if chosen_provider == 'off' %}
+  <p class="text-xs text-slate-400">
+    AI is off. Items are still collected, stored, deduplicated and fully
+    searchable — they just aren't summarized, translated or threat-scored. The
+    feed shows the raw post text. Pick a provider above any time to start
+    analyzing new items.
+  </p>
+  {% endif %}
+  {% if chosen_provider != 'off' and chosen_provider != 'ollama' and active_provider == 'off' %}
+  <p class="text-xs text-amber-400">
+    Selected provider has no API key in <span class="mono">.env</span>
+    ({% if chosen_provider == 'anthropic' %}ANTHROPIC_API_KEY{% elif chosen_provider == 'openai' %}OPENAI_API_KEY{% else %}GEMINI_API_KEY{% endif %}),
+    so analysis is currently off.
+  </p>
+  {% endif %}
+  <p class="text-xs text-slate-500">
+    The provider choice is saved instantly. API keys stay in <span class="mono">.env</span> only and
+    require a restart when changed.
+  </p>
+</div>

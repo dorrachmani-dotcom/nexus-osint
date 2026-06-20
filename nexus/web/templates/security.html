@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Security center</h1>
+    <p class="text-sm text-slate-400">
+      Two local safeguards: a live view of everywhere this app connects to, and a
+      check that vets any file you bring in &mdash; both run entirely on this
+      machine and send nothing out.
+    </p>
+  </div>
+
+  {# ---------------------------------------------------------------- egress #}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+    <div class="flex items-center justify-between gap-3">
+      <h2 class="text-sm font-medium text-slate-200">Outbound network activity</h2>
+      <div class="flex items-center gap-2">
+        {% if not egress.installed %}
+          <span class="text-xs rounded px-2 py-0.5 bg-slate-700 text-slate-200">monitor unavailable</span>
+        {% elif egress.unexpected_count %}
+          <span class="text-xs rounded px-2 py-0.5 bg-rose-900/60 text-rose-200">&#9888; {{ egress.unexpected_count }} unexpected</span>
+        {% else %}
+          <span class="text-xs rounded px-2 py-0.5 bg-emerald-900/50 text-emerald-200">&#10003; all expected</span>
+        {% endif %}
+        <a href="/security/report"
+           class="text-xs rounded px-2 py-0.5 border border-slate-700 text-slate-300 hover:bg-slate-800"
+           title="Download a plain-text data-handling audit report">&#11015; Download report</a>
+      </div>
+    </div>
+
+    <p class="text-xs text-slate-400">
+      Every outbound connection this app's own code makes is listed below and
+      labelled. Expected destinations are your chosen AI provider, the sources you
+      enabled, and your own machine. Anything else is flagged as
+      <span class="text-rose-300">Unexpected</span> so you can investigate.
+    </p>
+
+    {% if egress.unexpected_count %}
+    <div class="rounded border border-rose-800 bg-rose-950/40 p-3 text-xs text-rose-200">
+      This app connected to {{ egress.unexpected_count }} destination(s) that don't
+      match your providers, your sources, or your local machine. Review them below.
+    </div>
+    {% endif %}
+
+    {% if egress.destinations %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead class="text-slate-500 text-left">
+          <tr>
+            <th class="py-1 pr-3 font-medium">Destination</th>
+            <th class="py-1 pr-3 font-medium">Port</th>
+            <th class="py-1 pr-3 font-medium">Classified as</th>
+            <th class="py-1 pr-3 font-medium text-right">Times</th>
+          </tr>
+        </thead>
+        <tbody class="text-slate-300">
+          {% for d in egress.destinations %}
+          <tr class="border-t border-slate-800 {% if not d.expected %}bg-rose-950/30{% endif %}">
+            <td class="py-1 pr-3 mono">{{ d.host }}</td>
+            <td class="py-1 pr-3 mono">{{ d.port }}</td>
+            <td class="py-1 pr-3">
+              {% if d.expected %}
+                <span class="text-emerald-300">{{ d.category }}</span>
+              {% else %}
+                <span class="text-rose-300">&#9888; {{ d.category }}</span>
+              {% endif %}
+            </td>
+            <td class="py-1 pr-3 text-right mono">{{ d.count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-xs text-slate-500">
+      No outbound connections recorded yet. They appear here after a scan or an AI
+      analysis runs.
+    </p>
+    {% endif %}
+
+    <p class="text-[11px] text-slate-500 leading-relaxed">
+      Scope: this watches connections made inside the app itself (feed collection,
+      AI analysis, bundle fetches). The headless browser used for evidence
+      screenshots and the external OSINT command-line tools run as separate
+      programs, so their traffic is not shown here.
+    </p>
+  </div>
+
+  {# ------------------------------------------------------------- file scan #}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+    <h2 class="text-sm font-medium text-slate-200">Check a file</h2>
+    <p class="text-xs text-slate-400">
+      Vet any file before you trust it &mdash; a transfer bundle from a USB stick,
+      a download, anything. It is inspected on this machine and is
+      <span class="font-medium">not</span> imported or stored. We look for hidden
+      programs, disguised file types, and booby-trapped archives. If
+      <span class="mono">ClamAV</span> is installed it is used too; a VirusTotal
+      hash lookup runs only if you set a <span class="mono">VIRUSTOTAL_API_KEY</span>.
+    </p>
+
+    <form action="/security/scan-file" method="post" enctype="multipart/form-data"
+          class="flex flex-wrap items-center gap-2">
+      <input type="file" name="upload" required
+             class="text-xs text-slate-300 file:mr-2 file:rounded file:border-0
+                    file:bg-slate-700 file:px-3 file:py-1.5 file:text-slate-100" />
+      <button type="submit"
+              class="rounded bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 text-sm font-medium">
+        Scan file
+      </button>
+    </form>
+
+    {% if scan %}
+      {% set vc = {'clean': 'emerald', 'suspicious': 'amber', 'dangerous': 'rose'} %}
+      {% set color = vc.get(scan.verdict, 'slate') %}
+      <div class="rounded border border-{{ color }}-800 bg-{{ color }}-950/40 p-3 space-y-2">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-sm font-semibold text-{{ color }}-200">
+            {% if scan.verdict == 'clean' %}&#10003; Looks clean
+            {% elif scan.verdict == 'suspicious' %}&#9888; Suspicious &mdash; open with care
+            {% else %}&#10006; Dangerous &mdash; do not open{% endif %}
+          </span>
+          <span class="text-[11px] mono text-slate-400">{{ scan.filename }}</span>
+        </div>
+        {% if scan.type %}<div class="text-xs text-slate-400">Detected type: {{ scan.type }}</div>{% endif %}
+        <ul class="space-y-1">
+          {% for f in scan.findings %}
+          <li class="text-xs
+            {% if f.level == 'danger' %}text-rose-300
+            {% elif f.level == 'warn' %}text-amber-300
+            {% else %}text-slate-400{% endif %}">
+            &bull; {{ f.message }}
+          </li>
+          {% endfor %}
+        </ul>
+        {% if scan.sha256 %}
+        <div class="text-[10px] mono text-slate-500 break-all">SHA-256: {{ scan.sha256 }}</div>
+        {% endif %}
+        {% if scan.scanners %}
+        <div class="text-[10px] text-slate-500">Checked with: {{ scan.scanners | join(', ') }}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

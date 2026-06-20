@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Intelligence feed export</title>
+  <style>
+    @page { size: a4 landscape; margin: 12mm; }
+    body { font-family: "DejaVu Sans", Arial, sans-serif; color: #1a1a1a; font-size: 10px; line-height: 1.45; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .muted { color: #666; }
+    .meta { margin-bottom: 12px; font-size: 11px; color: #666; }
+
+    .report-table { width: 100%; border-collapse: collapse; }
+    .report-table th, .report-table td { border: 1px solid #cfd6dd; padding: 5px 6px; vertical-align: top; text-align: left; }
+    .report-table thead th { background: #1f2937; color: #fff; font-size: 9px; }
+    .report-table tbody tr:nth-child(even) td { background: #f6f8fa; }
+    col.c-time { width: 11%; }
+    col.c-subj { width: 16%; }
+    col.c-link { width: 15%; }
+    col.c-sum  { width: 34%; }
+    col.c-ans  { width: 24%; }
+    .c-time { color: #555; font-size: 9px; }
+    .sum-title { font-weight: bold; margin-bottom: 2px; }
+    .translation { margin-top: 3px; padding-left: 6px; border-left: 2px solid #6aa84f; color: #444; }
+    .src { font-weight: bold; color: #333; }
+    .tag { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 8px; font-weight: bold; }
+    .tag-personal { background: #e7e0ff; color: #4527a0; }
+    .tag-general { background: #e3eefc; color: #11468a; }
+    .subj-names { margin-top: 2px; }
+    .score { display: inline-block; padding: 1px 6px; border-radius: 10px; font-weight: bold; font-size: 9px; }
+    .score-high { background: #fde2e2; color: #a30000; }
+    .score-mid { background: #fff3d6; color: #8a5a00; }
+    .score-low { background: #eef1f4; color: #555; }
+    .ans-q { font-style: italic; color: #333; margin-top: 3px; }
+    .ans-rat { color: #555; margin-top: 2px; }
+    a { color: #0a58ca; text-decoration: none; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>Intelligence feed export</h1>
+  <div class="meta">
+    Report generated {{ generated_at }}
+    &middot; {{ shown }} of {{ total_matched }} matching item(s)
+    &middot; Filter: {{ filters_label }}
+  </div>
+
+  {% if items %}
+    {% include "_report_table.html" %}
+  {% else %}
+    <p class="muted">No items match the current filter.</p>
+  {% endif %}
+</body>
+</html>

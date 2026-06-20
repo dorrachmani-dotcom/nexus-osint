@@ -1,0 +1,15 @@
+# Keep shell scripts and Linux desktop files LF so they run on Linux/macOS
+# even when the repo is edited or cloned on Windows. CRLF in a shebang line
+# (e.g. "#!/usr/bin/env bash\r") breaks execution.
+*.sh        text eol=lf
+*.bash      text eol=lf
+*.desktop   text eol=lf
+
+# Windows-only scripts are fine either way; leave them to git's autodetection.
+*.ps1       text
+*.bat       text
+*.vbs       text
+
+# Treat icons as binary (never line-ending-converted).
+*.ico       binary
+*.png       binary

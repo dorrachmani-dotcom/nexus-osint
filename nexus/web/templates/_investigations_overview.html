@@ -1,0 +1,27 @@
+{# Your open cases as a quick-access strip on the home feed. #}
+{% if all_cases %}
+<div class="mb-4 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+  <div class="flex items-center justify-between mb-2">
+    <h2 class="text-xs font-medium text-slate-300">Your cases</h2>
+    <a href="/cases" class="text-[11px] text-sky-400 hover:underline">+ new / manage</a>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    {% for c in all_cases %}
+    <a href="/cases/{{ c.id }}?tab=feed"
+       class="inline-flex items-center gap-1.5 rounded-full border
+              {% if c.priority == 'high' %}border-amber-600 bg-amber-950/30 text-amber-200
+              {% else %}border-sky-800 bg-sky-950/40 text-sky-200{% endif %}
+              hover:border-amber-500 hover:text-amber-200 pl-3 pr-2 py-1 text-xs"
+       title="Open live feed for {{ c.name }}">
+      {% if c.priority == 'high' %}<span class="text-amber-400 text-[10px]">&#9733;</span>{% endif %}
+      <span class="font-medium">{{ c.name }}</span>
+      {% if c.new_count %}
+      <span class="rounded-full bg-amber-500 text-slate-950 font-bold px-1.5 text-[10px]">{{ c.new_count }}</span>
+      {% else %}
+      <span class="rounded-full bg-slate-800 text-slate-400 px-1.5 text-[10px] mono">&#10003;</span>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

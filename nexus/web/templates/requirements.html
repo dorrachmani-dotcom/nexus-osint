@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Intelligence requirements</h1>
+    <p class="text-sm text-slate-400">
+      Standing questions you need answered (PIRs). On every scan the AI scores each
+      collected item for relevance to these, so the most pertinent material rises to
+      the top of the <a href="/intel" class="text-sky-400 hover:text-sky-300">Intel</a> view.
+      {% if not analysis_enabled %}
+      <span class="text-amber-400">Scoring is paused — no AI provider is active
+      (set one on <a href="/settings" class="underline">Settings</a>).</span>
+      {% endif %}
+    </p>
+  </div>
+
+  <form hx-post="/requirements" hx-target="#requirement-list" hx-swap="outerHTML"
+        hx-on::after-request="this.reset()"
+        class="grid gap-3 sm:grid-cols-[1fr_auto_auto] items-end
+               bg-slate-900 border border-slate-800 rounded-lg p-4">
+    <label class="block">
+      <span class="text-xs text-slate-400">Question</span>
+      <input name="question" required
+             placeholder="e.g. Is any company in my portfolio affected by a cyberattack?"
+             class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+    </label>
+    <label class="block">
+      <span class="text-xs text-slate-400">Priority</span>
+      <select name="priority" class="mt-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+        <option value="1">High</option>
+        <option value="2" selected>Medium</option>
+        <option value="3">Low</option>
+      </select>
+    </label>
+    <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-4 py-1.5 text-sm">
+      Add
+    </button>
+  </form>
+
+  {% include "_requirement_list.html" %}
+</section>
+{% endblock %}

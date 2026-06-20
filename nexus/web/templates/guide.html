@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-3xl">
+
+  <div class="mb-6">
+    <h1 class="text-xl font-semibold text-slate-100">Beginner's guide</h1>
+    <p class="text-sm text-slate-400 mt-1">
+      Nexus-OSINT collects open information from public sources, stores it locally on
+      your machine, and (optionally) uses AI to summarise, translate, and rank it.
+      Nothing leaves your computer except the searches you choose to run. This page
+      explains every concept and walks you through your first investigation.
+    </p>
+  </div>
+
+  <!-- How it works: the whole flow on one screen -->
+  <section class="mb-8 rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+    <h2 class="text-base font-semibold text-slate-100 mb-2">How it all fits together</h2>
+    <p class="text-sm text-slate-400 mb-3">Five stages, left to right. The menu is grouped the same way.</p>
+    <div class="grid gap-2 sm:grid-cols-5 text-center text-xs">
+      <div class="rounded border border-slate-800 bg-slate-950/50 p-3">
+        <div class="text-lg">&#128225;</div><div class="font-medium text-slate-200">1. Sources</div>
+        <div class="text-slate-500 mt-1">Where data comes from — feeds, presets, APIs.</div>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-950/50 p-3">
+        <div class="text-lg">&#128260;</div><div class="font-medium text-slate-200">2. Scan</div>
+        <div class="text-slate-500 mt-1">Pull fresh items; AI summarises, translates, scores.</div>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-950/50 p-3">
+        <div class="text-lg">&#128193;</div><div class="font-medium text-slate-200">3. Cases</div>
+        <div class="text-slate-500 mt-1">One subject = one case: tracking words, questions, pins, graph.</div>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-950/50 p-3">
+        <div class="text-lg">&#128240;</div><div class="font-medium text-slate-200">4. Brief &amp; Feed</div>
+        <div class="text-slate-500 mt-1">Read what's new daily; search the whole river.</div>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-950/50 p-3">
+        <div class="text-lg">&#128196;</div><div class="font-medium text-slate-200">5. Report</div>
+        <div class="text-slate-500 mt-1">Export PDF / data / Obsidian; move to an offline PC.</div>
+      </div>
+    </div>
+    <p class="text-xs text-slate-500 mt-3">
+      <span class="text-slate-300">The menu, in order:</span>
+      <span class="mono">Brief</span> &amp; <span class="mono">Feed</span> (read) ·
+      <span class="mono">Cases</span> &amp; <span class="mono">Graph</span> (investigate) ·
+      <span class="mono">Sources</span> (collect) · <span class="mono">More</span> (Intel, Lists, Tools, Watchlists) ·
+      <span class="mono">Setup</span> (Settings, Security, Transfer).
+    </p>
+  </section>
+
+  <!-- Quick start -->
+  <section class="mb-8 rounded-lg border border-amber-700/50 bg-amber-950/20 p-4">
+    <h2 class="text-base font-semibold text-amber-300 mb-3">Quick start &mdash; 6 steps</h2>
+    <ol class="space-y-3 text-sm text-slate-200 list-decimal list-inside">
+      <li>
+        <span class="font-medium">Add your keys (optional).</span>
+        Go to <a href="/settings" class="text-sky-400 hover:text-sky-300">Settings</a> and paste any
+        API keys you have. Each key unlocks one more source or the AI analysis. No keys?
+        The app still works with free RSS feeds &mdash; nothing crashes.
+      </li>
+      <li>
+        <span class="font-medium">Open a Case for your subject.</span>
+        On <a href="/cases" class="text-sky-400 hover:text-sky-300">Cases</a>, create a case
+        (e.g. <span class="mono text-slate-300">Tesla</span>). In its <span class="font-medium">Live feed</span>
+        tab add tracking words (e.g. <span class="mono text-slate-300">Tesla, Elon Musk</span>) &mdash;
+        or give a one-line brief and let the AI set them up. Those words are searched across all your
+        sources and drive the case's live feed.
+      </li>
+      <li>
+        <span class="font-medium">Run a scan.</span>
+        Press <span class="font-medium">Manual scan</span> on the
+        <a href="/" class="text-sky-400 hover:text-sky-300">Feed</a> (or
+        <span class="font-medium">Scan now</span> inside a case's Live-feed tab).
+        The app fetches fresh items and saves them locally.
+      </li>
+      <li>
+        <span class="font-medium">Read the Feed.</span>
+        The <a href="/" class="text-sky-400 hover:text-sky-300">Feed</a> is the unified river of
+        everything collected. Search the full history, filter by source, threat level, or date.
+      </li>
+      <li>
+        <span class="font-medium">Check ranked Intel.</span>
+        The <a href="/intel" class="text-sky-400 hover:text-sky-300">Intel</a> page scores items
+        against your intelligence requirements so the most relevant rise to the top.
+      </li>
+      <li>
+        <span class="font-medium">Save to a Case &amp; export.</span>
+        Bookmark important items, add notes, group them into a
+        <a href="/cases" class="text-sky-400 hover:text-sky-300">Case</a>, and export a report when done.
+      </li>
+    </ol>
+  </section>
+
+  <!-- Local AI walkthrough -->
+  <section class="mb-8 rounded-lg border border-emerald-700/50 bg-emerald-950/20 p-4">
+    <h2 class="text-base font-semibold text-emerald-300 mb-2">Run a 100% local AI (no key, fully offline)</h2>
+    <p class="text-sm text-slate-300 mb-3">
+      The AI part (summaries, translation, threat scoring) can run in three ways:
+      a cloud service (Claude, Gemini, or ChatGPT — needs a paid API key), <span class="font-medium">a free model on your own computer</span>,
+      or off entirely. The local option is the most private: the text it reads
+      <span class="font-medium text-emerald-300">never leaves your machine</span>. Here's how to set it up,
+      step by step — no prior knowledge needed.
+    </p>
+
+    <!-- How it works (plain-English data flow) -->
+    <div class="mb-4 rounded border border-emerald-900/60 bg-slate-900/40 p-3 text-sm text-slate-300 space-y-2">
+      <h3 class="text-sm font-semibold text-emerald-300">How it works — what actually happens behind the scenes</h3>
+      <p>
+        Ollama is a small AI server that runs quietly on your own computer at
+        <span class="mono text-slate-300">localhost:11434</span> — an address that only this machine can reach.
+        When a scan finds a new item, Nexus hands the item's text to that local server, the model on your
+        computer reads it, and hands back a summary, a threat score, a translation, and a disinformation flag.
+        <span class="font-medium text-emerald-300">That whole round-trip stays inside your computer</span> —
+        no internet connection is used for the analysis, no account, no API key, and nothing about your subject
+        is ever sent to Anthropic, Google, OpenAI, or anyone else.
+      </p>
+      <p class="text-slate-400">
+        It's the same pipeline the cloud providers use, with one swap: the &ldquo;brain&rdquo; is a model file on your disk
+        instead of a service on the internet. Two built-in cost-savers still apply — a cheap local
+        <span class="font-medium text-slate-300">prefilter</span> drops obvious noise before the model sees it, and a
+        <span class="font-medium text-slate-300">per-scan budget</span> caps how many items are analysed at once — so even a
+        modest laptop keeps up. Results are cached, so re-scanning never re-analyses the same item twice.
+      </p>
+      <p class="text-slate-400">
+        <span class="font-medium text-slate-300">If Ollama isn't running</span> when a scan starts, nothing breaks:
+        collection, search and the feed keep working, analysis simply pauses for that scan and resumes automatically the
+        next time the model is available. This is the same &ldquo;graceful degradation&rdquo; rule the whole app follows —
+        a missing piece never causes a crash.
+      </p>
+    </div>
+
+    <ol class="space-y-3 text-sm text-slate-200 list-decimal list-inside">
+      <li>
+        <span class="font-medium">Install Ollama.</span>
+        Ollama is a free, official app that runs AI models on your computer. Download it from
+        <a href="https://ollama.com/download" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">ollama.com/download</a>
+        (there's a version for Windows, Mac and Linux). Install it like any other app.
+        Once installed, it quietly runs in the background — you don't need to open anything.
+      </li>
+      <li>
+        <span class="font-medium">Turn it on in Nexus and download a model — no terminal.</span>
+        Go to <a href="/settings" class="text-sky-400 hover:text-sky-300">Settings</a>,
+        and under <span class="font-medium">AI provider</span> choose <span class="font-medium">"Local model (Ollama)"</span>, then press
+        <span class="font-medium">Apply</span>. A short setup box appears: pick a model from the dropdown (a "model" is the
+        actual AI brain) and click <span class="font-medium">Download model</span>. A progress bar fills as it downloads
+        — a few gigabytes, but only once. You can leave the page; it keeps going.
+        <span class="text-slate-400">Not sure which? Keep the recommended <span class="mono">gemma4:e4b</span>; the table below maps models to computers.</span>
+      </li>
+      <li>
+        <span class="font-medium">Confirm and you're done.</span>
+        Click <span class="font-medium">Test connection</span> — when it turns green, every scan from now on analyses items
+        using your local model.
+      </li>
+      <li>
+        <span class="font-medium">That's it.</span>
+        From now on, every scan analyses items using your local model. No key, no bill,
+        and nothing about what you're investigating is sent to any outside company.
+      </li>
+    </ol>
+
+    <!-- Which model by computer strength -->
+    <div class="mt-4">
+      <h3 class="text-sm font-semibold text-emerald-300 mb-1">Which model should I pick for my computer?</h3>
+      <p class="text-xs text-slate-400 mb-2">
+        Models come in sizes measured in "B" (billions of parameters) — bigger = smarter but heavier.
+        Rule of thumb: you need roughly the model's download size free in <span class="font-medium">RAM</span> (memory).
+        A graphics card (GPU) makes it much faster but is <span class="font-medium">not</span> required — it also runs on the processor (CPU), just slower.
+        To use one, run <span class="mono">ollama pull &lt;name&gt;</span>, then put the same name as <span class="mono">OLLAMA_MODEL</span> in <span class="mono">.env</span> (or keep the default).
+      </p>
+      <div class="overflow-x-auto rounded border border-slate-800">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-slate-900 text-slate-300">
+            <tr>
+              <th class="px-2 py-1.5 font-medium">Your computer</th>
+              <th class="px-2 py-1.5 font-medium">Recommended model</th>
+              <th class="px-2 py-1.5 font-medium">Pull command</th>
+              <th class="px-2 py-1.5 font-medium">Quality</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 text-slate-400">
+            <tr>
+              <td class="px-2 py-1.5">Older / basic laptop<br><span class="text-slate-500">8 GB RAM, no GPU</span></td>
+              <td class="px-2 py-1.5 text-slate-200">Gemma 4 (E2B)</td>
+              <td class="px-2 py-1.5"><span class="mono">ollama pull gemma4:e2b</span></td>
+              <td class="px-2 py-1.5">Good for summaries &amp; translation; lighter reasoning</td>
+            </tr>
+            <tr>
+              <td class="px-2 py-1.5">Typical modern laptop<br><span class="text-slate-500">16 GB RAM</span></td>
+              <td class="px-2 py-1.5 text-slate-200">Gemma 4 (E4B)<br><span class="text-emerald-400">— the default, best balance</span></td>
+              <td class="px-2 py-1.5"><span class="mono">ollama pull gemma4:e4b</span></td>
+              <td class="px-2 py-1.5">Strong all-round; the sweet spot for this app</td>
+            </tr>
+            <tr>
+              <td class="px-2 py-1.5">Gaming PC / workstation<br><span class="text-slate-500">32 GB RAM or 12+ GB GPU</span></td>
+              <td class="px-2 py-1.5 text-slate-200">Gemma 4 (12B or 26B)</td>
+              <td class="px-2 py-1.5"><span class="mono">ollama pull gemma4:12b</span></td>
+              <td class="px-2 py-1.5">Noticeably sharper analysis &amp; nuance</td>
+            </tr>
+            <tr>
+              <td class="px-2 py-1.5">High-end workstation<br><span class="text-slate-500">64 GB RAM or 24+ GB GPU</span></td>
+              <td class="px-2 py-1.5 text-slate-200">Gemma 4 (31B)</td>
+              <td class="px-2 py-1.5"><span class="mono">ollama pull gemma4:31b</span></td>
+              <td class="px-2 py-1.5">Closest to cloud quality, fully offline</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Minimum requirements -->
+    <div class="mt-4 rounded border border-slate-800 bg-slate-900/40 p-3 text-xs text-slate-400 space-y-1">
+      <h3 class="text-sm font-semibold text-slate-200">Minimum requirements (what I recommend)</h3>
+      <p><span class="font-medium text-slate-300">Bare minimum to run anything:</span> 8 GB RAM, ~5 GB free disk per model, any 64-bit Windows / Mac / Linux. Works on CPU alone — no graphics card needed.</p>
+      <p><span class="font-medium text-slate-300">Recommended for comfortable use:</span> 16 GB RAM, an SSD, and (optional but a big speed boost) a GPU with 6+ GB of memory. This runs the default Gemma 4 (E4B) smoothly.</p>
+      <p><span class="font-medium text-slate-300">Disk space:</span> each model is a one-time download — roughly 2 GB (E2B), 4 GB (E4B), 9 GB (12B), 18 GB (26B), 22 GB (31B). You can delete models you don't use with <span class="mono">ollama rm &lt;name&gt;</span>.</p>
+      <p><span class="font-medium text-slate-300">Not sure?</span> Start with the default <span class="mono">gemma4:e4b</span>. If it feels slow, switch down to <span class="mono">gemma4:e2b</span>; if you have power to spare, switch up to <span class="mono">gemma4:12b</span>. Changing model = one <span class="mono">ollama pull</span> + updating <span class="mono">OLLAMA_MODEL</span>.</p>
+    </div>
+
+    <div class="mt-3 text-xs text-slate-400 space-y-1">
+      <p><span class="font-medium text-slate-300">If "Test connection" stays red:</span> make sure Ollama is actually running (reinstall/relaunch it), then try again.</p>
+      <p><span class="font-medium text-slate-300">If it's amber ("model not downloaded"):</span> repeat step 2 with the exact model name shown.</p>
+      <p><span class="font-medium text-slate-300">Is it slower than the cloud?</span> Yes, especially without a powerful graphics card — but it's completely private and free. You can switch providers any time in Settings.</p>
+    </div>
+  </section>
+
+  <!-- Add any API as a source -->
+  <section class="mb-8 rounded-lg border border-sky-700/50 bg-sky-950/20 p-4">
+    <h2 class="text-base font-semibold text-sky-300 mb-2">Add any API as a source (no coding)</h2>
+    <p class="text-sm text-slate-300 mb-3">
+      Beyond the built-in sources, you can connect <span class="font-medium">any public
+      JSON API</span> — a news API, a threat-intel feed, a government open-data
+      endpoint — from the <a href="/sources/custom" class="text-sky-400 hover:text-sky-300">Sources</a>
+      page. Once added, it is scanned on every run like any built-in source.
+    </p>
+    <ol class="space-y-3 text-sm text-slate-200 list-decimal list-inside">
+      <li>
+        <span class="font-medium">Let the AI set it up (easiest).</span>
+        If an AI backend is connected, paste a link to the API's documentation
+        and/or an example of its JSON response, then press
+        <span class="font-medium">Draft the configuration</span>. The AI works out
+        how the API is called and where the content lives, and fills in the form
+        for you to review.
+      </li>
+      <li>
+        <span class="font-medium">Or fill it in by hand.</span>
+        No AI connected? Enter the fields yourself: the base URL, the endpoint,
+        how it authenticates, and the <span class="font-medium">field mapping</span> —
+        which field in each result holds the text, title, link, author and date.
+      </li>
+      <li>
+        <span class="font-medium">Add a key if the API needs one.</span>
+        Paste it in the API-key box. Like every secret, it is saved to
+        <span class="mono">.env</span> only — never the database, never shown back.
+      </li>
+      <li>
+        <span class="font-medium">Test, then save.</span>
+        Use the per-source <span class="font-medium">Test</span> button to do a live
+        fetch and confirm items come back before it joins the next scan. You can
+        disable or delete a source any time.
+      </li>
+    </ol>
+    <p class="text-xs text-slate-400 mt-3">
+      Graceful by design: a misconfigured or unreachable source simply returns
+      nothing and is skipped — it never breaks a scan.
+    </p>
+  </section>
+
+  <!-- Sherlock assistant -->
+  <section class="mb-8 rounded-lg border border-emerald-700/50 bg-emerald-950/20 p-4">
+    <h2 class="text-base font-semibold text-emerald-300 mb-2">Sherlock &mdash; your in-app assistant</h2>
+    <p class="text-sm text-slate-300 mb-3">
+      The friendly green detective in the bottom-right corner is <span class="font-medium">Sherlock</span>,
+      a chat assistant powered by the same AI provider you set in
+      <a href="/settings" class="text-sky-400 hover:text-sky-300">Settings</a>. Ask it how something
+      works, ask questions about the data you've collected, or simply
+      <span class="font-medium">tell it what to do in plain English</span> &mdash; it can carry the action
+      out for you. (With no AI provider connected it still answers basic questions; the &ldquo;do it for me&rdquo;
+      actions need a provider.)
+    </p>
+    <p class="text-sm text-slate-300 mb-2">Things you can ask Sherlock to <span class="font-medium">do</span>:</p>
+    <ul class="grid gap-1.5 sm:grid-cols-2 text-sm text-slate-300 list-disc list-inside mb-3">
+      <li><span class="font-medium">Run a scan</span> &mdash; fetch fresh items now.</li>
+      <li><span class="font-medium">Search the feed</span> &mdash; find items by keyword.</li>
+      <li><span class="font-medium">Open a case</span> and add the matching items.</li>
+      <li><span class="font-medium">Generate a report</span> (PDF/HTML) for a case.</li>
+      <li><span class="font-medium">Capture evidence</span> &mdash; a timestamped screenshot of an item.</li>
+      <li><span class="font-medium">Add a watchlist</span> term (keyword / wallet / phone / regex).</li>
+      <li><span class="font-medium">Add a requirement</span> &mdash; a question that drives Intel ranking.</li>
+      <li><span class="font-medium">Write a case note.</span></li>
+      <li><span class="font-medium">Open a page</span> in the app for you.</li>
+    </ul>
+    <p class="text-sm text-slate-300 mb-2">
+      Example: <span class="mono text-slate-400">&ldquo;open a case on Neymar &amp; the World Cup, add the related
+      items, and make me a PDF.&rdquo;</span> Sherlock shows you exactly which actions it took, with links to the result.
+    </p>
+    <p class="text-xs text-slate-400">
+      <span class="font-medium text-slate-300">Safe by design:</span> Sherlock only ever performs
+      <span class="font-medium">constructive, local</span> actions. It cannot delete anything, change your
+      settings, API keys or AI provider, or send your data anywhere &mdash; even if you ask it to.
+    </p>
+  </section>
+
+  <!-- Air-gap transfer -->
+  <section class="mb-8 rounded-lg border border-sky-700/50 bg-sky-950/20 p-4">
+    <h2 class="text-base font-semibold text-sky-300 mb-2">Transfer &mdash; carry your work to an offline computer</h2>
+    <p class="text-sm text-slate-300 mb-3">
+      Many analysts keep two computers: one that goes online to collect, and a separate
+      <span class="font-medium">air-gapped</span> machine &mdash; never connected to any network &mdash; where the
+      sensitive analysis lives. The <a href="/transfer" class="text-sky-400 hover:text-sky-300">Transfer</a>
+      page moves your intelligence between them on a USB stick, with no network in between.
+    </p>
+    <ol class="space-y-3 text-sm text-slate-200 list-decimal list-inside">
+      <li>
+        <span class="font-medium">On the online computer &mdash; Export.</span>
+        Save a single <span class="mono">.nexusbundle</span> file: everything, just one case, or only
+        <span class="font-medium">what's new since your last export</span> (so a daily run produces just that
+        day's items). Copy it to a USB stick.
+      </li>
+      <li>
+        <span class="font-medium">On the offline computer &mdash; Import.</span>
+        Plug in the stick and import the bundle. Every item appears instantly with its summary,
+        translation, entities, relevance scores and evidence screenshots. Article links are kept for
+        reference but, being offline, simply won't open &mdash; which is expected.
+      </li>
+    </ol>
+    <p class="text-xs text-slate-400 mt-3">
+      <span class="font-medium text-slate-300">Safe by design:</span> a bundle carries only collected
+      open-source data and its analysis &mdash; <span class="font-medium">never your API keys or settings</span>,
+      which stay on each machine. Re-importing the same bundle is harmless (items are matched by content,
+      not duplicated), and every imported file is checked by the security scanner before anything is read.
+    </p>
+  </section>
+
+  <!-- Security center -->
+  <section class="mb-8 rounded-lg border border-rose-700/50 bg-rose-950/20 p-4">
+    <h2 class="text-base font-semibold text-rose-300 mb-2">Security center &mdash; stay in control of your data</h2>
+    <p class="text-sm text-slate-300 mb-3">
+      A privacy tool should be auditable. The
+      <a href="/security" class="text-sky-400 hover:text-sky-300">Security</a> page gives you two
+      fully local defences &mdash; both run on your machine and never phone home on their own.
+    </p>
+    <ol class="space-y-3 text-sm text-slate-200 list-decimal list-inside">
+      <li>
+        <span class="font-medium">Outbound-traffic monitor.</span>
+        Every network connection the app makes is recorded and labelled as
+        <span class="font-medium">expected</span> (an AI provider, a source you configured, or this
+        computer) or <span class="font-medium text-rose-300">unexpected</span>. This is your honest answer
+        to &ldquo;is this tool sending my data somewhere it shouldn't?&rdquo; You can
+        <span class="font-medium">download a plain-text audit report</span> of this list to keep or hand to a
+        reviewer.
+      </li>
+      <li>
+        <span class="font-medium">File scanner.</span>
+        Bringing in a file from a USB stick or the web? Upload it here first. It checks for
+        executables disguised by their name (a &ldquo;photo.png&rdquo; that is really a program),
+        booby-trapped archives (zip-slip paths, zip bombs), installers or scripts hidden inside
+        archives, and macro-bearing Office documents &mdash; entirely on this machine.
+      </li>
+    </ol>
+    <p class="text-xs text-slate-400 mt-3">
+      <span class="font-medium text-slate-300">Optional extra engines (graceful):</span> if the
+      <span class="mono">clamscan</span> antivirus is installed it is used automatically. VirusTotal is
+      <span class="font-medium">off by default</span> &mdash; only if you set <span class="mono">VIRUSTOTAL_API_KEY</span>
+      is a file's SHA-256 <span class="font-medium">hash</span> (never the file itself) looked up online. That
+      hash lookup is the one and only part of the Security center that uses the network, and only when you opt in.
+    </p>
+  </section>
+
+  <!-- Glossary -->
+  <section class="mb-8">
+    <h2 class="text-base font-semibold text-slate-100 mb-3">What the words mean</h2>
+    <dl class="space-y-3 text-sm">
+      <div class="rounded border border-slate-800 bg-slate-900/40 p-3">
+        <dt class="font-medium text-slate-200">Source</dt>
+        <dd class="text-slate-400">A place information comes from &mdash; an RSS feed, a search
+          engine, Reddit, Telegram, and so on. Most need an API key; RSS is free and always on.
+          You can also <a href="/sources/custom" class="text-sky-400 hover:text-sky-300">add your own</a>
+          from any public JSON API.</dd>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-900/40 p-3">
+        <dt class="font-medium text-slate-200">Tracking words</dt>
+        <dd class="text-slate-400">The list of words a Case follows (its "word capsule"). Items
+          mentioning any of them appear in the case's Live-feed tab, and the words are searched
+          across all your sources on each scan.</dd>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-900/40 p-3">
+        <dt class="font-medium text-slate-200">Scan</dt>
+        <dd class="text-slate-400">The act of fetching new items from your sources. Scans only
+          run when you ask for them &mdash; there is no background monitoring.</dd>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-900/40 p-3">
+        <dt class="font-medium text-slate-200">Threat level</dt>
+        <dd class="text-slate-400">An AI-assigned label (when AI is enabled) hinting at how
+          security-relevant an item looks. Use it as a filter, not a verdict.</dd>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-900/40 p-3">
+        <dt class="font-medium text-slate-200">Requirement &amp; relevance score</dt>
+        <dd class="text-slate-400">A requirement is a question you want answered
+          (e.g. &ldquo;What is the latest on Tesla?&rdquo;). Each collected item is scored against
+          it; higher score = more relevant. This is what powers the Intel ranking.</dd>
+      </div>
+      <div class="rounded border border-slate-800 bg-slate-900/40 p-3">
+        <dt class="font-medium text-slate-200">Case (investigation hub)</dt>
+        <dd class="text-slate-400">The single home for one subject. A case holds its tracking
+          words (a live feed), its questions, your pinned items and notes, and sub-cases &mdash; all
+          in one place &mdash; and exports the whole thing as a report.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- Advanced -->
+  <section class="mb-8">
+    <h2 class="text-base font-semibold text-slate-100 mb-1">Advanced features</h2>
+    <p class="text-sm text-slate-400 mb-3">
+      These pages are kept out of the main menu to stay simple, but they are fully available:
+    </p>
+    <div class="grid gap-2 sm:grid-cols-2">
+      <a href="/requirements" class="rounded border border-slate-800 bg-slate-900/40 p-3 hover:border-sky-600">
+        <div class="font-medium text-slate-200">Requirements &rarr;</div>
+        <div class="text-xs text-slate-400">Manage the questions that drive Intel ranking.</div>
+      </a>
+      <a href="/watchlists" class="rounded border border-slate-800 bg-slate-900/40 p-3 hover:border-sky-600">
+        <div class="font-medium text-slate-200">Watchlists &rarr;</div>
+        <div class="text-xs text-slate-400">Keywords, wallets, or numbers that alert when they appear.</div>
+      </a>
+      <a href="/tools" class="rounded border border-slate-800 bg-slate-900/40 p-3 hover:border-sky-600">
+        <div class="font-medium text-slate-200">Tools &rarr;</div>
+        <div class="text-xs text-slate-400">Run installed OSINT CLI tools and pull results in.</div>
+      </a>
+      <a href="/sources/custom" class="rounded border border-slate-800 bg-slate-900/40 p-3 hover:border-sky-600">
+        <div class="font-medium text-slate-200">Sources &rarr;</div>
+        <div class="text-xs text-slate-400">Add any JSON API as a source (AI-assisted or by hand).</div>
+      </a>
+      <a href="/graph" class="rounded border border-slate-800 bg-slate-900/40 p-3 hover:border-sky-600">
+        <div class="font-medium text-slate-200">Graph &rarr;</div>
+        <div class="text-xs text-slate-400">See how collected entities connect to each other.</div>
+      </a>
+      <a href="/security" class="rounded border border-slate-800 bg-slate-900/40 p-3 hover:border-sky-600">
+        <div class="font-medium text-slate-200">Security &rarr;</div>
+        <div class="text-xs text-slate-400">Audit outbound traffic and scan files you bring in.</div>
+      </a>
+    </div>
+  </section>
+
+  <div class="text-sm text-slate-400">
+    Ready? <a href="/cases" class="text-amber-400 hover:text-amber-300 font-medium">Open your first case &rarr;</a>
+  </div>
+
+</div>
+{% endblock %}

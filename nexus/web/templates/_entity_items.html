@@ -1,0 +1,15 @@
+{# One page of the entity dossier's item list + a self-replacing "load more"
+   button. Reuses the standard feed card. There is no viewing-case here, so
+   current_case is unset (cards still show the active-case pin if one is set). #}
+{% set current_case = none %}
+{# profile['items'] (subscript): profile is a dict, so profile.items would
+   resolve to the dict's .items() method, not this key. #}
+{% for it in profile['items'] %}{% include "_feed_item.html" %}{% endfor %}
+{% if profile.has_more %}
+<button hx-get="/entity/items?name={{ name | urlencode }}&offset={{ profile.next_offset }}"
+        hx-swap="outerHTML"
+        class="w-full mt-1 rounded border border-slate-700 bg-slate-900/60 hover:bg-slate-800
+               text-slate-300 text-sm px-4 py-2">
+  Load more &middot; {{ profile.item_count - profile.next_offset }} more
+</button>
+{% endif %}

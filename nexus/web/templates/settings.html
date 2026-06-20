@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Settings &amp; onboarding</h1>
+    <p class="text-sm text-slate-400">
+      Enter your API keys below — they are saved to the local
+      <span class="mono text-amber-400">.env</span> file only (never the database,
+      never shown back) and take effect immediately. Every source is optional —
+      without a key it is simply skipped.
+    </p>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    {% include "_settings_left.html" %}
+
+    <div class="space-y-3">
+      <h2 class="text-sm font-medium text-slate-300">Choosing the AI (or none)</h2>
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300 space-y-3">
+        <div class="rounded border border-emerald-900/60 bg-emerald-950/20 p-3">
+          <h3 class="font-medium text-emerald-300">&#11088; Local AI model (Ollama) — no key, 100% offline, free</h3>
+          <p class="text-slate-300 mt-1"><span class="font-medium">What it is:</span> instead of sending your
+            text to a cloud service like ChatGPT or Gemini, Ollama runs the AI
+            <span class="font-medium">directly on this computer</span>. The AI "brain" is a file that lives on
+            your own machine, so nothing you analyse ever leaves it. This is the most private option, and there
+            is no account, no API key, and no cost.</p>
+          <p class="text-slate-400 mt-2"><span class="font-medium text-slate-300">Set up once (about 5 minutes):</span></p>
+          <ol class="mt-1 ml-4 list-decimal space-y-1 text-slate-400">
+            <li>Download the free <span class="font-medium">Ollama</span> app from
+              <span class="mono">ollama.com/download</span> and install it like any normal program. Once installed
+              it keeps running quietly in the background — you don't need to open it again.</li>
+            <li>Back here, choose <span class="font-medium">"Local model (Ollama)"</span> in the
+              <span class="font-medium">AI provider</span> box on the left and click <span class="font-medium">Save</span>.</li>
+            <li>Click <span class="font-medium">Download model</span> and pick one from the list. Each option shows
+              its size and the memory (RAM) it needs. This is a one-time download of a few gigabytes, so it can
+              take several minutes — no terminal or commands required.</li>
+            <li>Click <span class="font-medium">Test connection</span>. When it turns green, the local AI is working
+              and will summarise, translate and threat-score your items.</li>
+          </ol>
+          <p class="text-slate-500 mt-2"><span class="font-medium text-slate-400">Good to know:</span> a local model
+            uses your computer's own power, so it's slower than the cloud options and works best on a reasonably
+            modern machine with enough RAM (the list tells you what each model needs). The trade-off is total
+            privacy — your data never goes online. Not sure which to pick? Start with the smallest one the list
+            allows for your computer.</p>
+          <p class="mt-1"><a href="/guide" class="text-sky-400 hover:text-sky-300">Which model fits my computer? &rarr;</a></p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">No AI at all ("Off")</h3>
+          <p class="text-slate-400">Items are still collected, stored and fully searchable — just not summarised, translated or threat-scored. You can switch an AI on later.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">RSS (no key)</h3>
+          <p class="text-slate-400">Add feed URLs to <span class="mono">RSS_FEEDS</span> (comma-separated). This is the always-on backbone.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Claude analysis (Anthropic)</h3>
+          <p class="text-slate-400">Get a key at <span class="mono">console.anthropic.com</span> → set <span class="mono">ANTHROPIC_API_KEY</span>. Without it, items are stored without analysis.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Gemini analysis (Google)</h3>
+          <p class="text-slate-400">Get a key at <span class="mono">aistudio.google.com</span> → set <span class="mono">GEMINI_API_KEY</span>, then pick "Google (Gemini)" as the provider above.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">ChatGPT analysis (OpenAI)</h3>
+          <p class="text-slate-400">Get a key at <span class="mono">platform.openai.com</span> → set <span class="mono">OPENAI_API_KEY</span>, then pick "OpenAI (ChatGPT)" as the provider above.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">SERPAPI (news)</h3>
+          <p class="text-slate-400">Register at <span class="mono">serpapi.com</span> → set <span class="mono">SERPAPI_KEY</span> and one or more <span class="mono">SERPAPI_QUERIES</span>.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Reddit</h3>
+          <p class="text-slate-400">Create an app at <span class="mono">reddit.com/prefs/apps</span> → set <span class="mono">REDDIT_CLIENT_ID</span>, <span class="mono">REDDIT_CLIENT_SECRET</span>, and <span class="mono">REDDIT_SUBREDDITS</span>.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Twitter / X</h3>
+          <p class="text-slate-400">Get a bearer token from the X developer portal → set <span class="mono">TWITTER_BEARER_TOKEN</span> and <span class="mono">TWITTER_QUERIES</span>.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Telegram (Telemetry)</h3>
+          <p class="text-slate-400">Telegram coverage uses <span class="mono">telemetryapp.io</span> (the Telemetry search/analytics API). Generate an access key from its <span class="mono">@telemetrio_api_bot</span> on Telegram → set <span class="mono">TELEMETRY_API_KEY</span>. Then list public channels in <span class="mono">TELEGRAM_CHANNELS</span> (e.g. <span class="mono">durov, telegram</span>). Your investigation queries are also searched across all public Telegram automatically.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">OSINT CLI tools</h3>
+          <p class="text-slate-400">Sherlock, Maigret, theHarvester and SpiderFoot are auto-detected on PATH (bundled in the Docker image). Missing tools are skipped.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Auto-scan ──────────────────────────────────────────────────────────── #}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+    <div>
+      <h2 class="text-sm font-semibold text-slate-200">&#128336; Automatic scan</h2>
+      <p class="text-xs text-slate-400 mt-0.5">
+        Run a scan automatically on a fixed schedule — no need to click "Manual scan".
+        The scan runs in the background while the app is open.
+      </p>
+    </div>
+    <p id="auto-scan-status" class="text-xs text-slate-500">Loading…</p>
+    <form id="auto-scan-form" class="flex flex-wrap items-center gap-2 text-sm">
+      <label class="text-slate-300 shrink-0">Scan every:</label>
+      {% for val, lbl in [(0,'Off'),(1,'1 hour'),(4,'4 hours'),(12,'12 hours'),(24,'24 hours')] %}
+      <label class="cursor-pointer">
+        <input type="radio" name="interval_hours" value="{{ val }}" class="peer sr-only"
+               id="asc-{{ val }}" />
+        <span class="px-2.5 py-1 rounded border border-slate-700 text-xs text-slate-400
+                     hover:border-slate-500 peer-checked:bg-amber-500 peer-checked:text-slate-950
+                     peer-checked:border-amber-500 peer-checked:font-semibold">{{ lbl }}</span>
+      </label>
+      {% endfor %}
+      <button type="submit"
+              class="ml-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-200
+                     text-xs px-3 py-1.5 border border-slate-600">Save</button>
+      <span id="asc-saved" class="text-xs text-emerald-400 hidden">Saved.</span>
+    </form>
+    <script>
+    (function () {
+      function renderStatus(d) {
+        var s = document.getElementById('auto-scan-status');
+        if (!s) return;
+        var el = document.getElementById('asc-' + d.interval_hours);
+        if (el) el.checked = true;
+        if (d.interval_hours === 0) {
+          s.textContent = 'Auto-scan is off.';
+        } else {
+          var msg = 'Scanning every ' + d.interval_hours + ' hour(s).';
+          if (d.next_at) msg += '  Next run ≈ ' + d.next_at + ' UTC.';
+          if (d.last_at) msg += '  Last ran: ' + d.last_at + ' UTC.';
+          s.textContent = msg;
+        }
+      }
+      // Load current status on page ready.
+      fetch('/settings/auto-scan-status')
+        .then(function (r) { return r.json(); })
+        .then(renderStatus)
+        .catch(function () {
+          var s = document.getElementById('auto-scan-status');
+          if (s) s.textContent = 'Could not load status.';
+        });
+      // Save on form submit.
+      var form = document.getElementById('auto-scan-form');
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var sel = form.querySelector('input[name="interval_hours"]:checked');
+          if (!sel) return;
+          var body = new URLSearchParams({ interval_hours: sel.value });
+          fetch('/settings/auto-scan', { method: 'POST', body: body })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (d.ok) {
+                var saved = document.getElementById('asc-saved');
+                if (saved) {
+                  saved.classList.remove('hidden');
+                  setTimeout(function () { saved.classList.add('hidden'); }, 2000);
+                }
+              }
+              return fetch('/settings/auto-scan-status').then(function (r) { return r.json(); });
+            })
+            .then(renderStatus)
+            .catch(function () {});
+        });
+      }
+    })();
+    </script>
+  </div>
+</section>
+{% endblock %}
