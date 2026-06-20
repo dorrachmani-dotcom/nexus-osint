@@ -50,6 +50,65 @@ onboarding wizard greets you, and the **Guide** page explains every concept.
 Keys are entered on the **Settings** page, saved only to a local `.env` file,
 never shown back, and never stored in the database.
 
+### After you install — your first 3 steps
+
+Once the app is installed and open at **http://127.0.0.1:8000**:
+
+1. **Choose your AI (optional but recommended).** Open **Settings** and pick one:
+   - *Free cloud:* paste a Google **Gemini** key (has a free tier).
+   - *Fully local / offline:* choose **Local model (Ollama)** — see the
+     step-by-step below. Nothing leaves your machine.
+   - *Skip it:* the app still collects and searches; you just won't get AI
+     summaries, translations or relevance scores.
+2. **Choose what to follow.** Open **Topics**, click a ready-made bundle (e.g.
+   *World News*, *Cyber Security*) or type a subject and a few terms.
+3. **Scan.** Press **Scan / Run a scan**. Collected items appear in the **Feed**
+   within seconds (the first scan can take a minute or two while the AI analyses).
+
+That's the whole setup. Everything else (cases, the graph, watchlists, reports)
+builds on top of these.
+
+### Connecting a fully local AI model (Ollama) — step by step
+
+Use this when you want analysis to run **entirely on your machine** (no cloud, no
+API key, nothing leaves the computer). Two one-time steps, then it just works.
+
+**Step 1 — Install Ollama (once).**
+Download it for your OS from <https://ollama.com/download> and run the installer.
+After it's installed, Ollama runs quietly in the background and serves a local
+address at `http://localhost:11434` — you don't have to start anything by hand.
+
+**Step 2 — Get a model and point Nexus at it.** You can do this entirely inside
+Nexus, no terminal needed:
+1. Open **Settings**.
+2. In the AI-provider dropdown choose **Local model (Ollama)**.
+3. Pick a model from the list (start with **Gemma 4 (E4B) — recommended** if
+   unsure) and click **Download**. A progress bar shows the download; the first
+   model is a few GB, so give it time. It downloads only once.
+4. Click **Check** — it confirms in plain language that the local server is
+   running and your model is ready.
+5. Done. The next **Scan** analyses every item locally.
+
+*(Prefer the terminal? `ollama pull gemma4:e4b` does the same as the Download
+button; then just select "Local model (Ollama)" in Settings.)*
+
+**Pick a model to match your computer:**
+
+| Your machine | Model to choose | Download |
+| --- | --- | --- |
+| Older laptop (8 GB RAM) | Gemma 4 (E2B) | ~2 GB |
+| Most laptops (16 GB RAM) | **Gemma 4 (E4B) — recommended** | ~4 GB |
+| Strong PC (32 GB RAM) | Gemma 4 (12B) | ~9 GB |
+| Workstation (64 GB / good GPU) | Gemma 4 (31B) | ~22 GB |
+
+**If something's off:**
+- *"Could not reach the local Ollama server"* → Ollama isn't running. Open the
+  Ollama app once; it then stays running in the background. Click **Check** again.
+- *"model is not downloaded yet"* → click **Download** in Settings (or run
+  `ollama pull <model>`), wait for it to finish, then **Check**.
+- A scan with the server off doesn't break anything — collection and search keep
+  working, and analysis resumes automatically once Ollama is back.
+
 ---
 
 ## 2. Core concepts
