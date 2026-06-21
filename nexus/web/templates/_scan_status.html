@@ -1,0 +1,14 @@
+{# Background-scan status chip. While running it re-polls itself every 2s; when
+   done it shows the result and refreshes the feed once. #}
+{% if state.status == 'running' %}
+<span class="mono text-xs text-amber-400"
+      hx-get="/scan/status" hx-trigger="load delay:2s" hx-target="#scan-status" hx-swap="innerHTML">
+  &#9203; scanning&hellip;{% if state.elapsed %} ({{ state.elapsed }}s){% endif %}
+</span>
+{% elif state.status == 'done' %}
+<span class="mono text-xs text-emerald-400">&#10003; Scan complete — {{ state.new_items }} new</span>
+{# Refresh the feed once so the new items appear. #}
+<span hx-get="/feed" hx-trigger="load delay:200ms" hx-target="#feed" hx-swap="outerHTML"></span>
+{% elif state.status == 'error' %}
+<span class="mono text-xs text-rose-400">Scan failed — please try again</span>
+{% endif %}

@@ -155,6 +155,31 @@ def test_demo_load_route(temp_db):
     assert c.post("/demo/load").status_code == 200  # idempotent, still 200
 
 
+# --- Background scan -------------------------------------------------------
+
+def test_scan_status_route(temp_db):
+    # The status chip endpoint must always answer (idle when nothing has run).
+    assert _client().get("/scan/status").status_code == 200
+
+
+def test_scanstate_tracker_unit():
+    import time
+
+    from nexus import scanstate
+
+    class _FakeCollector:
+        def scan(self):
+            return {"_update": {"new": 3}}
+
+    scanstate.start(_FakeCollector())
+    for _ in range(60):  # background thread finishes near-instantly
+        if scanstate.state()["status"] != "running":
+            break
+        time.sleep(0.05)
+    st = scanstate.state()
+    assert st["status"] == "done" and st["new_items"] == 3
+
+
 def test_pivot_mapping_unit():
     from nexus.toolguide import detect_identifier_type, pivot_tools_for
 

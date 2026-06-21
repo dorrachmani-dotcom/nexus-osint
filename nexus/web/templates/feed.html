@@ -2,15 +2,13 @@
 
 {% block actions %}
 <button
-  hx-post="/scan"
-  hx-include="[name='scope']:checked"
-  hx-target="#feed"
-  hx-swap="outerHTML"
-  hx-indicator="#scan-spin"
+  hx-post="/scan/start"
+  hx-target="#scan-status"
+  hx-swap="innerHTML"
   class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold">
   Manual scan
 </button>
-<span id="scan-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
+<span id="scan-status" class="ml-2"></span>
 {% endblock %}
 
 {% block content %}

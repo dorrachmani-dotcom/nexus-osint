@@ -633,6 +633,24 @@ def scan(request: Request, scope: str | None = Form(default=None)) -> HTMLRespon
     )
 
 
+@app.post("/scan/start", response_class=HTMLResponse)
+def scan_start(request: Request) -> HTMLResponse:
+    """Kick off a scan in the background and return a self-polling status chip,
+    so the page never blocks for the minutes a scan can take."""
+    from nexus import scanstate
+
+    scanstate.start(request.app.state.collector)
+    return TEMPLATES.TemplateResponse(request, "_scan_status.html", {"state": scanstate.state()})
+
+
+@app.get("/scan/status", response_class=HTMLResponse)
+def scan_status(request: Request) -> HTMLResponse:
+    """Current background-scan status (polled by the status chip)."""
+    from nexus import scanstate
+
+    return TEMPLATES.TemplateResponse(request, "_scan_status.html", {"state": scanstate.state()})
+
+
 @app.post("/demo/load", response_class=HTMLResponse)
 def demo_load(request: Request) -> HTMLResponse:
     """Load the one-click demo dataset (fictional sample), then show the populated
