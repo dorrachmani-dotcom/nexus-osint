@@ -1,0 +1,22 @@
+{# Semantic 'find similar' result, swapped into #similar-result. #}
+{% if not r.available %}
+<div class="rounded border border-slate-700 bg-slate-900/60 text-slate-400 text-xs px-3 py-2">
+  Semantic similarity needs a local <span class="mono">Ollama</span> model running
+  (it computes embeddings on your machine). Start Ollama, then try again.
+</div>
+{% elif not r['items'] %}
+<div class="rounded border border-slate-700 bg-slate-900/60 text-slate-400 text-xs px-3 py-2">
+  No semantically similar items found among the related set yet.
+</div>
+{% else %}
+<div class="rounded border border-sky-900/50 bg-sky-950/10 px-3 py-2 space-y-1 text-xs">
+  <div class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">&#129518; Similar by meaning</div>
+  {% for it in r['items'] %}
+  <a href="{{ it.url | safe_url }}" target="_blank" rel="noopener"
+     class="block text-sky-300 hover:text-sky-200 truncate">
+    &bull; {{ it.title or '(untitled)' }}
+    <span class="text-slate-500">({{ it.source }} &middot; {{ '%.0f'|format(it.score * 100) }}%)</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}

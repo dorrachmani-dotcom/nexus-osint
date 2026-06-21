@@ -1363,6 +1363,16 @@ def item_detail(request: Request, item_id: int) -> HTMLResponse:
     )
 
 
+@app.post("/items/{item_id}/similar", response_class=HTMLResponse)
+def item_similar(request: Request, item_id: int) -> HTMLResponse:
+    """Semantic 'find similar' for an item (local Ollama embeddings; graceful)."""
+    from nexus.embeddings import find_similar
+
+    with get_connection() as conn:
+        result = find_similar(conn, item_id, get_settings())
+    return TEMPLATES.TemplateResponse(request, "_similar_result.html", {"r": result})
+
+
 @app.post("/items/{item_id}/verify", response_class=HTMLResponse)
 def item_verify(request: Request, item_id: int) -> HTMLResponse:
     """Cross-check an item's claim against other collected items (AI-assisted).

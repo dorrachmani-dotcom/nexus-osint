@@ -58,10 +58,16 @@
       class="rounded border border-slate-700 hover:border-emerald-600 hover:text-emerald-300 text-slate-300 px-2.5 py-1"
       title="Cross-check this claim against your other collected items">&#10003; Verify</button>
     <span id="verify-spin" class="htmx-indicator text-emerald-300">checking&hellip;</span>
+    <button hx-post="/items/{{ item.id }}/similar" hx-target="#similar-result" hx-swap="innerHTML"
+      hx-indicator="#similar-spin"
+      class="rounded border border-slate-700 hover:border-sky-600 hover:text-sky-300 text-slate-300 px-2.5 py-1"
+      title="Find items with similar meaning (local Ollama embeddings)">&#129518; Similar</button>
+    <span id="similar-spin" class="htmx-indicator text-sky-300">searching&hellip;</span>
     <span class="flex-1"></span>
     <button onclick="closeItemDrawer()" class="text-slate-500 hover:text-slate-300">&#10005; Close</button>
   </div>
   <div id="verify-result"></div>
+  <div id="similar-result"></div>
 
   {# ── Header ── #}
   <div class="space-y-1">

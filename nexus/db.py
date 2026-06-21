@@ -252,6 +252,16 @@ CREATE TABLE IF NOT EXISTS item_entities (
 CREATE INDEX IF NOT EXISTS idx_item_entities_norm ON item_entities(name_norm);
 CREATE INDEX IF NOT EXISTS idx_item_entities_item ON item_entities(item_id);
 
+-- Optional semantic-search vectors: one embedding per item, computed on demand
+-- via a LOCAL Ollama model (no cloud, no heavy Python ML dependency). Absent
+-- when no embedding backend is available — the feature degrades gracefully.
+CREATE TABLE IF NOT EXISTS item_embeddings (
+    item_id    INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    model      TEXT,
+    vec        TEXT,                          -- JSON array of floats
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Full-text search over items (external content).
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     title, content, summary,

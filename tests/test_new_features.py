@@ -180,6 +180,26 @@ def test_scanstate_tracker_unit():
     assert st["status"] == "done" and st["new_items"] == 3
 
 
+# --- Semantic 'find similar' ----------------------------------------------
+
+def test_similar_route_degrades_without_ollama(temp_db, monkeypatch):
+    import nexus.embeddings as emb
+
+    monkeypatch.setattr(emb, "_embed_one", lambda *a, **k: None)  # no local model
+    with temp_db() as conn:
+        _, iid = _seed(conn)
+    # No embedding backend -> graceful 200 ("unavailable" message), never a 500.
+    assert _client().post(f"/items/{iid}/similar").status_code == 200
+
+
+def test_cosine_unit():
+    from nexus.embeddings import _cosine
+
+    assert _cosine([1, 0, 0], [1, 0, 0]) == 1.0
+    assert abs(_cosine([1, 0], [0, 1])) < 1e-9
+    assert _cosine([], [1]) == 0.0
+
+
 def test_pivot_mapping_unit():
     from nexus.toolguide import detect_identifier_type, pivot_tools_for
 
