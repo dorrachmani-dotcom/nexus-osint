@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 300" font-family="ui-sans-serif, system-ui, sans-serif">
+  <rect width="980" height="300" rx="10" fill="#0b1220"/>
+  <rect x="8" y="8" width="964" height="284" rx="8" fill="none" stroke="#475569" stroke-width="1.5" stroke-dasharray="6 5"/>
+
+  <text x="20" y="34" fill="#e2e8f0" font-size="16" font-weight="700">Nexus-OSINT — how it works</text>
+  <text x="960" y="34" fill="#34d399" font-size="11" text-anchor="end" font-weight="600">Runs entirely on 127.0.0.1 — nothing leaves your machine</text>
+
+  <!-- arrows -->
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <line x1="186" y1="155" x2="213" y2="155" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="381" y1="155" x2="408" y2="155" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="576" y1="155" x2="603" y2="155" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="771" y1="155" x2="798" y2="155" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- 1. Sources -->
+  <rect x="20" y="110" width="166" height="92" rx="8" fill="#111c2e" stroke="#334155"/>
+  <rect x="20" y="110" width="166" height="6" rx="3" fill="#34d399"/>
+  <text x="34" y="138" fill="#e2e8f0" font-size="13" font-weight="700">SOURCES</text>
+  <text x="34" y="158" fill="#94a3b8" font-size="10.5">RSS · Google News</text>
+  <text x="34" y="174" fill="#94a3b8" font-size="10.5">Reddit · GDELT · X</text>
+  <text x="34" y="190" fill="#94a3b8" font-size="10.5">Telegram · Custom API</text>
+
+  <!-- 2. Collect -->
+  <rect x="215" y="110" width="166" height="92" rx="8" fill="#111c2e" stroke="#334155"/>
+  <rect x="215" y="110" width="166" height="6" rx="3" fill="#fbbf24"/>
+  <text x="229" y="138" fill="#e2e8f0" font-size="13" font-weight="700">COLLECT</text>
+  <text x="229" y="158" fill="#94a3b8" font-size="10.5">scan on demand</text>
+  <text x="229" y="174" fill="#94a3b8" font-size="10.5">dedup + cluster</text>
+  <text x="229" y="190" fill="#94a3b8" font-size="10.5">watchlist match</text>
+
+  <!-- 3. Store -->
+  <rect x="410" y="110" width="166" height="92" rx="8" fill="#111c2e" stroke="#334155"/>
+  <rect x="410" y="110" width="166" height="6" rx="3" fill="#38bdf8"/>
+  <text x="424" y="138" fill="#e2e8f0" font-size="13" font-weight="700">STORE · SQLite</text>
+  <text x="424" y="158" fill="#94a3b8" font-size="10.5">items + FTS5 search</text>
+  <text x="424" y="174" fill="#94a3b8" font-size="10.5">entity index</text>
+  <text x="424" y="190" fill="#94a3b8" font-size="10.5">evidence vault</text>
+
+  <!-- 4. Analyze -->
+  <rect x="605" y="110" width="166" height="92" rx="8" fill="#111c2e" stroke="#334155"/>
+  <rect x="605" y="110" width="166" height="6" rx="3" fill="#a78bfa"/>
+  <text x="619" y="138" fill="#e2e8f0" font-size="13" font-weight="700">ANALYZE · AI</text>
+  <text x="619" y="158" fill="#94a3b8" font-size="10.5">prefilter, score,</text>
+  <text x="619" y="174" fill="#94a3b8" font-size="10.5">summarize, entities</text>
+  <text x="619" y="190" fill="#94a3b8" font-size="10.5">Claude/Gemini/Ollama</text>
+
+  <!-- 5. Investigate -->
+  <rect x="800" y="110" width="166" height="92" rx="8" fill="#111c2e" stroke="#334155"/>
+  <rect x="800" y="110" width="166" height="6" rx="3" fill="#f472b6"/>
+  <text x="814" y="138" fill="#e2e8f0" font-size="13" font-weight="700">INVESTIGATE</text>
+  <text x="814" y="158" fill="#94a3b8" font-size="10.5">Feed · Cases · Graph</text>
+  <text x="814" y="174" fill="#94a3b8" font-size="10.5">Intel · Entity dossier</text>
+  <text x="814" y="190" fill="#94a3b8" font-size="10.5">Sherlock · Reports</text>
+
+  <text x="20" y="248" fill="#64748b" font-size="11">Trigger-based (no 24/7 scraping) · secrets stay in .env · optional, fully-local AI via Ollama · air-gap transfer between machines</text>
+  <text x="20" y="270" fill="#64748b" font-size="11">Pluggable sources &amp; AI providers · graceful degradation: a missing key or tool disables one feature, never the app</text>
+</svg>

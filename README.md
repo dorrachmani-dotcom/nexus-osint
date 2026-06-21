@@ -151,6 +151,8 @@ Search, Twitter/X, Telegram) are optional upgrades you add only if you want them
 
 ## Architecture
 
+![Nexus-OSINT architecture: sources → collect → store (SQLite) → analyze (AI) → investigate, all on 127.0.0.1](docs/architecture.svg)
+
 - **Backend:** Python 3.11 + FastAPI.
 - **Storage:** a single SQLite database (WAL mode) with an FTS5 index kept in
   sync by triggers. No external database server.
