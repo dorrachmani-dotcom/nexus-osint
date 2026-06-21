@@ -132,6 +132,29 @@ def test_topic_graph_includes_pinned_items(temp_db):
 
 # --- Contextual pivots -----------------------------------------------------
 
+# --- Demo data -------------------------------------------------------------
+
+def test_demo_data_unit(temp_db):
+    from nexus.demodata import demo_loaded, load_demo_data
+
+    with temp_db() as conn:
+        assert not demo_loaded(conn)
+        r = load_demo_data(conn)
+        assert r["loaded"] and r["items"] >= 8
+    with temp_db() as conn:  # same temp db, fresh connection
+        assert demo_loaded(conn)
+        assert load_demo_data(conn)["loaded"] is False  # idempotent
+        # the demo entities are indexed, so dossiers/graph work immediately
+        p = s.entity_profile(conn, "Acme Corp")
+        assert p and p["item_count"] >= 1
+
+
+def test_demo_load_route(temp_db):
+    c = _client()
+    assert c.post("/demo/load").status_code == 200
+    assert c.post("/demo/load").status_code == 200  # idempotent, still 200
+
+
 def test_pivot_mapping_unit():
     from nexus.toolguide import detect_identifier_type, pivot_tools_for
 
