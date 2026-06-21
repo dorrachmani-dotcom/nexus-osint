@@ -756,6 +756,7 @@ def _entity_graph_context(
         if case_ids:
             terms: list[str] = []
             seen: set[str] = set()
+            pinned: list[int] = []
             for cid in case_ids:
                 c = get_case(conn, cid)
                 if not c:
@@ -768,10 +769,21 @@ def _entity_graph_context(
                     if key and key not in seen:
                         seen.add(key)
                         terms.append(t["term"])
-            # No tracking words across the chosen cases -> honest empty graph.
+                # The case's pinned dossier items, so a case the analyst curated by
+                # pinning (not by tracking words) still produces a graph.
+                pinned.extend(
+                    int(r["item_id"]) for r in conn.execute(
+                        "SELECT item_id FROM bookmarks WHERE case_id = ?", (cid,)
+                    ).fetchall()
+                )
+            # Graph from the union of tracked-word items + pinned items. Only truly
+            # empty (no words, nothing pinned) -> an honest empty graph.
             data = (
-                topic_entity_graph(conn, terms=terms, since_ts=since_ts)
-                if terms else dict(_EMPTY_GRAPH)
+                topic_entity_graph(
+                    conn, terms=terms or None, since_ts=since_ts,
+                    extra_item_ids=pinned or None,
+                )
+                if (terms or pinned) else dict(_EMPTY_GRAPH)
             )
         else:
             data = topic_entity_graph(

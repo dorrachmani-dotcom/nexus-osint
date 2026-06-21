@@ -747,6 +747,7 @@ def topic_entity_graph(
     until: str | None = None,
     since_ts: str | None = None,
     terms: list[str] | None = None,
+    extra_item_ids: list[int] | None = None,
     scan_limit: int = 600,
     max_nodes: int = 60,
 ) -> dict:
@@ -771,10 +772,31 @@ def topic_entity_graph(
     Entirely derived from already-stored ``analyses.entities`` — no new schema,
     no AI calls. Names are de-duplicated case-insensitively across items.
     """
-    rows = search_items(
-        conn, q=q, source=source, threat=threat, since=since, until=until,
-        since_ts=since_ts, terms=terms, limit=scan_limit,
-    )
+    # "Explicit-items-only" mode: when the caller gives a fixed item set but no
+    # terms/keyword (e.g. a case curated purely by pinning, with no tracking
+    # words), graph ONLY those items — do NOT fall back to the global feed.
+    if extra_item_ids is not None and not terms and not q:
+        rows = []
+    else:
+        rows = search_items(
+            conn, q=q, source=source, threat=threat, since=since, until=until,
+            since_ts=since_ts, terms=terms, limit=scan_limit,
+        )
+    # Merge in explicitly-named items (e.g. a case's PINNED dossier) that the
+    # term/keyword search didn't already cover, so a case graph reflects what the
+    # analyst actually curated — not only what its tracking words happen to match.
+    if extra_item_ids:
+        have = {r["id"] for r in rows}
+        missing = [int(i) for i in extra_item_ids if int(i) not in have]
+        if missing:
+            ph = ",".join("?" * len(missing))
+            extra = conn.execute(
+                f"SELECT i.id, i.source, i.url, a.entities "
+                f"FROM items i LEFT JOIN analyses a ON a.item_id = i.id "
+                f"WHERE i.id IN ({ph})",
+                missing,
+            ).fetchall()
+            rows.extend(dict(r) for r in extra)
 
     # Load analyst-defined aliases once: "Messi" → "Lionel Messi".
     # alias_map: raw_low → canonical_low
