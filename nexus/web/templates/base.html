@@ -285,8 +285,9 @@
       </nav>
       <div class="flex-1"></div>
       <button type="button" id="theme-toggle" onclick="nexusToggleTheme()"
-              class="nav-link text-base leading-none" title="Switch between light and dark">
-        <span class="theme-dark-icon">&#9788;</span><span class="theme-light-icon" style="display:none">&#9789;</span>
+              class="nav-link text-base leading-none" title="Switch between light and dark"
+              aria-label="Switch between light and dark theme">
+        <span class="theme-dark-icon" aria-hidden="true">&#9788;</span><span class="theme-light-icon" aria-hidden="true" style="display:none">&#9789;</span>
       </button>
       {% block actions %}{% endblock %}
     </div>
@@ -891,13 +892,14 @@
   </script>
 
   {# ── Item detail drawer ──────────────────────────────────────────────────── #}
-  <div id="item-drawer"
+  <div id="item-drawer" role="dialog" aria-modal="true" aria-labelledby="item-drawer-title" tabindex="-1"
        class="fixed inset-y-0 right-0 z-50 w-full sm:w-[540px] bg-slate-950 border-l border-slate-800
               shadow-2xl overflow-y-auto translate-x-full transition-transform duration-200">
     <div class="sticky top-0 z-10 bg-slate-950/95 backdrop-blur flex items-center justify-between
                 px-4 py-3 border-b border-slate-800">
-      <span class="text-sm font-medium text-slate-200">Item details</span>
-      <button onclick="closeItemDrawer()" class="text-slate-500 hover:text-slate-200 text-xl leading-none">&times;</button>
+      <span id="item-drawer-title" class="text-sm font-medium text-slate-200">Item details</span>
+      <button onclick="closeItemDrawer()" aria-label="Close item details"
+              class="text-slate-500 hover:text-slate-200 text-xl leading-none">&times;</button>
     </div>
     <div id="item-drawer-content" class="p-4 text-sm text-slate-500">
       Select an item and click Details to view it here.
@@ -907,13 +909,22 @@
        class="fixed inset-0 z-40 bg-black/50 hidden"
        onclick="closeItemDrawer()"></div>
   <script>
+    var _drawerReturnFocus = null;
     function openItemDrawer() {
-      document.getElementById('item-drawer').classList.remove('translate-x-full');
+      _drawerReturnFocus = document.activeElement;
+      var d = document.getElementById('item-drawer');
+      d.classList.remove('translate-x-full');
       document.getElementById('item-drawer-overlay').classList.remove('hidden');
+      d.focus();  // move focus into the dialog for keyboard/screen-reader users
     }
     function closeItemDrawer() {
       document.getElementById('item-drawer').classList.add('translate-x-full');
       document.getElementById('item-drawer-overlay').classList.add('hidden');
+      // Return focus to whatever opened the drawer (e.g. the Details button).
+      if (_drawerReturnFocus && _drawerReturnFocus.focus) {
+        try { _drawerReturnFocus.focus(); } catch (e) {}
+      }
+      _drawerReturnFocus = null;
     }
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeItemDrawer();

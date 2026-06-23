@@ -11,7 +11,8 @@
   <div class="flex flex-wrap items-center gap-1.5 mb-2 text-[11px] mono">
     {# Bulk-select checkbox (drives the bulk-triage bar above the feed). #}
     <input type="checkbox" name="item_ids" value="{{ it.id }}"
-      class="bulk-select accent-amber-500 cursor-pointer" title="Select for bulk action" />
+      class="bulk-select accent-amber-500 cursor-pointer" title="Select for bulk action"
+      aria-label="Select this item for bulk actions" />
     {# Where it came from / which collector (API/SRC) #}
     <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">{{ it.source }}</span>
 
@@ -169,7 +170,8 @@
       <button hx-post="/lists/{{ l.id }}/items/{{ it.id }}/remove"
         hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
         {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
-        class="ml-1 text-slate-400 hover:text-red-300" title="Remove from {{ l.name }}">&times;</button>
+        class="ml-1 text-slate-400 hover:text-red-300" title="Remove from {{ l.name }}"
+        aria-label="Remove from list {{ l.name }}">&times;</button>
     </span>
     {% endfor %}
   </div>
