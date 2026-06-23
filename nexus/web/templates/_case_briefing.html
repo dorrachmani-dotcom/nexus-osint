@@ -12,7 +12,7 @@
   <p class="mt-2 text-[11px] text-slate-500">AI synthesis of {{ count }} tracked item(s) — verify against the sources before relying on it.</p>
   <script>
   (function() {
-    const items = {{ items_json | safe }};
+    const items = {{ items_json | tojson }};
     const el = document.getElementById('briefing-text');
     if (!el || !items.length) return;
     const text = el.textContent;

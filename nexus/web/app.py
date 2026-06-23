@@ -1964,7 +1964,9 @@ def case_ai_brief(request: Request, case_id: int) -> HTMLResponse:
         request, "_case_briefing.html",
         {
             "briefing": briefing, "error": error, "case": case,
-            "count": len(items), "items_json": __import__("json").dumps(items_data),
+            # Pass the list (not a pre-dumped string) so the template can use
+            # |tojson, which escapes </script> etc. for safe <script> embedding.
+            "count": len(items), "items_json": items_data,
         },
     )
 
