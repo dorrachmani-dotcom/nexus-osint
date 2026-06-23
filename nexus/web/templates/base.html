@@ -248,6 +248,14 @@
   {% set path = request.url.path if request else '/' %}
   <header class="sticky top-0 z-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/60">
     <div class="max-w-screen-2xl mx-auto px-5 py-2.5 flex items-center gap-4">
+      {# In-app Back/Forward — the app runs in a chromeless window with no browser
+         nav buttons, so these drive window.history for the page navigations. #}
+      <div class="flex items-center gap-0.5 shrink-0">
+        <button type="button" onclick="history.back()" aria-label="Go back" title="Back"
+          class="nav-link text-lg leading-none px-2">&#8592;</button>
+        <button type="button" onclick="history.forward()" aria-label="Go forward" title="Forward"
+          class="nav-link text-lg leading-none px-2">&#8594;</button>
+      </div>
       <a href="/" class="flex items-center gap-2.5 shrink-0 group">
         <span class="grid place-items-center h-8 w-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 text-lg font-black shadow-glow group-hover:scale-105 transition-transform">&#9670;</span>
         <span class="leading-none">
