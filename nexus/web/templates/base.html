@@ -87,6 +87,12 @@
        utilities, so no !important is needed.
        =================================================================== -->
   <style>
+    /* ---- dark-theme readability (WCAG) -------------------------------- */
+    /* slate-600 text (~3:1 on the dark background) fails WCAG AA. Lift ONLY
+       that dimmest tier to a readable muted tone; the slate-500/400 hierarchy
+       above it is unchanged, so visual emphasis is preserved. Dark mode only. */
+    html:not(.light) [class~="text-slate-600"] { color: #7c8aa0; }
+
     /* ---- page shell -------------------------------------------------- */
     html.light body {
       color: #1e293b;
