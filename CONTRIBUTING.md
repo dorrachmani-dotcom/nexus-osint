@@ -63,7 +63,12 @@ match the surrounding style, add type hints to new code, and keep functions smal
   scoped, e.g. `fix(storage): guard empty entity names`.
 - Keep commits focused and the subject under about 72 characters; explain *why* in
   the body when it is not obvious.
-- Branch from `main`, keep PRs small, and fill in the pull request template.
+- Fork the repository, branch from `main`, keep PRs small, and fill in the pull
+  request template.
+- `main` is protected: nothing is pushed to it directly. Every change lands
+  through a pull request that passes CI and is approved by the maintainer
+  (see `.github/CODEOWNERS`). CI on pull requests from forks runs only after a
+  maintainer approves it.
 - Update `CHANGELOG.md` under `Unreleased` for user-visible changes, and the docs
   when behaviour changes.
 

@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)
 
-[Features](docs/FEATURES.md) · [Overview](docs/OVERVIEW.md) · [User Guide](docs/USER_GUIDE.md) · [Developer Guide](docs/DEVELOPER_GUIDE.md) · [Roadmap](docs/ROADMAP.md) · [Security](SECURITY.md)
+[Quickstart](#quickstart) · [Tour](#a-guided-tour) · [Features](docs/FEATURES.md) · [Overview](docs/OVERVIEW.md) · [User Guide](docs/USER_GUIDE.md) · [Developer Guide](docs/DEVELOPER_GUIDE.md) · [Roadmap](docs/ROADMAP.md) · [Security](SECURITY.md)
 
 </div>
 
@@ -50,6 +50,35 @@ one SQLite file you own, and every outbound connection can be audited.
 
 The full catalogue is in [docs/FEATURES.md](docs/FEATURES.md).
 
+## Quickstart
+
+**From source** (Python 3.11+):
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+playwright install chromium-headless-shell           # optional, for the Evidence Vault
+cp .env.example .env                                 # Windows: copy .env.example .env
+uvicorn nexus.web.app:app --host 127.0.0.1 --port 8000
+```
+
+Open <http://127.0.0.1:8000>. Missing CLI tools and API keys are skipped, not fatal.
+
+**Docker** (bundles the OSINT CLI tools and headless Chromium):
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+**Windows installer**: download the latest installer from the repository's
+**Releases** page and run it; it installs a desktop shortcut that opens the app in
+its own window and stops the local server when closed. Linux has a script under
+`launcher/linux/`.
+
+On first run an onboarding wizard walks through adding topics and (optionally) an
+AI provider.
+
 ## A guided tour
 
 Each screen below exists because of a specific analyst problem. The notes say
@@ -76,7 +105,10 @@ shows the full record plus actions: pin it to a case, **Verify** (finds independ
 items about the same entities and asks the AI whether they corroborate or
 contradict the claim) or **Similar** (local embedding search).
 Summaries are labelled as AI output and the source link is always shown, because
-an analyst has to be able to check the original.
+an analyst has to be able to check the original. Threat levels and the 0-100
+relevance scores are **model estimates, not calibrated probabilities**: they
+order the reading queue, they do not replace judgement, which is also why every
+item starts as *unverified* until other sources corroborate it.
 
 ### 3. Cases: an investigation, not a folder
 
@@ -105,7 +137,10 @@ Colours separate people, organisations, places and identifiers (wallets,
 domains, CVEs, emails), so infrastructure reuse stands out. Every node opens
 that entity's dossier.
 
-### 5. Entity dossier and contextual pivots
+<details>
+<summary><b>More of the tour: entity dossier, daily brief, the assistant, settings</b></summary>
+
+#### 5. Entity dossier and contextual pivots
 
 <img src="docs/media/entity.png" alt="Entity dossier for Nightjar Group: co-occurring entities, cases it appears in and every item mentioning it" width="100%">
 
@@ -116,7 +151,7 @@ offers the matching **passive** OSINT tools (for example holehe for an email,
 maigret for a username) as one-click pivots. Only tools that are installed are
 offered, and targets are validated before they reach a subprocess.
 
-### 6. Daily brief
+#### 6. Daily brief
 
 <img src="docs/media/brief.png" alt="Daily brief listing new items per case since the analyst last looked" width="100%">
 
@@ -124,7 +159,7 @@ The morning read: what is new in each case since you last opened it. The set-up
 checklist at the top says, in plain language, what is not configured yet (here,
 AI analysis is off) instead of failing silently.
 
-### 7. An assistant that can act, inside a fence
+#### 7. An assistant that can act, inside a fence
 
 <img src="docs/media/assistant.png" alt="Nexus Assistant panel with suggested actions" width="100%">
 
@@ -135,7 +170,7 @@ reach the network. Collected text is untrusted input, so the assistant's output
 is rendered as text, never HTML: a prompt injection hidden in a scraped post
 cannot become script execution in your browser.
 
-### 8. Settings that explain themselves
+#### 8. Settings that explain themselves
 
 <img src="docs/media/settings.png" alt="Settings page: AI provider choice, key editor showing set / not set only, and source configuration" width="100%">
 
@@ -148,6 +183,8 @@ non-technical users.
 <summary>Light theme</summary>
 
 <img src="docs/media/feed-light.png" alt="The feed in light theme" width="100%">
+
+</details>
 
 </details>
 
@@ -215,34 +252,24 @@ the plan did.
 | "Everything mentioning X" got slow as the database grew. | Entities lived only as JSON on each analysis row. | A normalised `item_entities` table indexed by canonical name, backfilled on upgrade. It now powers dossiers, the graph and connected cases. |
 | An AI assistant that can "do things" is a prompt-injection target. | Collected posts are attacker-controlled text that reaches the model. | A hard allow-list of constructive local actions, a per-turn action cap, and text-only rendering. Unknown tool calls are dropped and logged. |
 
-## Quickstart
+## Responsible use
 
-**From source** (Python 3.11+):
+Nexus-OSINT is built for defensive research, journalism and due diligence on
+**publicly available** information.
 
-```bash
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-playwright install chromium-headless-shell           # optional, for the Evidence Vault
-cp .env.example .env                                 # Windows: copy .env.example .env
-uvicorn nexus.web.app:app --host 127.0.0.1 --port 8000
-```
-
-Open <http://127.0.0.1:8000>. Missing CLI tools and API keys are skipped, not fatal.
-
-**Docker** (bundles the OSINT CLI tools and headless Chromium):
-
-```bash
-cp .env.example .env
-docker compose up --build
-```
-
-**Windows installer**: download the latest installer from the repository's
-**Releases** page and run it; it installs a desktop shortcut that opens the app in
-its own window and stops the local server when closed. Linux has a script under
-`launcher/linux/`.
-
-On first run an onboarding wizard walks through adding topics and (optionally) an
-AI provider.
+- **Passive only.** Pivots run passive lookup tools (for example holehe or
+  maigret) against identifiers you already have. Nothing logs in, brute-forces,
+  scans hosts or touches non-public systems, and the assistant has no tool that
+  could.
+- **Respect platform terms.** Social sources use official APIs with your own
+  keys; there is no scraping of logged-in content and no account automation.
+  Check the terms of X, Telegram, Reddit and any API you connect.
+- **Follow the law where you work.** Searching for people can fall under privacy
+  and data-protection law (for example GDPR). Have a lawful basis, collect only
+  what the investigation needs, and delete what you no longer need.
+- **Do not use it to stalk, harass or target individuals.** That is not a
+  supported use, and pull requests that add offensive capability will not be
+  accepted.
 
 ## Security model
 
@@ -256,8 +283,9 @@ AI provider.
   bundles never contain secrets.
 - Secrets live in `.env` only (git-ignored). They are never written to the
   database, shown back in the UI, or emitted in logs (a redaction filter scrubs
-  configured keys). The browser loads the Tailwind CDN script for styling; that is
-  a request to a CDN, not an upload of your data.
+  configured keys). One caveat: the UI currently loads Tailwind from its CDN for styling. That
+  request carries no data, but it does mean a fully air-gapped machine needs a
+  vendored stylesheet; shipping a prebuilt CSS file is on the roadmap.
 - The Security center lists every outbound destination the app has contacted and
   flags any that is not a configured source or AI provider.
 
@@ -266,14 +294,15 @@ Reporting vulnerabilities and the full policy: [SECURITY.md](SECURITY.md).
 ## Testing and CI
 
 ```bash
-pip install -r requirements.txt
-pytest -q
+pip install -r requirements-dev.txt
+python -m pytest -q
 ```
 
-The suite (roughly 370 tests) uses temporary SQLite databases and avoids the
+The suite (375 tests) uses temporary SQLite databases and avoids the
 network; it covers storage and dedup, source parsing, the assistant allow-list,
 web hardening, export/transfer round-trips and route smoke tests. GitHub Actions
-runs it on every push to `main` and on pull requests (`.github/workflows/ci.yml`).
+runs it on Python 3.11 and 3.12 for every push to `main` and every pull request
+(`.github/workflows/ci.yml`).
 Contribution guidelines are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap

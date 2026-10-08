@@ -106,6 +106,8 @@ These constrain every feature and every contribution.
 - **Triage tuning.** The Focus view already shows why each item surfaced; next
   is making its thresholds configurable. Items are never hidden from the main
   feed.
+- **Fully offline UI.** Ship a prebuilt Tailwind stylesheet instead of the CDN
+  script, so the interface renders on an air-gapped machine.
 - **Engineering hygiene.** Lint and type-check gates in CI (ruff, mypy), a
   Python version matrix, and route-level smoke tests for every page.
 
