@@ -168,7 +168,7 @@ no account, no network calls to anyone.
    It runs a local server at `http://localhost:11434` automatically.
 2. **Pull a model** — in a terminal:
    ```bash
-   ollama pull gemma4:e4b      # the default; ~4 GB download
+   ollama pull gemma4:e4b      # the default; ~6.6 GB download
    ```
 3. **Point Nexus at it** — set `AI_PROVIDER=ollama` in `.env` (and optionally
    `OLLAMA_MODEL` / `OLLAMA_BASE_URL`), **or** just pick **"Local model (Ollama)"**
@@ -186,17 +186,25 @@ GPU (NVIDIA, or Apple-Silicon unified memory) makes analysis much faster.
 
 | Use case | Model | RAM (CPU-only) | GPU VRAM (fast) | Disk |
 | --- | --- | --- | --- | --- |
-| Lightweight / older laptops | `gemma4:e2b` | 8 GB | 4 GB | ~2 GB |
-| **Recommended balance** | `gemma4:e4b` *(default)* | 16 GB | 8 GB | ~4 GB |
-| Higher quality | `gemma4:12b` / `gemma4:26b` | 32 GB | 24 GB | ~9–18 GB |
-| Best (workstation/server) | `gemma4:31b` | 64 GB+ | 24 GB+ | ~22 GB |
+| Lightweight / older laptops | `gemma4:e2b` | 8 GB | 4 GB | ~4.6 GB |
+| **Recommended balance** | `gemma4:e4b` *(default)* | 16 GB | 8 GB | ~6.6 GB |
+| Sharper, still mid-range | `gemma4:12b` | 24 GB | 12 GB | ~7.7 GB |
+| Fast on a GPU (mixture-of-experts) | `gemma4:26b` | 32 GB | 16 GB | ~16 GB |
+| Strongest reasoning and tool use | `qwen3.8:27b` | 32 GB | 24 GB | ~18 GB |
+| Best (workstation/server) | `gemma4:31b` | 64 GB+ | 24 GB+ | ~19 GB |
+
+Model list checked against [ollama.com/library](https://ollama.com/library) in
+October 2026. Any other Ollama model also works: download it, then type its name
+in Settings or set `OLLAMA_MODEL`. Very large "open" models such as Kimi K3
+(2.8T parameters) are not practical on a single machine, and Ollama's `:cloud`
+variants run on remote servers, so they are not private.
 
 Notes:
 - **Apple-Silicon Macs** (M-series) run these models well thanks to unified memory.
 - The cheap local **prefilter** and the **budget guard**
   (`ANALYSIS_MAX_ITEMS_PER_RUN`) keep the workload manageable on modest hardware —
   lower the cap if a scan is too heavy for your machine.
-- **Quality trade-off:** an 8B local model gives solid summaries and threat
+- **Quality trade-off:** a 4-12B local model gives solid summaries and threat
   scoring; the cloud models are still stronger for the most nuanced analysis.
   Choose the trade-off that fits your security posture — you can switch backends
   any time from the Settings page.

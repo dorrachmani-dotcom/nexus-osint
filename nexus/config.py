@@ -51,9 +51,9 @@ class Settings(BaseSettings):
     # leaves it (the privacy-first choice for orgs that can't use cloud APIs).
     # No API key: it talks to a local Ollama server. Pick model + host below.
     ollama_base_url: str = Field(default="http://localhost:11434")
-    # Gemma 4 (Google's open model): native function-calling + multimodal, runs
-    # locally via Ollama. e4b (4B-effective) is the laptop-friendly default;
-    # step up to gemma4:12b / gemma4:26b on a GPU. Fully offline, no key.
+    # Any Ollama model works. Gemma 4 E4B is the laptop-friendly default; step
+    # up to gemma4:12b, or qwen3.8:27b / gemma4:31b on a strong GPU. Fully
+    # offline, no key.
     ollama_model: str = Field(default="gemma4:e4b")
     # Budget guard: how many items reach the model per run. Kept modest so a
     # single scan stays inside free-tier rate/quota limits (e.g. Gemini free);
