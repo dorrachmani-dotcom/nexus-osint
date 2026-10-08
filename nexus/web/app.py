@@ -3562,7 +3562,7 @@ SECRET_FIELDS = [
      "steps": [
          "Open reddit.com/prefs/apps while logged in.",
          "Click 'create another app...' at the bottom.",
-         f"Choose type 'script', set redirect URI to http://localhost:{get_settings().web_port}.",
+         "Choose type 'script', set redirect URI to http://localhost:8000.",
          "The client ID is the short string just under the app name — paste it here.",
      ]},
     {"key": "REDDIT_CLIENT_SECRET", "label": "Reddit client secret",

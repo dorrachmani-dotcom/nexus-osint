@@ -128,11 +128,6 @@ class Settings(BaseSettings):
     data_dir: str = Field(default="data")
     database_path: str = Field(default="data/nexus.db")
 
-    # --- Local web server ---
-    # Port the dashboard is served on. The host is always loopback (127.0.0.1)
-    # and is deliberately NOT configurable: Nexus never binds a public address.
-    web_port: int = Field(default=8000)
-
     # ------------------------------------------------------------------ paths
     @property
     def data_path(self) -> Path:
