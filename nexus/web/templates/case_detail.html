@@ -3,31 +3,31 @@
   {% set is_active = active_case and active_case.id == case.id %}
   {% if is_active %}
   <form action="/cases/{{ case.id }}/deactivate" method="post" class="inline">
-    <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium rounded px-3 py-1.5"
+    <button class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium rounded px-3 py-1.5 whitespace-nowrap"
             title="You're working in this case — Sherlock's 'this/here' point here. Click to stop.">&#10003; Working here</button>
   </form>
   {% else %}
   <form action="/cases/{{ case.id }}/activate" method="post" class="inline">
-    <button class="border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm rounded px-3 py-1.5"
+    <button class="border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm rounded px-3 py-1.5 whitespace-nowrap"
             title="Make this your active case so Sherlock's 'this/here' and new pins default to it">Work in this case</button>
   </form>
   {% endif %}
   {% if case.status == 'closed' %}
   <form action="/cases/{{ case.id }}/reopen" method="post" class="inline">
-    <button class="border border-emerald-700 hover:border-emerald-500 hover:text-emerald-300 text-emerald-600 text-sm rounded px-3 py-1.5"
+    <button class="border border-emerald-700 hover:border-emerald-500 hover:text-emerald-300 text-emerald-600 text-sm rounded px-3 py-1.5 whitespace-nowrap"
             title="Reopen this archived case">&#8635; Reopen</button>
   </form>
   {% else %}
   <form action="/cases/{{ case.id }}/close" method="post" class="inline">
-    <button class="border border-slate-600 hover:border-rose-500 hover:text-rose-300 text-slate-400 text-sm rounded px-3 py-1.5"
+    <button class="border border-slate-600 hover:border-rose-500 hover:text-rose-300 text-slate-400 text-sm rounded px-3 py-1.5 whitespace-nowrap"
             title="Archive this case — it stays readable but is marked closed">&#10006; Close case</button>
   </form>
   {% endif %}
   <a href="/cases/{{ case.id }}?tab=graph"
-     class="border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm rounded px-3 py-1.5"
+     class="border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm rounded px-3 py-1.5 whitespace-nowrap"
      title="Relationship graph of this case's tracked items">&#128376; Graph</a>
   <details class="relative inline-block">
-    <summary class="cursor-pointer list-none bg-sky-600 hover:bg-sky-500 text-white text-sm rounded px-3 py-1.5">
+    <summary class="cursor-pointer list-none bg-sky-600 hover:bg-sky-500 text-white text-sm rounded px-3 py-1.5 whitespace-nowrap">
       &#11015; Export &#9662;</summary>
     <div class="absolute right-0 z-30 mt-1 w-56 rounded border border-slate-700 bg-slate-900 p-1.5 shadow-xl">
       <div class="px-2 py-1 text-[10px] uppercase tracking-wide text-slate-500">Pinned dossier</div>
@@ -72,7 +72,7 @@
         <button type="submit"
                 title="{{ 'Starred — click to unstar' if case.priority == 'high' else 'Click to star this case' }}"
                 class="{{ 'text-amber-400 hover:text-amber-300' if case.priority == 'high' else 'text-slate-600 hover:text-amber-400' }} text-lg leading-none">
-          {{ '&#9733;' if case.priority == 'high' else '&#9734;' }}
+          {{ '★' if case.priority == 'high' else '☆' }}
         </button>
       </form>
       <h1 id="case-name-text" class="text-lg font-semibold text-slate-100">{{ case.name }}</h1>

@@ -162,7 +162,7 @@
       {% if aliases %}
       <span class="text-slate-600">({{ aliases|length }} active)</span>
       {% endif %}
-      <span class="ml-auto text-slate-600 font-normal">e.g. collapse "Messi" into "Lionel Messi"</span>
+      <span class="ml-auto text-slate-600 font-normal">e.g. collapse "J. Roe" into "John Roe"</span>
     </summary>
     <div class="px-4 pb-4 space-y-4 border-t border-slate-800">
       <p class="text-[11px] text-slate-500 mt-3">
@@ -177,13 +177,13 @@
         {% for cid in selected_ids or [] %}<input type="hidden" name="case" value="{{ cid }}" />{% endfor %}
         <label class="block">
           <span class="text-[11px] text-slate-500">Alias (duplicate)</span>
-          <input name="alias" required placeholder="e.g. Messi"
+          <input name="alias" required placeholder="e.g. J. Roe"
                  class="mt-1 block w-36 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs" />
         </label>
         <span class="text-slate-600 self-end pb-2 text-sm">&rarr;</span>
         <label class="block">
           <span class="text-[11px] text-slate-500">Canonical (keep this)</span>
-          <input name="canonical" required placeholder="e.g. Lionel Messi"
+          <input name="canonical" required placeholder="e.g. John Roe"
                  class="mt-1 block w-44 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs" />
         </label>
         <button class="self-end rounded bg-amber-700 hover:bg-amber-600 text-slate-950

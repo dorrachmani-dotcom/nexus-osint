@@ -98,19 +98,14 @@ These constrain every feature and every contribution.
 - **Feed and triage polish.** Continued work on the analyst surface for
   non-technical operators (clear empty/degraded states, plain-language labels).
 
-- **Contextual pivots.** From any identifier shown in an item, the entity
-  dossier or a graph node, run the matching passive OSINT tool in one click
-  (email -> holehe/ghunt, username -> sherlock/maigret, phone -> phoneinfoga,
-  domain -> theharvester, and so on). Design notes:
-  - A `suggest_tools(target_type)` helper in `nexus/toolguide.py`, built on the
-    existing tool catalogue; detect the type with light regexes
-    (email, phone, domain, `@handle`), defaulting to username.
-  - Reuse `POST /tools/run`; render results in the item drawer. Show only
-    available tools, with the install hint for the rest.
-  - Passive reconnaissance only. Validate the target before it reaches a
-    subprocess.
-- **Triage tuning.** Make the Focus-view thresholds configurable and show the
-  reason each item surfaced; never hide items from the main feed.
+- **Pivots everywhere.** Contextual pivots already ship on the entity dossier
+  (`pivot_tools_for` in `nexus/toolguide.py`: email -> holehe/ghunt,
+  username -> sherlock/maigret, phone -> phoneinfoga, domain -> theHarvester).
+  Next: expose the same one-click passive pivots on graph nodes and inside the
+  item drawer.
+- **Triage tuning.** The Focus view already shows why each item surfaced; next
+  is making its thresholds configurable. Items are never hidden from the main
+  feed.
 - **Engineering hygiene.** Lint and type-check gates in CI (ruff, mypy), a
   Python version matrix, and route-level smoke tests for every page.
 

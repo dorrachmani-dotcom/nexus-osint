@@ -108,7 +108,7 @@
 
   {# --- Best matching standing question (priority intelligence requirement) ---
        Only surface this when the item actually answers one of the standing
-       questions. A low score (e.g. a Neymar result scored against a cyber
+       questions. A low score (e.g. a sports result scored against a cyber
        question) is just noise, so we hide the banner below a relevance floor. #}
   {% if it.top_requirement and (it.top_requirement.score or 0) >= 40 %}
   <div class="mt-2 text-[11px] rounded border border-amber-900/60 bg-amber-950/20 px-2 py-1"

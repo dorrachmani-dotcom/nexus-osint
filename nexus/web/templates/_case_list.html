@@ -15,7 +15,7 @@
         <button type="submit"
                 title="{{ 'Starred — click to unstar' if is_starred else 'Click to star this case (moves it to the top)' }}"
                 class="{{ 'text-amber-400 hover:text-amber-300' if is_starred else 'text-slate-600 hover:text-amber-400' }} text-base leading-none">
-          {{ '&#9733;' if is_starred else '&#9734;' }}
+          {{ '★' if is_starred else '☆' }}
         </button>
       </form>
       <a href="/cases/{{ c.id }}" class="text-slate-100 font-semibold hover:text-amber-400 truncate">{{ c.name }}</a>

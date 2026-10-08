@@ -12,8 +12,10 @@
 
 </div>
 
-<!-- TODO: record a 20-30 s demo (scan -> feed -> case -> report) and save it as docs/media/demo.gif -->
-![Nexus-OSINT demo](docs/media/demo.gif)
+<p align="center">
+  <img src="docs/media/feed.png" alt="The Nexus-OSINT analyst feed: AI-summarised items with threat level, extracted entities and case membership" width="100%">
+</p>
+<p align="center"><sub>All screenshots use the built-in, entirely fictional demo dataset (the <b>Load demo data</b> button on the empty feed).</sub></p>
 
 ## The problem
 
@@ -47,6 +49,115 @@ one SQLite file you own, and every outbound connection can be audited.
   file scanner vets anything you import.
 
 The full catalogue is in [docs/FEATURES.md](docs/FEATURES.md).
+
+## A guided tour
+
+Each screen below exists because of a specific analyst problem. The notes say
+what you are looking at and why it was built that way.
+
+### 1. Focus: "what needs my eyes right now?"
+
+<img src="docs/media/attention.png" alt="Focus view ranking unread items by threat, requirement match, watchlist hits and corroboration" width="100%">
+
+A scan can return hundreds of items, and an analyst cannot read them all. Focus
+ranks the **unread** items by threat level, how well they answer your standing
+questions, watchlist hits, disputes and cross-source corroboration. Every card
+also states **why it surfaced**, so you can trust the ranking or disagree with
+it. Nothing is hidden: everything else is still in the full feed.
+
+### 2. The feed and the item drawer
+
+<img src="docs/media/item-drawer.png" alt="Item drawer with AI summary, case pins, full content, extracted entities and Verify / Similar actions" width="100%">
+
+Each card carries a threat badge, a **verification state** (unverified until
+corroborated), the AI summary in English, the original text one click away, and
+the extracted people, organisations, places and identifiers. Opening an item
+shows the full record plus actions: pin it to a case, **Verify** (finds independent
+items about the same entities and asks the AI whether they corroborate or
+contradict the claim) or **Similar** (local embedding search).
+Summaries are labelled as AI output and the source link is always shown, because
+an analyst has to be able to check the original.
+
+### 3. Cases: an investigation, not a folder
+
+<img src="docs/media/case.png" alt="Case page with connected cases, AI briefing, pinned items and researcher notes" width="100%">
+
+A case has tracking words that pull matching items into a live feed, pinned
+evidence, standing questions, sub-cases, notes and a one-click AI briefing.
+**Connected cases** appears automatically: here, Operation Nightjar is linked to
+the Silt Spider ransomware case because both mention Nightjar Group. That cross-case
+link is computed from the `item_entities` index, not stored by hand.
+
+<img src="docs/media/timeline.png" alt="Case timeline showing pinned items in chronological order with threat levels" width="100%">
+
+The timeline puts pinned evidence in order, which is usually the first thing a
+reviewer asks for. Cases export to PDF/HTML, an Obsidian vault, or a hashed
+evidence manifest.
+
+### 4. Relationship graph
+
+<img src="docs/media/graph.png" alt="Relationship graph across two cases linking threat actors, victims, places, wallets, domains and CVEs" width="100%">
+
+Two cases are selected here, and the graph shows the shared actor in the middle:
+Nightjar Group links the Acme breach to the Harborline ransomware via shared
+tooling. Node size is how often an entity is mentioned; edges are co-mentions.
+Colours separate people, organisations, places and identifiers (wallets,
+domains, CVEs, emails), so infrastructure reuse stands out. Every node opens
+that entity's dossier.
+
+### 5. Entity dossier and contextual pivots
+
+<img src="docs/media/entity.png" alt="Entity dossier for Nightjar Group: co-occurring entities, cases it appears in and every item mentioning it" width="100%">
+
+Everything known about one name on one page: first and last seen, the entities
+it appears alongside, the cases it belongs to, and every item that mentions it.
+When the entity is an identifier (email, username, phone, domain), the dossier
+offers the matching **passive** OSINT tools (for example holehe for an email,
+maigret for a username) as one-click pivots. Only tools that are installed are
+offered, and targets are validated before they reach a subprocess.
+
+### 6. Daily brief
+
+<img src="docs/media/brief.png" alt="Daily brief listing new items per case since the analyst last looked" width="100%">
+
+The morning read: what is new in each case since you last opened it. The set-up
+checklist at the top says, in plain language, what is not configured yet (here,
+AI analysis is off) instead of failing silently.
+
+### 7. An assistant that can act, inside a fence
+
+<img src="docs/media/assistant.png" alt="Nexus Assistant panel with suggested actions" width="100%">
+
+The assistant can open cases, add tracking words, pin matching items and build
+reports for you. It does that only through an **allow-list** of constructive,
+local actions; it has no tool to delete data, change settings, read keys or
+reach the network. Collected text is untrusted input, so the assistant's output
+is rendered as text, never HTML: a prompt injection hidden in a scraped post
+cannot become script execution in your browser.
+
+### 8. Settings that explain themselves
+
+<img src="docs/media/settings.png" alt="Settings page: AI provider choice, key editor showing set / not set only, and source configuration" width="100%">
+
+Pick an AI provider (cloud or a fully local model), paste keys, and configure
+sources. Keys are written to the local `.env` only and are never shown back:
+the UI only says *set* or *not set*. Each key has step-by-step instructions for
+non-technical users.
+
+<details>
+<summary>Light theme</summary>
+
+<img src="docs/media/feed-light.png" alt="The feed in light theme" width="100%">
+
+</details>
+
+### Try the same demo yourself
+
+After installing, click **Load demo data** on the empty feed. It inserts 42 fictional
+items across three storylines (a data breach, port ransomware and a
+disinformation network) and three cases, all tagged `demo` so they are easy to
+delete. The screenshots are regenerated by
+[`scripts/capture_screenshots.py`](scripts/capture_screenshots.py).
 
 ## Architecture
 
@@ -90,6 +201,19 @@ for the module map and extension points.
   it goes through Jinja's `|tojson`, which escapes `<`, `>` and `&`. An earlier
   `json.dumps | safe` path allowed a `</script>` in a collected title to break
   out; it was fixed and is the pattern to follow.
+
+## What went wrong along the way (and the fix)
+
+Short notes from building it, because the failures shaped the design more than
+the plan did.
+
+| Problem found | Root cause | Fix |
+|---|---|---|
+| A collected headline containing `</script>` could break out of the AI-briefing page. | Item data was embedded with `json.dumps(...) \| safe`, which does not escape `<`. | Switched to Jinja's `\|tojson` and added a regression test. Model output is rendered with `textContent` only. |
+| Gemini "flash" replies came back empty or cut off mid-JSON. | Newer models spend output tokens on internal reasoning before writing anything visible. | A bounded thinking budget is added *on top of* the requested output length, so the answer always keeps its room. |
+| The same story syndicated by 30 outlets flooded the feed. | Exact-URL dedup misses rewrites and tracking parameters. | Items get an aggressively normalised `dedup_key`; near-duplicates collapse into one row with an "echoed N times" badge. |
+| "Everything mentioning X" got slow as the database grew. | Entities lived only as JSON on each analysis row. | A normalised `item_entities` table indexed by canonical name, backfilled on upgrade. It now powers dossiers, the graph and connected cases. |
+| An AI assistant that can "do things" is a prompt-injection target. | Collected posts are attacker-controlled text that reaches the model. | A hard allow-list of constructive local actions, a per-turn action cap, and text-only rendering. Unknown tool calls are dropped and logged. |
 
 ## Quickstart
 
@@ -154,8 +278,9 @@ Contribution guidelines are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md): contextual one-click tool pivots, triage
-tuning, richer entity resolution, and lint/type-check gates in CI.
+See [docs/ROADMAP.md](docs/ROADMAP.md): pivots on graph nodes and in the item
+drawer, configurable triage thresholds, richer entity resolution, and
+lint/type-check gates in CI.
 
 ## About the author
 
