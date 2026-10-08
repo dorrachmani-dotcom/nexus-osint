@@ -8,6 +8,7 @@ the entire local history. `init_db()` is idempotent and safe to call on boot.
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 from contextlib import contextmanager
 from collections.abc import Iterator
@@ -310,7 +311,21 @@ def get_connection() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+# Closed set of tables this module manages. `_column_exists` interpolates the
+# table name into a PRAGMA (PRAGMA cannot take bound parameters), so it must be
+# validated against this allow-list before use.
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_KNOWN_TABLES = frozenset({
+    "sources", "clusters", "items", "analyses", "evidence", "cases", "bookmarks",
+    "notes", "watchlists", "subscriptions", "watchlist_hits", "item_reads", "lists",
+    "list_memberships", "meta", "case_terms", "requirements", "requirement_hits",
+    "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
+})
+
+
 def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    if not _IDENT_RE.fullmatch(table) or table not in _KNOWN_TABLES:
+        raise ValueError(f"unknown table name: {table!r}")
     rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
     return any(r["name"] == column for r in rows)
 

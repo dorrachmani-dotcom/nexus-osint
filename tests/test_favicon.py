@@ -22,7 +22,9 @@ def test_favicon_is_a_real_ico():
     assert r.content[:4] == b"\x00\x00\x01\x00"
 
 
-def test_pages_reference_the_ico_favicon():
+def test_pages_reference_the_ico_favicon(temp_db):
+    # temp_db gives the page render an initialised schema; without it the "/"
+    # route reads an empty data/nexus.db (no tables) on a fresh checkout.
     assert '/favicon.ico' in _client().get("/").text
 
 

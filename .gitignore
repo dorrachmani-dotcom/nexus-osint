@@ -46,3 +46,19 @@ Thumbs.db
 # Personal owner's guide (for the operator only — never shipped; the local copy
 # must never reach the English-only product/installer).
 /personal-guide/
+
+# Local-only artifacts: project instructions, logs, error dumps, exported bundles,
+# databases, assistant transcripts and evidence captures. Never committed.
+CLAUDE.md
+*.log
+*.err
+*.nexusbundle
+*.db
+*.sqlite
+assistant_logs/
+evidence/
+.venv*/
+
+# Local env files (secrets). The template .env.example stays tracked.
+.env.*
+!.env.example
