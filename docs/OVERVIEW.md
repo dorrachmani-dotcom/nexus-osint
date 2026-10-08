@@ -178,7 +178,7 @@ records every outbound connection and flags anything that isn't an AI provider, 
 configured source, or localhost; and a **file scanner** for vetting files you bring
 in. An optional VirusTotal check sends only a file's SHA-256 *hash*, never the file.
 
-**Nexus Assistant.** A floating chat on the same AI backend. It explains
+**Sherlock.** A floating chat on the same AI backend. It explains
 the product, answers questions about your data, and takes **constructive, local,
 reversible** actions (build a case, fill it, generate a report, run a scan, add a
 watchlist/requirement/note, capture evidence, navigate). With the **Sources**
@@ -288,7 +288,7 @@ nexus/            # the application package
 ├── sources/      #   collection sources (rss, news, reddit, custom, …)
 ├── adapters/     #   Plug & Play OSINT CLI tool wrappers
 ├── analysis/     #   the AI core (providers, prefilter, prompts, scoring)
-├── assistant.py  #   Nexus Assistant (grounded chat + constructive actions)
+├── assistant.py  #   Sherlock (grounded chat + constructive actions)
 ├── evidence.py   #   screenshots + hashing;  graph.py  obsidian.py  transfer.py
 ├── security.py   #   egress monitor + file scanner;  netguard.py  logging_safe.py
 └── …             #   reporting, casesetup, models, config, envstore, lang, ocr
@@ -325,5 +325,5 @@ designed for fully disconnected analysis machines.
 desktop app uses the OS app-data folder; a dev run uses the project's `data/`).
 Back up that file to back up everything.
 
-**How do I get help inside the app?** Open **Nexus Assistant** (the chat) or the **Guide**
+**How do I get help inside the app?** Open **Sherlock** (the chat) or the **Guide**
 page — both explain every feature in plain language.

@@ -19,7 +19,7 @@ it that way. Architecture and extension points are covered in the
    text, not HTML. URLs from items or user input go through
    `nexus.netguard.safe_http_url`. Data embedded in inline scripts goes through
    `|tojson`.
-5. **Assistant tools are constructive and local.** New Nexus Assistant actions
+5. **Assistant tools are constructive and local.** New Sherlock actions
    must be reversible, must not delete data or touch settings/keys, and must be
    added to the `_ALLOWED_TOOLS` allow-list with a test.
 6. **Reuse the provider abstraction.** LLM calls go through
