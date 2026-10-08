@@ -15,7 +15,7 @@ computer unless you explicitly export it.
 2. [Core concepts](#2-core-concepts)
 3. [Your first investigation in 5 minutes](#3-your-first-investigation-in-5-minutes)
 4. [The interface, page by page](#4-the-interface-page-by-page)
-5. [Sherlock, the in-app assistant](#5-sherlock-the-in-app-assistant)
+5. [Nexus Assistant, the in-app chat](#5-nexus-assistant-the-in-app-chat)
 6. [Common workflows](#6-common-workflows)
 7. [Keyboard shortcuts](#7-keyboard-shortcuts)
 8. [Privacy & security model](#8-privacy--security-model)
@@ -249,9 +249,9 @@ keys. Keys are written to `.env` only and never shown back — the page shows
 
 ---
 
-## 5. Sherlock, the in-app assistant
+## 5. Nexus Assistant, the in-app chat
 
-Sherlock is the floating chat (the green detective icon, bottom-left). It runs on
+Nexus Assistant is the floating chat (the green detective icon, bottom-left). It runs on
 whichever AI provider you've configured — cloud or local Ollama — and it both
 **answers** and **acts**.
 
@@ -268,15 +268,15 @@ never delete, change settings/keys, or send your data anywhere):
 ### Sourced answers (the "Sources" toggle)
 At the bottom of the chat there are two toggles:
 
-- **🔗 Sources** *(on by default)* — Sherlock cites the collected items its answer
+- **🔗 Sources** *(on by default)* — Nexus Assistant cites the collected items its answer
   is based on, inline as `(Item N)`, and lists them as **clickable sources** under
   the answer so you can open and verify each one. Turn it off for terse answers
   with no citations. Pure how-to/product questions need no sources, so none are
   shown for those.
-- **🧠 Deep** — Sherlock runs several searches over your data and reasons across
+- **🧠 Deep** — Nexus Assistant runs several searches over your data and reasons across
   the results before answering. Slower, but more thorough.
 
-Sherlock has **no information about who built the software** and will decline
+Nexus Assistant has **no information about who built the software** and will decline
 questions about its origin — by design.
 
 You can **End chat** at any time; you'll be offered an opt-in **local** save of the

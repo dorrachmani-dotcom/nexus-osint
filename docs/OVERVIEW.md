@@ -2,9 +2,9 @@
 
 > The single, in-depth explanation of **what this project is, how it works, and
 > how to run, use, and extend it.** If you only read one file, read this one.
-> For task-focused detail see the **[User Guide](docs/USER_GUIDE.md)** and the
-> **[Developer & Contributor Guide](docs/DEVELOPER_GUIDE.md)**; for a quick start
-> see the **[README](README.md)**.
+> For task-focused detail see the **[User Guide](USER_GUIDE.md)** and the
+> **[Developer & Contributor Guide](DEVELOPER_GUIDE.md)**; for a quick start
+> see the **[README](../README.md)**.
 
 ---
 
@@ -41,8 +41,8 @@ is a single application you run on your own computer that:
    workspace: cases, intelligence requirements, an evidence vault, a relationship
    graph, watchlists, reporting, air-gap transfer, and an in-app assistant.
 
-Everything binds to `127.0.0.1`. Nothing is exposed to the network, and your data
-never leaves the machine unless **you** explicitly export it.
+Everything binds to `127.0.0.1`. Nothing is exposed to the network. Your data stays
+on the machine unless **you** export it or connect a cloud AI provider (see §9).
 
 **Who it's for:** researchers, analysts, journalists, and investigators who want a
 private, self-hosted, end-to-end intelligence loop — from collection to a
@@ -178,7 +178,7 @@ records every outbound connection and flags anything that isn't an AI provider, 
 configured source, or localhost; and a **file scanner** for vetting files you bring
 in. An optional VirusTotal check sends only a file's SHA-256 *hash*, never the file.
 
-**Sherlock, the assistant.** A floating chat on the same AI backend. It explains
+**Nexus Assistant.** A floating chat on the same AI backend. It explains
 the product, answers questions about your data, and takes **constructive, local,
 reversible** actions (build a case, fill it, generate a report, run a scan, add a
 watchlist/requirement/note, capture evidence, navigate). With the **Sources**
@@ -239,15 +239,15 @@ All database access is centralized in `nexus/storage.py`.
 - **Local (developers)** — a virtualenv + `pip install -r requirements.txt` +
   `uvicorn nexus.web.app:app`.
 
-Full commands are in the [README](README.md); a feature-by-feature walkthrough is
-in the [User Guide](docs/USER_GUIDE.md).
+Full commands are in the [README](../README.md); a feature-by-feature walkthrough is
+in the [User Guide](USER_GUIDE.md).
 
 ---
 
 ## 8. Extending it
 
 The codebase is built so adding capability is an *extension*, not a rewrite. The
-[Developer Guide](docs/DEVELOPER_GUIDE.md) covers each in detail:
+[Developer Guide](DEVELOPER_GUIDE.md) covers each in detail:
 
 - **Add a collection source** — subclass `Source` (`nexus/sources/base.py`),
   implement `is_available()` + `fetch()`, register it in the collector.
@@ -288,15 +288,15 @@ nexus/            # the application package
 ├── sources/      #   collection sources (rss, news, reddit, custom, …)
 ├── adapters/     #   Plug & Play OSINT CLI tool wrappers
 ├── analysis/     #   the AI core (providers, prefilter, prompts, scoring)
-├── assistant.py  #   Sherlock (grounded chat + constructive actions)
+├── assistant.py  #   Nexus Assistant (grounded chat + constructive actions)
 ├── evidence.py   #   screenshots + hashing;  graph.py  obsidian.py  transfer.py
 ├── security.py   #   egress monitor + file scanner;  netguard.py  logging_safe.py
 └── …             #   reporting, casesetup, models, config, envstore, lang, ocr
-docs/             # USER_GUIDE.md, DEVELOPER_GUIDE.md, ROADMAP.md
+docs/             # OVERVIEW, FEATURES, USER_GUIDE, DEVELOPER_GUIDE, ROADMAP, architecture.svg
 installer/        # PyInstaller spec, Inno Setup script, frozen entry point
 launcher/         # one-click desktop installers per OS
 tests/            # the pytest suite
-README.md · OVERVIEW.md (this file) · SECURITY.md · LICENSE
+README.md · SECURITY.md · LICENSE · CHANGELOG.md · CONTRIBUTING.md
 ```
 
 What is **not** in this package (and never published): your `.env` (API keys),
@@ -325,5 +325,5 @@ designed for fully disconnected analysis machines.
 desktop app uses the OS app-data folder; a dev run uses the project's `data/`).
 Back up that file to back up everything.
 
-**How do I get help inside the app?** Open **Sherlock** (the chat) or the **Guide**
+**How do I get help inside the app?** Open **Nexus Assistant** (the chat) or the **Guide**
 page — both explain every feature in plain language.

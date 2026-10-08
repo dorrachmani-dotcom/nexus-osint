@@ -80,6 +80,8 @@ These constrain every feature and every contribution.
 - Evidence Vault (screenshot + hash + timestamp), watchlists with alerts,
   reporting (PDF/HTML), a persistent topic/entity relationship graph, OCR, and a
   first-run onboarding wizard.
+- Entity index (`item_entities`) with an entity dossier page and a "Focus"
+  (needs-your-eyes) triage view ranked from signals the AI already produced.
 - Packaging: a single local server (uvicorn) and a containerized run, with
   full-setup installers for Windows and Linux.
 
@@ -96,11 +98,29 @@ These constrain every feature and every contribution.
 - **Feed and triage polish.** Continued work on the analyst surface for
   non-technical operators (clear empty/degraded states, plain-language labels).
 
+- **Contextual pivots.** From any identifier shown in an item, the entity
+  dossier or a graph node, run the matching passive OSINT tool in one click
+  (email -> holehe/ghunt, username -> sherlock/maigret, phone -> phoneinfoga,
+  domain -> theharvester, and so on). Design notes:
+  - A `suggest_tools(target_type)` helper in `nexus/toolguide.py`, built on the
+    existing tool catalogue; detect the type with light regexes
+    (email, phone, domain, `@handle`), defaulting to username.
+  - Reuse `POST /tools/run`; render results in the item drawer. Show only
+    available tools, with the install hint for the rest.
+  - Passive reconnaissance only. Validate the target before it reaches a
+    subprocess.
+- **Triage tuning.** Make the Focus-view thresholds configurable and show the
+  reason each item surfaced; never hide items from the main feed.
+- **Engineering hygiene.** Lint and type-check gates in CI (ruff, mypy), a
+  Python version matrix, and route-level smoke tests for every page.
+
 ## Mid-term
 
 - A clearer plugin contract for third-party sources and tool adapters, so new
   sources can be added without touching the core.
-- Richer entity resolution and cross-source linking in the relationship graph.
+- Richer entity resolution and cross-source linking in the relationship graph,
+  building on the `item_entities` index (alias merging, cross-case "also seen
+  in" links).
 - Optional integration with an operator-supplied third-party commercial data
   provider (opt-in, key-gated) for platforms without a usable official API.
 

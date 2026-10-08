@@ -1,0 +1,72 @@
+# Contributing to Nexus-OSINT
+
+Thanks for helping. This project is small and opinionated; the rules below keep
+it that way. Architecture and extension points are covered in the
+[Developer Guide](docs/DEVELOPER_GUIDE.md).
+
+## Ground rules
+
+1. **Local-only.** The server binds to `127.0.0.1`. Do not add a bind to any
+   other address, and do not send collected data to an endpoint the user has not
+   configured. Any new outbound call must be visible to the egress monitor.
+2. **Graceful degradation.** A missing key, binary, model or network disables one
+   feature; it never crashes the app. New sources and adapters implement
+   `is_available()` and skip cleanly.
+3. **Never commit secrets.** `.env` is git-ignored; keep it that way. Do not put
+   keys in code, tests, fixtures, logs or screenshots. Add new settings to
+   `.env.example` with an empty value.
+4. **Untrusted input stays untrusted.** Collected text and model output render as
+   text, not HTML. URLs from items or user input go through
+   `nexus.netguard.safe_http_url`. Data embedded in inline scripts goes through
+   `|tojson`.
+5. **Assistant tools are constructive and local.** New Nexus Assistant actions
+   must be reversible, must not delete data or touch settings/keys, and must be
+   added to the `_ALLOWED_TOOLS` allow-list with a test.
+6. **Reuse the provider abstraction.** LLM calls go through
+   `nexus/analysis/providers.py`; do not inline new provider calls elsewhere.
+7. **Fictional examples only.** No real people, organizations or incidents in
+   tests, fixtures or docs.
+
+## Development setup
+
+```bash
+git clone <your fork>
+cd nexus-osint
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env                                 # keys are optional
+uvicorn nexus.web.app:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Python 3.11 or 3.12. Playwright and the OSINT CLI tools are optional.
+
+## Tests
+
+```bash
+pytest -q                          # whole suite
+pytest tests/test_assistant.py -q  # one file
+```
+
+Tests use temporary SQLite databases (see `tests/conftest.py`) and must not hit
+the network. A bug fix needs a regression test; a new storage query or route needs
+a test against a seeded database.
+
+## Linting and typing
+
+`ruff` and `mypy` are being introduced and will be enforced in CI. Until then,
+match the surrounding style, add type hints to new code, and keep functions small.
+
+## Commits and pull requests
+
+- Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`,
+  `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `ci:`, `perf:`, optionally
+  scoped, e.g. `fix(storage): guard empty entity names`.
+- Keep commits focused and the subject under about 72 characters; explain *why* in
+  the body when it is not obvious.
+- Branch from `main`, keep PRs small, and fill in the pull request template.
+- Update `CHANGELOG.md` under `Unreleased` for user-visible changes, and the docs
+  when behaviour changes.
+
+## Reporting security issues
+
+Do not open a public issue. Follow [SECURITY.md](SECURITY.md).
