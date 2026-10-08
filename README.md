@@ -159,12 +159,13 @@ The morning read: what is new in each case since you last opened it. The set-up
 checklist at the top says, in plain language, what is not configured yet (here,
 AI analysis is off) instead of failing silently.
 
-#### 7. An assistant that can act, inside a fence
+#### 7. Sherlock: an assistant that can act, inside a fence
 
-<img src="docs/media/assistant.png" alt="Nexus Assistant panel with suggested actions" width="100%">
+<img src="docs/media/assistant.png" alt="Sherlock panel with suggested actions" width="100%">
 
-The assistant can open cases, add tracking words, pin matching items and build
-reports for you. It does that only through an **allow-list** of constructive,
+Sherlock, the in-app assistant (not the `sherlock` username CLI of the same
+name), can open cases, add tracking words, pin matching items, run a scan and
+build reports for you. It does that only through an **allow-list** of constructive,
 local actions; it has no tool to delete data, change settings, read keys or
 reach the network. Collected text is untrusted input, so the assistant's output
 is rendered as text, never HTML: a prompt injection hidden in a scraped post
@@ -222,7 +223,7 @@ for the module map and extension points.
   one feature; with no AI configured, items are still collected, stored and
   searchable. A per-run budget cap and content-hash caching bound AI cost, and
   quota errors pause a scan instead of failing it.
-- **AI agent safety by allow-list.** The in-app Nexus Assistant can act on your
+- **AI agent safety by allow-list.** The in-app Sherlock can act on your
   data, but only through a fixed set of constructive local tools
   (`_ALLOWED_TOOLS` in `nexus/assistant.py`), with a hard cap on actions per turn.
   Anything else the model asks for is dropped and logged. It has no delete,

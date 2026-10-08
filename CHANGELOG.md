@@ -13,7 +13,6 @@ to [Semantic Versioning](https://semver.org/).
 - Documentation reorganized: the feature catalogue moved to `docs/FEATURES.md`,
   the project overview to `docs/OVERVIEW.md`, and the README rewritten around
   architecture and engineering trade-offs.
-- In documentation, the in-app assistant is referred to as "Nexus Assistant".
 
 ### Removed
 - `docs/INVESTIGATOR_PLAN.md`; its remaining items moved to `docs/ROADMAP.md`.
@@ -41,7 +40,7 @@ First tagged release.
   graph.
 - **Evidence and export**: hashed screenshot Evidence Vault with OCR, PDF/HTML,
   CSV/JSON and Obsidian-vault export, and an idempotent air-gap transfer bundle.
-- **Nexus Assistant**: in-app chat that answers from collected data and performs
+- **Sherlock**: in-app chat that answers from collected data and performs
   constructive local actions through a fixed allow-list.
 - **Security center**: egress monitor, file scanner, optional hash-only
   VirusTotal lookup, CSRF/DNS-rebinding protection, security headers, SSRF guard,

@@ -90,7 +90,7 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   bundle** — only collected open-source data and its analysis; `.env` and keys
   stay on each machine. Imported files are vetted by the security scanner first
   and written safely (evidence by basename only — no path traversal).
-- **Nexus Assistant, the in-app chat** — a floating chat (bottom-right) backed by
+- **Sherlock, the in-app chat** — a floating chat (bottom-right) backed by
   the same AI provider. It explains how to use the workstation, answers questions
   about your collected data, and can *act* on your behalf with plain-language
   requests: run a scan, search the feed, open a case and add the matching items,

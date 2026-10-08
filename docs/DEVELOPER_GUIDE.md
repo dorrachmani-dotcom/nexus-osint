@@ -74,7 +74,7 @@ nexus/
 ├── storage.py           # ALL DB read/write helpers (dedup, search, workspace)
 ├── collector.py         # scan orchestration: sources -> store -> analyze
 ├── casesetup.py         # auto-configure a new case's terms + questions
-├── assistant.py         # Nexus Assistant: grounded chat + constructive action tools
+├── assistant.py         # Sherlock: grounded chat + constructive action tools
 ├── lang.py / textclean.py / translate.py / keyless… # language + translation
 ├── evidence.py          # Playwright screenshot + SHA-256 hashing
 ├── ocr.py               # Tesseract OCR over evidence screenshots
@@ -250,7 +250,7 @@ The collector handles availability, watermarks, dedup and analysis for you.
    (`nexus/adapters/base.py`): set `name`/`binary`, implement `is_available()`
    (detect the binary) and `run(target)` (shell out, parse, return findings).
 2. Add the class to `_ADAPTER_CLASSES` in `nexus/adapters/registry.py`.
-3. Add an entry to `nexus/toolguide.py` so its install hint and Nexus Assistant guidance
+3. Add an entry to `nexus/toolguide.py` so its install hint and Sherlock guidance
    show up.
 
 Adapters must degrade gracefully (tool not installed → listed as unavailable, never
@@ -265,9 +265,9 @@ an error) and only ever **read** — they are lookups, not mutations.
 3. Add any key to `EDITABLE_KEYS`. The whole app is provider-agnostic, so nothing
    else needs to change.
 
-### 8.4 Extend Nexus Assistant
+### 8.4 Extend Sherlock
 
-Nexus Assistant's constructive actions live in `nexus/assistant.py`:
+Sherlock's constructive actions live in `nexus/assistant.py`:
 
 1. Add a `_do_youraction(...)` handler that performs a **local, constructive,
    reversible** operation and returns a result dict (`type`, `label`, optional
@@ -276,7 +276,7 @@ Nexus Assistant's constructive actions live in `nexus/assistant.py`:
    allow-list, and dispatch it in the `act()` tool loop.
 
 **Hard limits:** actions must never delete, change settings/keys/provider, or send
-data off the machine, and Nexus Assistant must never learn or reveal who built the
+data off the machine, and Sherlock must never learn or reveal who built the
 software. The `_ALLOWED_TOOLS` allow-list is the security boundary — anything not
 on it is refused even if the model emits it (prompt-injection defense).
 
@@ -368,7 +368,7 @@ Before opening a change, confirm:
 - [ ] Any URL fetched from user/collected input passes the `netguard` SSRF guard.
 - [ ] Untrusted text is escaped; links use the `safe_url` filter; model output is
       rendered as text.
-- [ ] New Nexus Assistant tools are constructive, local, reversible, and on the
+- [ ] New Sherlock tools are constructive, local, reversible, and on the
       `_ALLOWED_TOOLS` allow-list.
 - [ ] The server still binds to `127.0.0.1` only.
 - [ ] No personal or identifying information is added to code, docs, or commits.
