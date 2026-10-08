@@ -80,6 +80,8 @@ These constrain every feature and every contribution.
 - Evidence Vault (screenshot + hash + timestamp), watchlists with alerts,
   reporting (PDF/HTML), a persistent topic/entity relationship graph, OCR, and a
   first-run onboarding wizard.
+- Entity index (`item_entities`) with an entity dossier page and a "Focus"
+  (needs-your-eyes) triage view ranked from signals the AI already produced.
 - Packaging: a single local server (uvicorn) and a containerized run, with
   full-setup installers for Windows and Linux.
 
@@ -96,11 +98,26 @@ These constrain every feature and every contribution.
 - **Feed and triage polish.** Continued work on the analyst surface for
   non-technical operators (clear empty/degraded states, plain-language labels).
 
+- **Pivots everywhere.** Contextual pivots already ship on the entity dossier
+  (`pivot_tools_for` in `nexus/toolguide.py`: email -> holehe/ghunt,
+  username -> sherlock/maigret, phone -> phoneinfoga, domain -> theHarvester).
+  Next: expose the same one-click passive pivots on graph nodes and inside the
+  item drawer.
+- **Triage tuning.** The Focus view already shows why each item surfaced; next
+  is making its thresholds configurable. Items are never hidden from the main
+  feed.
+- **Fully offline UI.** Ship a prebuilt Tailwind stylesheet instead of the CDN
+  script, so the interface renders on an air-gapped machine.
+- **Engineering hygiene.** Lint and type-check gates in CI (ruff, mypy), a
+  Python version matrix, and route-level smoke tests for every page.
+
 ## Mid-term
 
 - A clearer plugin contract for third-party sources and tool adapters, so new
   sources can be added without touching the core.
-- Richer entity resolution and cross-source linking in the relationship graph.
+- Richer entity resolution and cross-source linking in the relationship graph,
+  building on the `item_entities` index (alias merging, cross-case "also seen
+  in" links).
 - Optional integration with an operator-supplied third-party commercial data
   provider (opt-in, key-gated) for platforms without a usable official API.
 
