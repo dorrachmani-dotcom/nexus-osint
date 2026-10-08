@@ -159,8 +159,7 @@ tuning, richer entity resolution, and lint/type-check gates in CI.
 
 ## About the author
 
-Built by <!-- AUTHOR_NAME -->.
-[LinkedIn](<!-- LINKEDIN_URL -->) · [Contact](<!-- CONTACT_URL -->)
+Built by **Dor Rachmani** — [GitHub](https://github.com/dorrachmani-dotcom).
 
 Available for consulting on OSINT tooling and AI-agent systems (local-first
 architectures, agent safety, LLM-backed data pipelines).
