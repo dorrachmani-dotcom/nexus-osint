@@ -15,7 +15,7 @@ pydantic-settings==2.14.1
 anthropic==0.42.0
 # Optional alternative analysis backends. Guarded imports: if either is absent
 # that provider is simply unavailable (graceful degradation).
-google-genai>=1.0.0         # Google Gemini (modern genai.Client API)
+google-genai>=1.70.0,<2     # Google Gemini (modern genai.Client API); tested on 1.70.x
 openai==1.59.6              # OpenAI (ChatGPT / GPT models)
 # Local model backend (Ollama) needs no extra package — it talks to the local
 # Ollama server over HTTP via httpx (listed below). No key, fully offline.

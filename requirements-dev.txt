@@ -1,0 +1,8 @@
+# Developer tooling: runtime deps + test/lint/type-check tools.
+# Install with: pip install -r requirements-dev.txt
+-r requirements.txt
+
+pytest==9.0.3               # same pin as requirements.txt (kept in sync)
+ruff==0.16.10               # linter / formatter
+mypy==2.4.0                 # static type checker
+pre-commit==4.6.2           # git hook runner
