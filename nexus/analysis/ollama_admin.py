@@ -27,25 +27,31 @@ RECOMMENDED_MODELS: list[dict[str, str]] = [
     {
         "name": "gemma4:e2b",
         "label": "Gemma 4 (E2B) — lightest, for older laptops",
-        "size": "~2 GB download",
+        "size": "~4.6 GB download",
         "ram": "8 GB RAM",
     },
     {
         "name": "gemma4:e4b",
         "label": "Gemma 4 (E4B) — recommended, best all-round balance",
-        "size": "~4 GB download",
+        "size": "~6.6 GB download",
         "ram": "16 GB RAM",
     },
     {
         "name": "gemma4:12b",
-        "label": "Gemma 4 (12B) — sharper analysis, needs a strong PC",
-        "size": "~9 GB download",
-        "ram": "32 GB RAM",
+        "label": "Gemma 4 (12B) — sharper analysis on a mid-range PC",
+        "size": "~7.7 GB download",
+        "ram": "24 GB RAM or 12 GB GPU",
+    },
+    {
+        "name": "qwen3.8:27b",
+        "label": "Qwen 3.8 (27B) — newest, strongest reasoning and tool use",
+        "size": "~18 GB download",
+        "ram": "32 GB RAM or 24 GB GPU",
     },
     {
         "name": "gemma4:31b",
         "label": "Gemma 4 (31B) — closest to cloud quality, fully offline",
-        "size": "~22 GB download",
+        "size": "~19 GB download",
         "ram": "64 GB RAM or 24+ GB GPU",
     },
 ]

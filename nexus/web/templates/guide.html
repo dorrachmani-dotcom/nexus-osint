@@ -191,10 +191,16 @@
               <td class="px-2 py-1.5">Strong all-round; the sweet spot for this app</td>
             </tr>
             <tr>
-              <td class="px-2 py-1.5">Gaming PC / workstation<br><span class="text-slate-500">32 GB RAM or 12+ GB GPU</span></td>
-              <td class="px-2 py-1.5 text-slate-200">Gemma 4 (12B or 26B)</td>
+              <td class="px-2 py-1.5">Strong laptop / mid-range PC<br><span class="text-slate-500">24 GB RAM or 12 GB GPU</span></td>
+              <td class="px-2 py-1.5 text-slate-200">Gemma 4 (12B)</td>
               <td class="px-2 py-1.5"><span class="mono">ollama pull gemma4:12b</span></td>
               <td class="px-2 py-1.5">Noticeably sharper analysis &amp; nuance</td>
+            </tr>
+            <tr>
+              <td class="px-2 py-1.5">Gaming PC / workstation<br><span class="text-slate-500">32 GB RAM or 24 GB GPU</span></td>
+              <td class="px-2 py-1.5 text-slate-200">Qwen 3.8 (27B)<br><span class="text-emerald-400">— newest</span></td>
+              <td class="px-2 py-1.5"><span class="mono">ollama pull qwen3.8:27b</span></td>
+              <td class="px-2 py-1.5">Strongest reasoning &amp; tool use that still runs on one PC</td>
             </tr>
             <tr>
               <td class="px-2 py-1.5">High-end workstation<br><span class="text-slate-500">64 GB RAM or 24+ GB GPU</span></td>
@@ -212,7 +218,7 @@
       <h3 class="text-sm font-semibold text-slate-200">Minimum requirements (what I recommend)</h3>
       <p><span class="font-medium text-slate-300">Bare minimum to run anything:</span> 8 GB RAM, ~5 GB free disk per model, any 64-bit Windows / Mac / Linux. Works on CPU alone — no graphics card needed.</p>
       <p><span class="font-medium text-slate-300">Recommended for comfortable use:</span> 16 GB RAM, an SSD, and (optional but a big speed boost) a GPU with 6+ GB of memory. This runs the default Gemma 4 (E4B) smoothly.</p>
-      <p><span class="font-medium text-slate-300">Disk space:</span> each model is a one-time download — roughly 2 GB (E2B), 4 GB (E4B), 9 GB (12B), 18 GB (26B), 22 GB (31B). You can delete models you don't use with <span class="mono">ollama rm &lt;name&gt;</span>.</p>
+      <p><span class="font-medium text-slate-300">Disk space:</span> each model is a one-time download — roughly 4.6 GB (Gemma 4 E2B), 6.6 GB (E4B), 7.7 GB (12B), 16 GB (26B), 18 GB (Qwen 3.8 27B), 19 GB (Gemma 4 31B). You can delete models you don't use with <span class="mono">ollama rm &lt;name&gt;</span>.</p>
       <p><span class="font-medium text-slate-300">Not sure?</span> Start with the default <span class="mono">gemma4:e4b</span>. If it feels slow, switch down to <span class="mono">gemma4:e2b</span>; if you have power to spare, switch up to <span class="mono">gemma4:12b</span>. Changing model = one <span class="mono">ollama pull</span> + updating <span class="mono">OLLAMA_MODEL</span>.</p>
     </div>
 

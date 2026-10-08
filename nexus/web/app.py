@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -3721,6 +3722,9 @@ def settings_check_ollama(request: Request) -> HTMLResponse:
     )
 
 
+_OLLAMA_MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,79}(:[A-Za-z0-9._-]{1,40})?")
+
+
 @app.post("/settings/ollama/pull", response_class=HTMLResponse)
 def settings_ollama_pull(request: Request, model: str = Form("")) -> HTMLResponse:
     """Download a local model from inside the app — no terminal needed.
@@ -3734,6 +3738,14 @@ def settings_ollama_pull(request: Request, model: str = Form("")) -> HTMLRespons
 
     settings = get_settings()
     model = (model or "").strip() or settings.effective_ollama_model()
+    # Free-text names are allowed (any Ollama model), but only in Ollama's tag
+    # shape, and never a ":cloud" variant: those run remotely, not on this machine.
+    if not _OLLAMA_MODEL_RE.fullmatch(model) or "cloud" in model.lower():
+        return TEMPLATES.TemplateResponse(request, "_ollama_pull.html", {"pull": {
+            "status": "error", "model": model,
+            "error": "That doesn't look like a local Ollama model name "
+                     "(for example gemma4:e4b or qwen3.8:27b). Cloud variants are not allowed.",
+        }})
     # Remember the choice so analysis uses it immediately (preference, not secret).
     with get_connection() as conn:
         set_meta(conn, "ollama_model", model)

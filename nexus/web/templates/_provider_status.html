@@ -43,20 +43,19 @@
             class="flex flex-wrap items-end gap-2">
         <label class="block flex-1 min-w-[12rem]">
           <span class="text-slate-400">Model</span>
-          <select name="model" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+          <input name="model" list="ollama-model-list" placeholder="{{ ollama_model }} (current) - click to choose" autocomplete="off"
+                 spellcheck="false" aria-label="Local model name"
+                 class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 mono">
+          <datalist id="ollama-model-list">
             {% for m in ollama_recommended %}
-            <option value="{{ m.name }}" {% if ollama_model == m.name %}selected{% endif %}>{{ m.label }} &middot; {{ m.size }}, needs {{ m.ram }}</option>
+            <option value="{{ m.name }}">{{ m.label }} &middot; {{ m.size }}, needs {{ m.ram }}</option>
             {% endfor %}
-            {% set known = ollama_recommended | map(attribute='name') | list %}
-            {% if ollama_model and ollama_model not in known %}
-            <option value="{{ ollama_model }}" selected>{{ ollama_model }} (current)</option>
-            {% endif %}
-          </select>
+          </datalist>
         </label>
         <button class="rounded bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 font-medium">Download model</button>
       </form>
       <div id="ollama-pull"></div>
-      <p class="text-slate-500">Bigger models are smarter but heavier. Not sure? Keep the recommended
+      <p class="text-slate-500">Pick from the list or type any Ollama model name. Bigger models are smarter but heavier. Not sure? Keep the recommended
         <span class="mono">gemma4:e4b</span>. <a href="/guide" class="text-sky-400 hover:text-sky-300">Which fits my computer? &rarr;</a></p>
     </div>
 
