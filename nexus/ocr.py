@@ -29,7 +29,7 @@ _MAX_CHARS = 20_000
 def ocr_available() -> bool:
     """True only if both the Python wrapper and the Tesseract binary are present."""
     try:
-        import pytesseract  # noqa: F401
+        import pytesseract
         from PIL import Image  # noqa: F401
     except ImportError:
         return False

@@ -97,15 +97,14 @@ class SameOriginGuardMiddleware(BaseHTTPMiddleware):
             origin = request.headers.get("origin")
             referer = request.headers.get("referer")
             source = origin or referer
-            if source:
-                if not _is_loopback_host(urlsplit(source).hostname or ""):
-                    logger.warning(
-                        "Rejected cross-origin %s %s (origin/referer=%r)",
-                        request.method,
-                        request.url.path,
-                        source,
-                    )
-                    return PlainTextResponse("Cross-origin request refused", status_code=403)
+            if source and not _is_loopback_host(urlsplit(source).hostname or ""):
+                logger.warning(
+                    "Rejected cross-origin %s %s (origin/referer=%r)",
+                    request.method,
+                    request.url.path,
+                    source,
+                )
+                return PlainTextResponse("Cross-origin request refused", status_code=403)
             # If neither Origin nor Referer is present the request isn't a
             # browser cross-site post (browsers always send one on those); we
             # allow it so non-browser local clients still work.

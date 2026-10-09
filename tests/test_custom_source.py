@@ -7,7 +7,7 @@ network: every test that would otherwise make a request monkeypatches
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from nexus.sources.custom import (
     CustomApiSource,
@@ -58,10 +58,10 @@ def test_dig_empty_path_returns_object():
 
 
 def test_parse_date_epoch_and_iso():
-    assert _parse_date(0) == datetime(1970, 1, 1, tzinfo=timezone.utc)
+    assert _parse_date(0) == datetime(1970, 1, 1, tzinfo=UTC)
     assert _parse_date("1700000000") is not None
     assert _parse_date("2024-01-02T03:04:05Z") == datetime(
-        2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc
+        2024, 1, 2, 3, 4, 5, tzinfo=UTC
     )
 
 

@@ -10,12 +10,24 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
-from contextlib import contextmanager
 from collections.abc import Iterator
+from contextlib import contextmanager
 
 from nexus.config import get_settings
 
 logger = logging.getLogger("nexus.db")
+
+
+def last_row_id(cur: sqlite3.Cursor) -> int:
+    """Return the rowid of the row just inserted through ``cur``.
+
+    ``sqlite3`` types ``Cursor.lastrowid`` as ``int | None``; after a successful
+    INSERT it is always set. Raises ``TypeError`` (as ``int(None)`` did) if not.
+    """
+    rowid = cur.lastrowid
+    if rowid is None:
+        raise TypeError("cursor has no lastrowid; was the statement an INSERT?")
+    return int(rowid)
 
 # --- Schema -----------------------------------------------------------------
 # Notes:
@@ -514,7 +526,7 @@ def _migrate_capsules_to_cases(conn: sqlite3.Connection) -> None:
             ).fetchone()
             if crow is None:
                 cur = conn.execute("INSERT INTO cases (name) VALUES (?)", (name,))
-                case_id = int(cur.lastrowid)
+                case_id = last_row_id(cur)
             else:
                 case_id = int(crow["id"])
             for term in terms:

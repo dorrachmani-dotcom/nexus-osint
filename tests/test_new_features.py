@@ -124,7 +124,7 @@ def test_graph_routes_and_case_scope(temp_db):
 
 def test_topic_graph_includes_pinned_items(temp_db):
     with temp_db() as conn:
-        cid, iid = _seed(conn)
+        _cid, iid = _seed(conn)
         # A pinned-only scope (no terms) must graph the pinned item, not the feed.
         g = s.topic_entity_graph(conn, extra_item_ids=[iid])
         assert g["item_count"] == 1 and len(g["nodes"]) >= 2

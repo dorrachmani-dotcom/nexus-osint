@@ -8,7 +8,7 @@ never aborts the run.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 import httpx
 
@@ -33,7 +33,8 @@ def _parse_date(value: str | None) -> datetime | None:
     # parseable ones and silently ignore the rest.
     for fmt in ("%m/%d/%Y, %I:%M %p, %z", "%Y-%m-%dT%H:%M:%S%z"):
         try:
-            return datetime.strptime(value, fmt)
+            # Both formats end in %z, so the result is always timezone-aware.
+            return datetime.strptime(value, fmt)  # noqa: DTZ007
         except ValueError:
             continue
     return None

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -46,7 +46,7 @@ def _parse_date(value) -> datetime | None:
     # Accept unix epoch seconds or an ISO string.
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(value, tz=timezone.utc)
+            return datetime.fromtimestamp(value, tz=UTC)
         except (OverflowError, OSError, ValueError):
             return None
     try:
@@ -153,7 +153,7 @@ class TelegramSource(Source):
         author = username or title or (str(peer_id) if peer_id else "telegram")
 
         if username and message_id:
-            url = f"https://t.me/{username}/{message_id}"
+            url: str | None = f"https://t.me/{username}/{message_id}"
         else:
             url = msg.get("link") or (chat.get("link") if chat else None)
 

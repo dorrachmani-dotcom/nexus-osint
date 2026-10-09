@@ -56,7 +56,7 @@ def _candidates(conn: sqlite3.Connection, item: dict) -> list[dict]:
         GROUP BY i.id
         ORDER BY shared DESC, COALESCE(i.published_at, i.fetched_at) DESC
         LIMIT ?
-        """,
+        """,  # noqa: S608 (only a ?-placeholder list is interpolated)
         [*norms, iid, _MAX_CANDIDATES * 3],
     ).fetchall()
     cluster = item.get("cluster_id")

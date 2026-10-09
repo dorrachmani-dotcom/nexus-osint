@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import smtplib
+from typing import ClassVar
 
 import pytest
 
@@ -31,7 +32,7 @@ def _s(**kw) -> Settings:
 
 
 class FakeSMTP:
-    instances: list["FakeSMTP"] = []
+    instances: ClassVar[list[FakeSMTP]] = []
     starttls_supported = True
     fail_login = False
 
@@ -76,8 +77,8 @@ def fake_smtp(monkeypatch):
 
 
 def _gmail(**kw):
-    base = dict(email_provider="gmail", smtp_username="analyst@example.com",
-                smtp_password=PASSWORD, digest_to="analyst@example.com, team@example.org")
+    base = {"email_provider": "gmail", "smtp_username": "analyst@example.com",
+            "smtp_password": PASSWORD, "digest_to": "analyst@example.com, team@example.org"}
     base.update(kw)
     return _s(**base)
 
@@ -258,7 +259,7 @@ def test_api_network_failure_never_raises(monkeypatch):
 def test_egress_allows_configured_email_host(monkeypatch):
     from nexus.security import egress
 
-    monkeypatch.setattr("nexus.config.get_settings", lambda: _gmail())
+    monkeypatch.setattr("nexus.config.get_settings", _gmail)
     egress._allow_cache = None
     try:
         assert egress._configured_allow().get("smtp.gmail.com") == "Email (your SMTP server)"

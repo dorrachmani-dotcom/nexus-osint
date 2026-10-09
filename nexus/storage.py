@@ -12,8 +12,9 @@ import json
 import logging
 import re
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+from nexus.db import last_row_id
 from nexus.models import RawItem
 
 logger = logging.getLogger("nexus.storage")
@@ -135,7 +136,7 @@ def upsert_item(conn: sqlite3.Connection, item: RawItem) -> tuple[int, bool]:
                 dedup_key,
             ),
         )
-        return int(cur.lastrowid), True
+        return last_row_id(cur), True
     except sqlite3.IntegrityError:
         # Lost a race on content_hash -> treat as an echo of the winner.
         return _bump_cluster(conn, dedup_key), False
@@ -611,15 +612,15 @@ def _relative_time(iso: str | None) -> str | None:
     """Human 'just now / 5m / 3h / 2d / 4w ago' from an ISO timestamp."""
     if not iso:
         return None
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     try:
         dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    delta = datetime.now(timezone.utc) - dt
+        dt = dt.replace(tzinfo=UTC)
+    delta = datetime.now(UTC) - dt
     secs = int(delta.total_seconds())
     if secs < 0:
         return "just now"
@@ -686,7 +687,7 @@ def decode_entities(raw) -> dict[str, list[str]]:
 # Characters the AI commonly leaves wrapped around or trailing an entity name
 # (quote styles, sentence punctuation, brackets). Stripped from both ends when
 # keying so "Alice", "Alice.", and '"Alice"' collapse into one graph node.
-_ENTITY_EDGE_CHARS = " \t\r\n\"'`.,;:!?()[]{}“”‘’«»"
+_ENTITY_EDGE_CHARS = " \t\r\n\"'`.,;:!?()[]{}“”‘’«»"  # noqa: RUF001 (curly quotes on purpose)
 
 
 def _norm_entity_key(name: str) -> str:
@@ -812,12 +813,12 @@ def topic_entity_graph(
     # alias_display: raw_low → canonical display string (for first-seen assignment)
     alias_map: dict[str, str] = {}
     alias_display: dict[str, str] = {}
-    for a in get_entity_aliases(conn):
-        raw_low = _norm_entity_key(a["alias"])
-        can_low = _norm_entity_key(a["canonical"])
+    for alias in get_entity_aliases(conn):
+        raw_low = _norm_entity_key(alias["alias"])
+        can_low = _norm_entity_key(alias["canonical"])
         if raw_low and can_low:
             alias_map[raw_low] = can_low
-            alias_display[raw_low] = a["canonical"]
+            alias_display[raw_low] = alias["canonical"]
 
     mentions: dict[str, int] = {}        # low -> item count
     display: dict[str, str] = {}         # low -> first-seen display name
@@ -1159,9 +1160,9 @@ def attention_items(
     top = _attention_scored(conn, min_signal)[:limit]
     items = [r for _, r, _ in top]
     enrich_feed_rows(conn, items)
-    for (signal, _row, reasons), it in zip(top, items):
+    for (signal, _row, reasons), it in zip(top, items, strict=True):
         if it.get("source_count", 1) >= 2:
-            reasons = reasons + [f"Confirmed by {it['source_count']} sources"]
+            reasons = [*reasons, f"Confirmed by {it['source_count']} sources"]
         it["signal"] = signal
         it["reasons"] = reasons
     return items
@@ -1250,7 +1251,7 @@ def enrich_feed_rows(conn: sqlite3.Connection, rows: list[dict]) -> list[dict]:
 
     # Related sources: other items sharing a cluster_id with any row on the page.
     cluster_ids = sorted({r["cluster_id"] for r in rows if r.get("cluster_id")})
-    related_by_cluster: dict[str, list[dict]] = {}
+    related_by_cluster: dict[str | None, list[dict]] = {}
     if cluster_ids:
         cl_ph = ",".join("?" * len(cluster_ids))
         for r in conn.execute(
@@ -1296,9 +1297,11 @@ def enrich_feed_rows(conn: sqlite3.Connection, rows: list[dict]) -> list[dict]:
         r["reliability"] = _classify_reliability(r.get("source"), r.get("url"))
         arch = archives.get(int(r["id"])) if r.get("id") else None
         r["archive"] = arch
-        archived = bool(arch and arch.get("status") in ("done", "existing"))
-        r["archive_url"] = arch.get("archive_url") or "" if archived else ""
-        r["archived_at"] = arch.get("archived_at") or "" if archived else ""
+        if arch and arch.get("status") in ("done", "existing"):
+            r["archive_url"] = arch.get("archive_url") or ""
+            r["archived_at"] = arch.get("archived_at") or ""
+        else:
+            r["archive_url"] = r["archived_at"] = ""
         r["display_url"] = _host(r.get("url"))
         r["relative_time"] = _relative_time(r.get("published_at") or r.get("fetched_at"))
         # Related = same-cluster items other than this one (dedup by source+host).
@@ -1416,7 +1419,7 @@ def create_list(
             "INSERT INTO lists (name, color, position) VALUES (?, ?, ?)",
             (name, color, pos),
         )
-    return int(cur.lastrowid)
+    return last_row_id(cur)
 
 
 def rename_list(conn: sqlite3.Connection, list_id: int, name: str) -> None:
@@ -1553,7 +1556,7 @@ def create_case(
         "INSERT INTO cases (name, description, priority, parent_id) VALUES (?, ?, ?, ?)",
         (name, description, priority, parent_id),
     )
-    return int(cur.lastrowid)
+    return last_row_id(cur)
 
 
 def update_case(
@@ -1770,7 +1773,7 @@ def case_archive_summary(conn: sqlite3.Connection, case_id: int) -> dict:
         (case_id,),
     ).fetchall()
     keys = ("none", *ARCHIVE_STATUSES)
-    counts = {k: 0 for k in keys}
+    counts = dict.fromkeys(keys, 0)
     for r in rows:
         counts[r["status"]] = int(r["n"])
     counts["total"] = sum(counts[k] for k in keys)
@@ -1983,9 +1986,9 @@ def get_case_last_visit(conn: sqlite3.Connection, case_id: int) -> str | None:
 
 def touch_case_visit(conn: sqlite3.Connection, case_id: int) -> None:
     """Record 'just visited now' so the case's new-count resets."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    set_meta(conn, f"case_visit:{case_id}", datetime.now(timezone.utc).isoformat())
+    set_meta(conn, f"case_visit:{case_id}", datetime.now(UTC).isoformat())
 
 
 def case_terms_map(
@@ -2294,7 +2297,7 @@ def add_note(
         "INSERT INTO notes (item_id, case_id, body) VALUES (?, ?, ?)",
         (item_id, case_id, body),
     )
-    return int(cur.lastrowid)
+    return last_row_id(cur)
 
 
 def case_notes(conn: sqlite3.Connection, case_id: int) -> list[dict]:
@@ -2344,7 +2347,7 @@ def create_watchlist(
         "INSERT INTO watchlists (label, pattern, kind) VALUES (?, ?, ?)",
         (label, pattern, kind),
     )
-    return int(cur.lastrowid)
+    return last_row_id(cur)
 
 
 def list_watchlists(conn: sqlite3.Connection) -> list[dict]:
@@ -2470,7 +2473,7 @@ def add_subscription(
         """,
         (source, value, label),
     )
-    return int(cur.lastrowid)
+    return last_row_id(cur)
 
 
 def list_subscriptions(
@@ -2626,7 +2629,8 @@ def _parse_utc(value: str | None) -> datetime | None:
     except ValueError:
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
             try:
-                parsed = datetime.strptime(text, fmt)
+                # Naive on purpose: made UTC-aware just below.
+                parsed = datetime.strptime(text, fmt)  # noqa: DTZ007
                 break
             except ValueError:
                 continue
@@ -2634,8 +2638,8 @@ def _parse_utc(value: str | None) -> datetime | None:
         return None
     if parsed.tzinfo is None:
         # SQLite datetime('now') is UTC but carries no offset.
-        return parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def get_source_watermark(conn: sqlite3.Connection, name: str) -> datetime | None:
@@ -2664,10 +2668,7 @@ def set_source_watermark(
     only after a successful fetch+persist, passing the scan-start time so the
     next scan picks up everything published during this run.
     """
-    if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
-    else:
-        when = when.astimezone(timezone.utc)
+    when = when.replace(tzinfo=UTC) if when.tzinfo is None else when.astimezone(UTC)
     conn.execute(
         """
         INSERT INTO sources (name, track, last_synced)
@@ -2702,7 +2703,7 @@ def add_requirement(
         "VALUES (?, ?, 1, ?, ?)",
         (question, priority, topic, case_id),
     )
-    return int(cur.lastrowid)
+    return last_row_id(cur)
 
 
 def list_requirements(
@@ -2960,7 +2961,7 @@ def create_custom_source(conn: sqlite3.Connection, cfg: dict) -> int:
         f"INSERT INTO custom_sources ({cols}) VALUES ({placeholders})",
         tuple(c[f] for f in _CUSTOM_FIELDS),
     )
-    return int(cur.lastrowid)
+    return last_row_id(cur)
 
 
 def update_custom_source(conn: sqlite3.Connection, source_id: int, cfg: dict) -> None:

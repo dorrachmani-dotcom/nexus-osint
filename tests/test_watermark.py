@@ -7,7 +7,7 @@ out entries at or before ``since``.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -17,12 +17,11 @@ from nexus.storage import (
     set_source_watermark,
 )
 
-
 # --- (a) Watermark round-trip ----------------------------------------------
 
 
 def test_watermark_roundtrip_aware_utc(temp_db):
-    when = datetime(2026, 6, 3, 12, 30, 0, tzinfo=timezone.utc)
+    when = datetime(2026, 6, 3, 12, 30, 0, tzinfo=UTC)
     with temp_db() as conn:
         set_source_watermark(conn, "rss", when)
     with temp_db() as conn:
@@ -39,7 +38,7 @@ def test_watermark_naive_input_treated_as_utc(temp_db):
         set_source_watermark(conn, "gnews", naive)
     with temp_db() as conn:
         got = get_source_watermark(conn, "gnews")
-    assert got == naive.replace(tzinfo=timezone.utc)
+    assert got == naive.replace(tzinfo=UTC)
 
 
 def test_watermark_non_utc_offset_normalised(temp_db):
@@ -49,7 +48,7 @@ def test_watermark_non_utc_offset_normalised(temp_db):
         set_source_watermark(conn, "reddit", aware)
     with temp_db() as conn:
         got = get_source_watermark(conn, "reddit")
-    assert got == datetime(2026, 6, 3, 12, 0, 0, tzinfo=timezone.utc)
+    assert got == datetime(2026, 6, 3, 12, 0, 0, tzinfo=UTC)
 
 
 def test_watermark_absent_source_is_none(temp_db):
@@ -60,7 +59,7 @@ def test_watermark_absent_source_is_none(temp_db):
 def test_parse_utc_handles_sqlite_now_format():
     # datetime('now') format: no offset, implicitly UTC.
     dt = _parse_utc("2026-06-03 12:30:00")
-    assert dt == datetime(2026, 6, 3, 12, 30, 0, tzinfo=timezone.utc)
+    assert dt == datetime(2026, 6, 3, 12, 30, 0, tzinfo=UTC)
 
 
 def test_parse_utc_never_raises_on_garbage():
@@ -92,7 +91,7 @@ def test_collector_passes_stored_since(temp_db, monkeypatch):
     from nexus.collector import Collector
 
     fake = _FakeSource()
-    watermark = datetime(2026, 5, 1, 8, 0, 0, tzinfo=timezone.utc)
+    watermark = datetime(2026, 5, 1, 8, 0, 0, tzinfo=UTC)
     with temp_db() as conn:
         set_source_watermark(conn, fake.name, watermark)
 
@@ -134,7 +133,7 @@ def test_collector_advances_watermark_on_success(temp_db, monkeypatch):
 def test_collector_keeps_watermark_when_source_errors(temp_db, monkeypatch):
     from nexus.collector import Collector
 
-    old = datetime(2026, 4, 1, 0, 0, 0, tzinfo=timezone.utc)
+    old = datetime(2026, 4, 1, 0, 0, 0, tzinfo=UTC)
     with temp_db() as conn:
         set_source_watermark(conn, "boom", old)
 
@@ -195,7 +194,7 @@ def test_freesearch_since_filtering(monkeypatch, source_name):
     parsed = _fake_parsed([_entry("old", old), _entry("new", new)])
     monkeypatch.setattr(fs, "fetch_feed", lambda url: parsed)
 
-    since = datetime(2026, 3, 1, tzinfo=timezone.utc)
+    since = datetime(2026, 3, 1, tzinfo=UTC)
     items = fs._parse_feed("https://x.test", source_name, "q", since=since)
 
     titles = {it.title for it in items}
@@ -221,6 +220,6 @@ def test_freesearch_keeps_undated_entries(monkeypatch):
     parsed = _fake_parsed([_entry("undated", None)])
     monkeypatch.setattr(fs, "fetch_feed", lambda url: parsed)
 
-    since = datetime(2026, 3, 1, tzinfo=timezone.utc)
+    since = datetime(2026, 3, 1, tzinfo=UTC)
     items = fs._parse_feed("https://x.test", "gnews", "q", since=since)
     assert {it.title for it in items} == {"undated"}

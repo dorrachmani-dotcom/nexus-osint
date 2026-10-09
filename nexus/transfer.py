@@ -33,10 +33,11 @@ import logging
 import os
 import sqlite3
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from nexus.config import get_settings
+from nexus.db import last_row_id
 from nexus.storage import get_meta, set_meta
 
 logger = logging.getLogger("nexus.transfer")
@@ -90,7 +91,7 @@ def export_bundle(
     the watermark is advanced.
     """
     since = get_meta(conn, _LAST_EXPORT_KEY) if only_new else None
-    started_at = datetime.now(timezone.utc).isoformat()
+    started_at = datetime.now(UTC).isoformat()
 
     item_ids = _select_item_ids(conn, scope=scope, case_id=case_id, since=since)
 
@@ -273,7 +274,7 @@ def _requirement_id(conn: sqlite3.Connection, question: str, priority: int) -> i
         "INSERT INTO requirements (question, priority, enabled) VALUES (?, ?, 1)",
         (question, priority),
     )
-    return int(cur.lastrowid)
+    return last_row_id(cur)
 
 
 def import_bundle(conn: sqlite3.Connection, blob: bytes) -> dict:
@@ -344,11 +345,14 @@ def import_bundle(conn: sqlite3.Connection, blob: bytes) -> dict:
             item_id = int(existing["id"])
             skipped_items += 1
             # Backfill analysis only if this machine has none for the item.
-            if rec.get("analysis") and conn.execute(
-                "SELECT 1 FROM analyses WHERE item_id = ?", (item_id,)
-            ).fetchone() is None:
-                if _insert_analysis(conn, item_id, rec["analysis"]):
-                    analyses_added += 1
+            if (
+                rec.get("analysis")
+                and conn.execute(
+                    "SELECT 1 FROM analyses WHERE item_id = ?", (item_id,)
+                ).fetchone() is None
+                and _insert_analysis(conn, item_id, rec["analysis"])
+            ):
+                analyses_added += 1
         else:
             dedup_key = rec.get("dedup_key") or chash
             conn.execute(
@@ -379,13 +383,13 @@ def import_bundle(conn: sqlite3.Connection, blob: bytes) -> dict:
                     # fetched_at is NOT NULL; a real export always sets it, but a
                     # partial/hand-built bundle might not — fall back to now so a
                     # missing field never aborts the whole import.
-                    rec.get("fetched_at") or datetime.now(timezone.utc).isoformat(),
+                    rec.get("fetched_at") or datetime.now(UTC).isoformat(),
                     rec.get("media_urls") or "[]",
                     rec.get("raw") or "{}",
                     dedup_key,
                 ),
             )
-            item_id = int(cur.lastrowid)
+            item_id = last_row_id(cur)
             new_items += 1
 
             if rec.get("analysis") and _insert_analysis(conn, item_id, rec["analysis"]):
@@ -440,7 +444,7 @@ def import_bundle(conn: sqlite3.Connection, blob: bytes) -> dict:
                     item_id,
                     f"evidence/{name}",
                     ev.get("sha256") or "",
-                    ev.get("captured_at") or datetime.now(timezone.utc).isoformat(),
+                    ev.get("captured_at") or datetime.now(UTC).isoformat(),
                     ev.get("ocr_text"),
                 ),
             )
@@ -504,7 +508,7 @@ def _import_case(conn: sqlite3.Connection, case_block: dict, content_hashes: lis
             "INSERT INTO cases (name, description) VALUES (?, ?)",
             (name, case_block.get("description")),
         )
-        case_id = int(cur.lastrowid)
+        case_id = last_row_id(cur)
 
     for chash in content_hashes:
         if not chash:

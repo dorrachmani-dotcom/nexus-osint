@@ -8,7 +8,7 @@ platform runs even if praw is not installed.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from nexus.config import Settings, get_settings
 from nexus.models import RawItem
@@ -64,7 +64,7 @@ class RedditSource(Source):
                 submissions = client.subreddit(sub).new(limit=_LIMIT_PER_SUB)
                 for post in submissions:
                     published = datetime.fromtimestamp(
-                        getattr(post, "created_utc", 0), tz=timezone.utc
+                        getattr(post, "created_utc", 0), tz=UTC
                     )
                     if since and published <= since:
                         continue
@@ -102,7 +102,7 @@ class RedditSource(Source):
                 )
                 for post in results:
                     published = datetime.fromtimestamp(
-                        getattr(post, "created_utc", 0), tz=timezone.utc
+                        getattr(post, "created_utc", 0), tz=UTC
                     )
                     if since and published <= since:
                         continue

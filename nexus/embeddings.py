@@ -13,6 +13,7 @@ single click never embeds the whole archive.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import math
@@ -53,7 +54,7 @@ def _embed_one(text: str, settings: Settings) -> list[float] | None:
 def _cosine(a: list[float], b: list[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
@@ -72,12 +73,10 @@ def _ensure_vectors(
         return out
     ph = ",".join("?" * len(ids))
     for r in conn.execute(
-        f"SELECT item_id, vec FROM item_embeddings WHERE item_id IN ({ph})", ids
+        f"SELECT item_id, vec FROM item_embeddings WHERE item_id IN ({ph})", ids  # noqa: S608 (only a ?-placeholder list is interpolated)
     ).fetchall():
-        try:
+        with contextlib.suppress(ValueError, TypeError):  # corrupt row: recompute below
             out[int(r["item_id"])] = json.loads(r["vec"])
-        except (ValueError, TypeError):
-            pass
     model = settings.effective_ollama_model()
     for iid in ids:
         if iid in out:
@@ -125,7 +124,7 @@ def find_similar(
         cand = {
             int(r["item_id"])
             for r in conn.execute(
-                f"SELECT DISTINCT item_id FROM item_entities "
+                f"SELECT DISTINCT item_id FROM item_entities "  # noqa: S608 (only a ?-placeholder list is interpolated)
                 f"WHERE name_norm IN ({ph}) AND item_id != ?",
                 [*norms, item_id],
             ).fetchall()

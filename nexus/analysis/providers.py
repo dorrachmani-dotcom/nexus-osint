@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from typing import Any
 
 from nexus.config import Settings
 
@@ -57,7 +58,7 @@ class AnthropicProvider(LLMProvider):
 
     name = "anthropic"
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(self, api_key: str | None, model: str) -> None:
         super().__init__(model)
         from anthropic import Anthropic  # guarded by the factory below
 
@@ -99,7 +100,7 @@ class GeminiProvider(LLMProvider):
     name = "gemini"
     think_budget = 768  # bounded reasoning; added on top of the output budget.
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(self, api_key: str | None, model: str) -> None:
         super().__init__(model)
         from google import genai  # guarded by the factory below
 
@@ -111,7 +112,9 @@ class GeminiProvider(LLMProvider):
         m = (self.model or "").lower()
         return ("2.5" in m) or ("gemini-3" in m) or ("-3." in m)
 
-    def _config(self, system_prompt: str, max_tokens: int, *, json_mode: bool) -> dict:
+    def _config(self, system_prompt: str, max_tokens: int, *, json_mode: bool) -> Any:
+        # A google-genai GenerateContentConfigDict. Typed as Any because the SDK
+        # is an optional, lazily imported dependency (graceful degradation).
         cfg: dict = {"system_instruction": system_prompt}
         if self._supports_thinking():
             # Keep reasoning, but reserve the requested tokens for the answer by
@@ -150,7 +153,7 @@ class OpenAIProvider(LLMProvider):
 
     name = "openai"
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(self, api_key: str | None, model: str) -> None:
         super().__init__(model)
         from openai import OpenAI  # guarded by the factory below
 

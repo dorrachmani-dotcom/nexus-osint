@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from nexus.analysis.claude_core import analyze_pending
 from nexus.analysis.keyless_translate import translate_pending
@@ -84,7 +84,7 @@ class Collector:
         # Stamp the run's start BEFORE fetching: items published during the scan
         # must be visible to the next run, so a successful source advances its
         # watermark to this instant (never to "now after fetching").
-        scan_started = datetime.now(timezone.utc)
+        scan_started = datetime.now(UTC)
         # Earliest watermark across sources drives the UI's "since" line; None
         # (a first run for any source) means we did a full window-bounded pull.
         prev_watermarks: list[datetime] = []
@@ -176,7 +176,7 @@ class Collector:
         """
         new = 0
         alerts = 0
-        when = watermark or datetime.now(timezone.utc)
+        when = watermark or datetime.now(UTC)
         with get_connection() as conn:
             for item in items:
                 _id, is_new = upsert_item(conn, item)

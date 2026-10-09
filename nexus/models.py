@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -36,7 +36,7 @@ class Party(str, Enum):
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class RawItem(BaseModel):
@@ -116,7 +116,7 @@ class ProcessedItem(BaseModel):
     analysis: Analysis | None = None
 
     @classmethod
-    def from_raw(cls, raw: RawItem) -> "ProcessedItem":
+    def from_raw(cls, raw: RawItem) -> ProcessedItem:
         return cls(raw=raw, content_hash=raw.content_hash)
 
     @property

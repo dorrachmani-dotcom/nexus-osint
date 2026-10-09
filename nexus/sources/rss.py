@@ -7,7 +7,7 @@ HTML is stripped to plain text so the content is clean for analysis and search.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from nexus.config import Settings, get_settings
 from nexus.models import RawItem
@@ -23,7 +23,8 @@ def _to_datetime(struct_time) -> datetime | None:
     if not struct_time:
         return None
     try:
-        return datetime(*struct_time[:6], tzinfo=timezone.utc)
+        year, month, day, hour, minute, second = struct_time[:6]
+        return datetime(year, month, day, hour, minute, second, tzinfo=UTC)
     except (TypeError, ValueError):
         return None
 

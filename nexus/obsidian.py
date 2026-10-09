@@ -15,7 +15,6 @@ never API keys or settings.
 from __future__ import annotations
 
 import io
-import json
 import logging
 import re
 import zipfile
@@ -125,7 +124,7 @@ def build_case_vault(conn, case_id: int) -> tuple[bytes, dict] | None:
                 body += [f"[Open source]({it['url']})", ""]
             body += [f"Part of {_wikilink(case_name)}.", ""]
 
-            zf.writestr(f"items/{note_name}.md", "\n".join(fm + [""] + body))
+            zf.writestr(f"items/{note_name}.md", "\n".join([*fm, "", *body]))
             item_links.append(f"- [[{note_name}]]")
             item_count += 1
 

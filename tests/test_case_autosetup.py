@@ -35,7 +35,7 @@ def test_creating_a_case_via_form_auto_links_words(temp_db):
     with temp_db():
         _client().post("/cases", data={"name": "Mbappe", "priority": "medium"})
     with temp_db() as conn:
-        cid = [c["id"] for c in s.list_cases(conn) if c["name"] == "Mbappe"][0]
+        cid = next(c["id"] for c in s.list_cases(conn) if c["name"] == "Mbappe")
         assert any(t["term"] == "Mbappe" for t in s.case_terms(conn, cid))
 
 

@@ -14,7 +14,6 @@ from nexus import translate
 from nexus.config import Settings
 from nexus.lang import detect_language, is_english, iso_to_name, name_to_iso
 
-
 # --- nexus.lang -------------------------------------------------------------
 
 
@@ -121,9 +120,8 @@ def test_ssrf_guard_blocks_loopback(monkeypatch):
 
 
 def test_keyless_does_not_clobber_ai_translation(temp_db):
-    from nexus.models import Analysis, ThreatLevel
+    from nexus.models import Analysis, RawItem, ThreatLevel
     from nexus.storage import save_analysis, save_keyless_translation, upsert_item
-    from nexus.models import RawItem
 
     with temp_db() as conn:
         item_id, _ = upsert_item(conn, RawItem(source="rss", content="Привет мир"))

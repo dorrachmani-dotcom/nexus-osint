@@ -26,8 +26,8 @@ def _secret_values() -> list[str]:
     """Live, non-empty secret values to scrub, longest first (so prefixes of a
     longer secret are handled by the longer match first)."""
     try:
-        from nexus.envstore import EDITABLE_KEYS, _CUSTOM_KEY_RE, _env_path
         from nexus.config import get_settings
+        from nexus.envstore import _CUSTOM_KEY_RE, EDITABLE_KEYS, _env_path
 
         settings = get_settings()
         values = []
@@ -92,7 +92,7 @@ class SecretRedactingFilter(logging.Filter):
                 if not record.exc_text:
                     record.exc_text = logging.Formatter().formatException(record.exc_info)
                 record.exc_text = scrub(record.exc_text)
-        except Exception:
+        except Exception:  # noqa: S110 (logging from inside a log filter could recurse)
             # Never let logging-safety break logging itself.
             pass
         return True

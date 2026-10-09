@@ -28,6 +28,7 @@ Nothing here ever raises; any internal error degrades to a clear note.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 import logging
@@ -177,9 +178,11 @@ def _scan_clamav(data: bytes, findings: list[dict], scanners: list[str]) -> None
         with tempfile.NamedTemporaryFile(delete=False, suffix=".scan") as tmp:
             tmp.write(data)
             tmp_path = tmp.name
-        proc = subprocess.run(
+        # Fixed argv (resolved clamscan path + our temp file), no shell.
+        # check=False: exit code 1 means "infected" and is handled below.
+        proc = subprocess.run(  # noqa: S603
             [exe, "--no-summary", "--stdout", tmp_path],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, timeout=120, check=False,
         )
         # clamscan exit code: 0 clean, 1 infected, 2 error.
         if proc.returncode == 1:
@@ -195,10 +198,8 @@ def _scan_clamav(data: bytes, findings: list[dict], scanners: list[str]) -> None
         findings.append(_finding("info", "ClamAV is installed but its scan did not complete."))
     finally:
         if tmp_path:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(tmp_path)
-            except OSError:
-                pass
 
 
 def _scan_virustotal(sha256: str, findings: list[dict], scanners: list[str]) -> None:
@@ -215,7 +216,8 @@ def _scan_virustotal(sha256: str, findings: list[dict], scanners: list[str]) -> 
             f"https://www.virustotal.com/api/v3/files/{sha256}",
             headers={"x-apikey": api_key},
         )
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        # Fixed https:// VirusTotal endpoint; only the hash is interpolated.
+        with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
             payload = json.loads(resp.read().decode("utf-8"))
         stats = (
             payload.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})

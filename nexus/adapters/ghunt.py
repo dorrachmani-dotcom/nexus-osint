@@ -48,16 +48,18 @@ class GHuntAdapter(ToolAdapter):
             seen.add((kind, value))
             findings.append(Finding(kind=kind, value=value, label=target))
 
-        def walk(node, key_hint: str = "", budget=[_MAX_NODES]) -> None:
+        budget = [_MAX_NODES]  # nodes left to visit, shared by the recursion
+
+        def walk(node, key_hint: str = "") -> None:
             if budget[0] <= 0:
                 return
             budget[0] -= 1
             if isinstance(node, dict):
                 for k, v in node.items():
-                    walk(v, str(k).lower(), budget)
+                    walk(v, str(k).lower())
             elif isinstance(node, list):
                 for v in node:
-                    walk(v, key_hint, budget)
+                    walk(v, key_hint)
             else:
                 text = str(node).strip()
                 if not text:

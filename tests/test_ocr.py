@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import nexus.ocr as ocr
+from nexus import ocr
 from nexus.models import RawItem
 from nexus.storage import count_matching_items, search_items, upsert_item
 

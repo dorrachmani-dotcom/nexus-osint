@@ -113,11 +113,11 @@ def test_import_is_idempotent(temp_db):
 def test_only_new_export_advances_watermark(temp_db):
     with temp_db() as conn:
         _seed_one(conn, title="First", url="https://example.com/1")
-        blob1, sum1 = export_bundle(conn, scope="all", only_new=True)
+        _blob1, sum1 = export_bundle(conn, scope="all", only_new=True)
         assert sum1["item_count"] == 1  # first run carries everything
 
         # A second only_new export with nothing added carries zero items.
-        blob2, sum2 = export_bundle(conn, scope="all", only_new=True)
+        _blob2, sum2 = export_bundle(conn, scope="all", only_new=True)
         assert sum2["item_count"] == 0
 
 
@@ -132,9 +132,8 @@ def test_bundle_contains_no_secrets(temp_db):
 
 
 def test_import_rejects_non_bundle(temp_db):
-    with temp_db() as conn:
-        with pytest.raises(ValueError):
-            import_bundle(conn, b"this is not a zip file")
+    with temp_db() as conn, pytest.raises(ValueError):
+        import_bundle(conn, b"this is not a zip file")
 
 
 # --------------------------------------------------------------------------- #

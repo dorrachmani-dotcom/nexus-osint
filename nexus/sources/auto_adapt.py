@@ -29,7 +29,7 @@ Guardrails (this is opt-in, cost-sensitive automation):
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from nexus.analysis.providers import get_provider
 from nexus.analysis.source_planner import plan_source
@@ -54,13 +54,13 @@ def _cooldown_active(last_adapt_at: str | None) -> bool:
         # SQLite datetime('now') has no offset; treat as UTC.
         try:
             when = datetime.strptime(last_adapt_at, "%Y-%m-%d %H:%M:%S").replace(
-                tzinfo=timezone.utc
+                tzinfo=UTC
             )
         except ValueError:
             return False
     if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - when < timedelta(hours=COOLDOWN_HOURS)
+        when = when.replace(tzinfo=UTC)
+    return datetime.now(UTC) - when < timedelta(hours=COOLDOWN_HOURS)
 
 
 def maybe_adapt(conn, source_id: int, settings: Settings | None = None) -> dict:
