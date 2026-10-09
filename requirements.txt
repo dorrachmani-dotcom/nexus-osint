@@ -44,7 +44,7 @@ pytesseract==0.3.13         # thin wrapper around the Tesseract OCR engine
 # PDF export tries WeasyPrint first (best CSS, needs native GTK libs — ships in
 # the Docker image) then falls back to xhtml2pdf (pure Python, no system deps,
 # works on Windows/macOS local installs). HTML export always works regardless.
-weasyprint==68.0            # HTML -> PDF (primary; Linux/Docker) — 68.0 fixes CVE-2025-68616
+weasyprint==70.0            # HTML -> PDF (primary; Linux/Docker) — 68.0 fixes CVE-2025-68616
 xhtml2pdf==0.2.17           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 
 # --- Entity graph (Maltego replacement) ---
