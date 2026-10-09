@@ -141,13 +141,14 @@ def test_save_anonymous_redirect_location_and_body(public_ok):
 
     nothing = wayback.save(SRC, settings=_no_keys(), client=_client_for(
         lambda r: httpx.Response(200, text="queued")))
-    assert nothing["ok"] is False and "did not report a snapshot" in nothing["error"]
+    # archive.org now usually answers anonymous captures with a login page.
+    assert nothing["ok"] is False and "free archive.org account" in nothing["error"]
 
 
 def test_save_anonymous_errors(public_ok):
     limited = wayback.save(SRC, settings=_no_keys(), client=_client_for(lambda r: httpx.Response(429)))
     assert limited["ok"] is False and limited["rate_limited"] is True
-    assert "rate-limiting" in limited["error"]
+    assert "free archive.org account" in limited["error"]  # points at keys / browser save
 
     down = wayback.save(SRC, settings=_no_keys(), client=_client_for(lambda r: httpx.Response(520)))
     assert down["ok"] is False and down["rate_limited"] is False
@@ -612,3 +613,25 @@ def test_manifest_and_exports_include_archive(temp_db, test_queue):
 
     html = c.get(f"/cases/{cid}/report", params={"format": "html"}).text
     assert SNAP in html and "Archived:" in html
+
+
+def test_lookup_retries_without_trailing_slash(public_ok):
+    """The availability API only matches some snapshots without the slash."""
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.params["url"])
+        if request.url.params["url"].endswith("/"):
+            return httpx.Response(200, json={"archived_snapshots": {}})
+        return httpx.Response(200, json={"archived_snapshots": {"closest": {
+            "available": True, "timestamp": "20260102030405",
+            "url": "http://web.archive.org/web/20260102030405/https://example.org/news"}}})
+
+    res = wayback.lookup("https://example.org/news/", client=_client_for(handler))
+    assert res["ok"] and res["archive_url"].startswith("https://web.archive.org/web/")
+    assert seen == ["https://example.org/news/", "https://example.org/news"]
+
+
+def test_browser_save_url():
+    assert wayback.browser_save_url("https://example.org/a") == (
+        "https://web.archive.org/save/https://example.org/a")

@@ -399,11 +399,15 @@ ask the Wayback Machine (web.archive.org) to keep an independent, public copy:
 
 The first time, a warning explains the trade-off: archiving tells the Internet
 Archive which URL you are interested in and creates a **public** capture. For
-sensitive investigations, use the local Evidence screenshot instead. Captures
-are spaced out to respect the archive's limits (roughly a dozen a minute without
-keys); adding free archive.org keys (`ARCHIVE_ORG_ACCESS_KEY` /
-`ARCHIVE_ORG_SECRET_KEY`, pasted in Settings) uses the more reliable
-authenticated API. The whole feature can be switched off in **Settings →
+sensitive investigations, use the local Evidence screenshot instead.
+
+**Finding** an existing snapshot needs no account. **Saving a new capture** in
+practice needs a free archive.org account: the Internet Archive now usually
+refuses anonymous captures. Either paste your archive.org S3 keys
+(`ARCHIVE_ORG_ACCESS_KEY` / `ARCHIVE_ORG_SECRET_KEY`, from
+archive.org/account/s3.php) in Settings, or click **Save in my browser** to open
+Save Page Now in a browser where you are logged in to archive.org. Captures are
+spaced out to respect the archive's rate limits. The whole feature can be switched off in **Settings →
 Internet Archive**. Archive links and capture times are included in the
 evidence manifest, case reports and CSV/JSON case exports.
 

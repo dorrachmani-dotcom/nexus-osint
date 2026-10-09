@@ -167,6 +167,13 @@ def _friendly_http_error(status: int) -> str:
 # --------------------------------------------------------------------- lookup
 
 
+def _url_variants(url: str) -> list[str]:
+    """The URL as given, then with its trailing slash toggled. The availability
+    API treats ``https://example.com/`` and ``https://example.com`` differently."""
+    alt = url[:-1] if url.endswith("/") else url + "/"
+    return [url, alt] if alt != url else [url]
+
+
 def lookup(url: str, *, client: httpx.Client | None = None) -> dict:
     """Newest existing snapshot of ``url``. Never raises.
 
@@ -179,17 +186,22 @@ def lookup(url: str, *, client: httpx.Client | None = None) -> dict:
             return _result(False, error=blocked)
         own = client is None
         c = client or httpx.Client(timeout=LOOKUP_TIMEOUT, follow_redirects=True)
+        closest: dict = {}
         try:
-            resp = c.get(AVAILABILITY_API, params={"url": url}, headers=_headers())
+            for candidate in _url_variants(url):
+                resp = c.get(AVAILABILITY_API, params={"url": candidate}, headers=_headers())
+                if resp.status_code != 200:
+                    return _http_fail(resp.status_code)
+                data = resp.json() or {}
+                closest = ((data.get("archived_snapshots") or {}).get("closest") or {})
+                if closest.get("url") and str(closest.get("available")).lower() != "false":
+                    break
+                closest = {}
         finally:
             if own:
                 c.close()
-        if resp.status_code != 200:
-            return _http_fail(resp.status_code)
-        data = resp.json() or {}
-        closest = ((data.get("archived_snapshots") or {}).get("closest") or {})
         snap_url = str(closest.get("url") or "")
-        if not closest or not snap_url or str(closest.get("available")).lower() == "false":
+        if not snap_url:
             return _result(False, error="No snapshot of this page exists on the Wayback Machine yet.")
         if snap_url.startswith("http://"):
             snap_url = "https://" + snap_url[len("http://"):]
@@ -207,8 +219,22 @@ def lookup(url: str, *, client: httpx.Client | None = None) -> dict:
 # ----------------------------------------------------------------------- save
 
 
+ANON_REFUSED = (
+    "The Internet Archive did not accept an anonymous capture (it now usually "
+    "requires a free archive.org account). Add your archive.org S3 keys in "
+    "Settings (archive.org/account/s3.php), or use 'Save in my browser'."
+)
+
+
+def browser_save_url(url: str) -> str:
+    """Save Page Now in the user's own browser, where they may be logged in."""
+    return SPN_ANON_PREFIX + url
+
+
 def _save_anonymous(url: str, client: httpx.Client) -> dict:
     resp = client.get(SPN_ANON_PREFIX + url, headers=_headers())
+    if resp.status_code in (401, 403, 429):
+        return _result(False, error=ANON_REFUSED, rate_limited=resp.status_code == 429)
     # The snapshot path arrives in a header on success (200 or a redirect).
     for header in ("content-location", "location"):
         found = parse_snapshot_path(resp.headers.get(header))
@@ -221,8 +247,7 @@ def _save_anonymous(url: str, client: httpx.Client) -> dict:
     )
     if found:
         return _result(True, archive_url=found[0], archived_at=found[1])
-    return _result(False, error="The Internet Archive accepted the request but did not "
-                                "report a snapshot. Try 'Find existing snapshot' in a minute.")
+    return _result(False, error=ANON_REFUSED)
 
 
 def _save_spn2(url: str, creds: tuple[str, str], client: httpx.Client,

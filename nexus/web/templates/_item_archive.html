@@ -63,6 +63,11 @@
       hx-indicator="#archive-spin-{{ ar.item_id }}"
       class="rounded border border-slate-700 hover:border-sky-600 hover:text-sky-300 text-slate-300 px-2.5 py-1"
       title="Look up the newest snapshot that already exists">&#128269; Find existing snapshot</button>
+    {% if ar.acked and ar.item_url.startswith(('http://', 'https://')) %}
+    <a href="{{ ('https://web.archive.org/save/' ~ ar.item_url) | safe_url }}" target="_blank" rel="noopener noreferrer"
+      class="rounded border border-slate-700 hover:border-sky-600 hover:text-sky-300 text-slate-300 px-2.5 py-1"
+      title="Open Save Page Now in your own browser (works with your archive.org login, no keys needed)">&#8599; Save in my browser</a>
+    {% endif %}
     <span id="archive-spin-{{ ar.item_id }}" class="htmx-indicator text-sky-300">looking&hellip;</span>
   </div>
   {% endif %}
