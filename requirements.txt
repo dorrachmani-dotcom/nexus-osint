@@ -2,13 +2,13 @@
 # Versions are pinned to the patched releases verified by `pip-audit` (no known
 # CVEs). fastapi 0.136.x pulls a patched starlette (>=1.0); jinja2 3.1.6 fixes
 # CVE-2025-27516; python-multipart 0.0.31 fixes the 2026 multipart DoS CVEs.
-fastapi==0.136.3
+fastapi==0.142.2
 uvicorn[standard]==0.48.0
 jinja2==3.1.6
 python-multipart==0.0.31
 
 # --- Config / models ---
-pydantic==2.13.4
+pydantic==2.13.5
 pydantic-settings==2.14.2
 
 # --- Intelligence core ---
@@ -45,7 +45,7 @@ pytesseract==0.3.13         # thin wrapper around the Tesseract OCR engine
 # the Docker image) then falls back to xhtml2pdf (pure Python, no system deps,
 # works on Windows/macOS local installs). HTML export always works regardless.
 weasyprint==70.0            # HTML -> PDF (primary; Linux/Docker); 70.0 includes the latest security fixes
-xhtml2pdf==0.2.17           # HTML -> PDF (pure-Python fallback; Windows/macOS)
+xhtml2pdf==0.2.21           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 
 # --- Entity graph (Maltego replacement) ---
 networkx==3.4.2
