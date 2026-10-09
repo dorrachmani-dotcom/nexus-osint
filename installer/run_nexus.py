@@ -21,9 +21,12 @@ read-only; all state the user creates goes under NEXUS_HOME.
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import os
 import shutil
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -34,6 +37,8 @@ HOST = "127.0.0.1"
 PORT = 8000
 URL = f"http://{HOST}:{PORT}"
 HEALTH = f"{URL}/health"
+
+log = logging.getLogger("nexus.launcher")
 
 
 def _bundle_dir() -> Path:
@@ -171,8 +176,8 @@ def _find_browser() -> str | None:
     (chromium/chrome/brave/edge under any name on PATH).
     """
     if sys.platform.startswith("win"):
-        pf = os.environ.get("ProgramFiles", r"C:\Program Files")
-        pf86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+        pf = os.environ.get("PROGRAMFILES", r"C:\Program Files")
+        pf86 = os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
         candidates = [
             Path(pf) / "Microsoft/Edge/Application/msedge.exe",
             Path(pf86) / "Microsoft/Edge/Application/msedge.exe",
@@ -198,15 +203,13 @@ def _find_browser() -> str | None:
     return None
 
 
-def _open_window(home: Path) -> "subprocess.Popen | None":
+def _open_window(home: Path) -> subprocess.Popen | None:
     """Open the dashboard in a chromeless app window, or a normal browser tab.
 
     Returns the browser process handle when an --app window was launched, so the
     caller can shut the server down when the user closes it. Returns None when we
     fell back to the default browser (we then leave the server running).
     """
-    import subprocess
-
     browser = _find_browser()
     if browser:
         profile = home / "app-profile"
@@ -219,14 +222,17 @@ def _open_window(home: Path) -> "subprocess.Popen | None":
             "--no-default-browser-check",
         ]
         try:
-            return subprocess.Popen(args)
+            # The executable is a fixed browser path found by _find_browser and
+            # the arguments are constants; no shell, no untrusted input.
+            return subprocess.Popen(args)  # noqa: S603
         except OSError:
-            pass
+            log.debug("could not launch %s; using the default browser", browser, exc_info=True)
     # No Chromium browser found (or launch failed): open the default browser.
     try:
         webbrowser.open(URL)
     except Exception:
-        pass
+        # Best effort: the server keeps running and the URL is still reachable.
+        log.debug("could not open the default browser", exc_info=True)
     return None
 
 
@@ -266,10 +272,8 @@ def main() -> int:
     proc = _open_window(home)
     if proc is not None:
         # Tie the app's lifetime to the window: when the user closes it, stop.
-        try:
+        with contextlib.suppress(KeyboardInterrupt):
             proc.wait()
-        except KeyboardInterrupt:
-            pass
         return 0
 
     # Opened in the default browser instead — keep the server alive until the

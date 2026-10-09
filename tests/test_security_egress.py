@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import socket
 
-import nexus.security.egress as egress
+from nexus.security import egress
 
 
 def _reset_state():
@@ -134,7 +134,7 @@ def test_configured_rss_feed_host_is_expected(monkeypatch):
     assert expected is True
     assert "RSS" in cat
     # Subdomains of the configured host match by suffix too.
-    cat2, expected2 = egress.classify("cdn.feeds.example-news.org", 443)
+    _cat2, expected2 = egress.classify("cdn.feeds.example-news.org", 443)
     assert expected2 is True
 
 

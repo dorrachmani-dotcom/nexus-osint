@@ -329,11 +329,22 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-The suite (375 tests) uses temporary SQLite databases and avoids the
+The suite (about 500 tests) uses temporary SQLite databases and avoids the
 network; it covers storage and dedup, source parsing, the assistant allow-list,
-web hardening, export/transfer round-trips and route smoke tests. GitHub Actions
-runs it on Python 3.11 and 3.12 for every push to `main` and every pull request
-(`.github/workflows/ci.yml`).
+web hardening, export/transfer round-trips and route smoke tests.
+
+GitHub Actions (`.github/workflows/ci.yml`) gates every push to `main` and every
+pull request on:
+
+- **test**: the suite on Python 3.11 and 3.12;
+- **lint**: `ruff check .` (rule set and justified ignores in `pyproject.toml`);
+- **types**: `mypy` over the `nexus` package;
+- **assets**: rebuilds the Tailwind stylesheet and vendored htmx and fails if
+  the committed copies have drifted.
+
+Run the same checks locally with `ruff check .` and `mypy`, or install the git
+hooks with `pre-commit install`. Dependabot proposes weekly updates for pip,
+npm and GitHub Actions.
 Contribution guidelines are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap

@@ -88,7 +88,9 @@ class ToolAdapter(ABC):
         with tempfile.TemporaryDirectory(prefix=f"nexus_{self.name}_") as workdir:
             cmd = self.build_command(target, workdir)
             try:
-                proc = subprocess.run(
+                # cmd is an argv list built by the adapter (no shell); the
+                # target is passed as a single argument, never interpolated.
+                proc = subprocess.run(  # noqa: S603
                     cmd,
                     capture_output=True,
                     text=True,

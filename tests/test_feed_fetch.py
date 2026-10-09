@@ -8,7 +8,7 @@ feedparser. These tests lock that contract in.
 
 from __future__ import annotations
 
-import nexus.sources.base as base
+from nexus.sources import base
 
 
 class _FakeResp:

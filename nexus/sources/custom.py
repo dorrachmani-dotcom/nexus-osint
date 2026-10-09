@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -40,14 +40,14 @@ def _parse_date(value) -> datetime | None:
         return None
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(value, tz=timezone.utc)
+            return datetime.fromtimestamp(value, tz=UTC)
         except (OverflowError, OSError, ValueError):
             return None
     text = str(value).strip()
     # Numeric string -> epoch seconds.
     if text.isdigit():
         try:
-            return datetime.fromtimestamp(int(text), tz=timezone.utc)
+            return datetime.fromtimestamp(int(text), tz=UTC)
         except (OverflowError, OSError, ValueError):
             pass
     try:
@@ -273,8 +273,8 @@ def load_custom_sources(settings: Settings | None = None) -> list[CustomApiSourc
     Read fresh each scan so sources added from the dashboard take effect without
     a restart. Never raises — a DB hiccup yields an empty list.
     """
-    from nexus.storage import list_custom_sources
     from nexus.db import get_connection
+    from nexus.storage import list_custom_sources
 
     settings = settings or get_settings()
     try:

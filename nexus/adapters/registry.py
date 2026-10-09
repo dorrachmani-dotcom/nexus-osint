@@ -21,7 +21,7 @@ from nexus.config import Settings, get_settings
 
 # Order matters only for display. Grouped by target type:
 # username -> email -> phone -> domain -> social/media -> dark web.
-_ADAPTER_CLASSES = [
+_ADAPTER_CLASSES: list[type[ToolAdapter]] = [
     SherlockAdapter,
     MaigretAdapter,
     SocialscanAdapter,

@@ -15,7 +15,7 @@ import hashlib
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from nexus.config import Settings, get_settings
@@ -139,7 +139,7 @@ def _launch_chromium(pw):
     ) from last_exc
 
 
-def capture_evidence(item_id: int, url: str, settings: Settings | None = None) -> dict:
+def capture_evidence(item_id: int, url: str | None, settings: Settings | None = None) -> dict:
     """Screenshot `url`, store + hash it, and link it to `item_id`.
 
     Returns a small dict describing the result. Must be called from a worker
@@ -161,7 +161,7 @@ def capture_evidence(item_id: int, url: str, settings: Settings | None = None) -
         logger.warning("playwright not installed; evidence capture disabled.")
         return {"ok": False, "error": "playwright not installed"}
 
-    captured_at = datetime.now(timezone.utc)
+    captured_at = datetime.now(UTC)
     fname = f"item{item_id}_{captured_at.strftime('%Y%m%d%H%M%S')}.png"
     out_path = _evidence_dir(settings) / fname
 
@@ -196,7 +196,8 @@ def capture_evidence(item_id: int, url: str, settings: Settings | None = None) -
                 try:
                     page.wait_for_load_state("load", timeout=8000)
                 except Exception:
-                    pass  # partial load is fine; we screenshot what rendered
+                    # A partial load is fine; we screenshot what rendered.
+                    logger.debug("load state did not settle for %s", url, exc_info=True)
                 page.wait_for_timeout(1200)
                 # full_page can fail on pages with extreme/transformed layouts;
                 # fall back to the visible viewport so we still get evidence.

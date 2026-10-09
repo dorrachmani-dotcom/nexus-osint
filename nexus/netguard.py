@@ -55,7 +55,7 @@ def safe_http_url(url: str) -> tuple[bool, str]:
         for info in infos:
             addr = info[4][0]
             try:
-                ip = ipaddress.ip_address(addr.split("%")[0])  # strip IPv6 zone id
+                ip = ipaddress.ip_address(str(addr).split("%")[0])  # strip IPv6 zone id
             except ValueError:
                 continue
             # Evaluate the address itself and, for an IPv4-mapped IPv6 address

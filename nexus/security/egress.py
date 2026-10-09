@@ -41,6 +41,7 @@ import socket
 import threading
 import time
 from collections import OrderedDict
+from datetime import UTC
 from urllib.parse import urlsplit
 
 logger = logging.getLogger("nexus.security.egress")
@@ -49,12 +50,12 @@ logger = logging.getLogger("nexus.security.egress")
 # grow this without limit.
 _MAX_DESTINATIONS = 500
 _lock = threading.Lock()
-_destinations: "OrderedDict[tuple[str, int], dict]" = OrderedDict()
+_destinations: OrderedDict[tuple[str, int], dict] = OrderedDict()
 
 # Recent IP -> hostname map, filled by the getaddrinfo wrapper so connections by
 # IP can be shown as the name the code actually asked for.
 _MAX_DNS_CACHE = 512
-_ip_to_host: "OrderedDict[str, str]" = OrderedDict()
+_ip_to_host: OrderedDict[str, str] = OrderedDict()
 
 _installed = False
 
@@ -113,7 +114,7 @@ def _configured_allow() -> dict[str, str]:
 
         # RSS feeds the operator added (``rss_feed_list`` is a property).
         try:
-            feeds = settings.rss_feed_list  # type: ignore[attr-defined]
+            feeds = settings.rss_feed_list
             for url in (feeds if isinstance(feeds, (list, tuple)) else []):
                 h = _host_of(url)
                 if h:
@@ -181,7 +182,7 @@ def _configured_allow() -> dict[str, str]:
 
 def _is_local_ip(value: str) -> bool:
     try:
-        ip = ipaddress.ip_address(value.split("%")[0])
+        ip = ipaddress.ip_address(value.split("%", maxsplit=1)[0])
     except ValueError:
         return False
     candidates = [ip]
@@ -276,7 +277,7 @@ def _remember_dns(host: str, infos) -> None:
                 _ip_to_host[ip] = host.lower()
                 while len(_ip_to_host) > _MAX_DNS_CACHE:
                     _ip_to_host.popitem(last=False)
-    except Exception:
+    except Exception:  # noqa: S110 (runs inside the patched DNS path: never raise, never log)
         pass
 
 
@@ -305,9 +306,9 @@ def install_egress_monitor() -> None:
         return real_connect_ex(self, address)
 
     try:
-        socket.getaddrinfo = _patched_getaddrinfo  # type: ignore[assignment]
-        socket.socket.connect = _patched_connect  # type: ignore[assignment]
-        socket.socket.connect_ex = _patched_connect_ex  # type: ignore[assignment]
+        socket.getaddrinfo = _patched_getaddrinfo
+        socket.socket.connect = _patched_connect  # type: ignore[method-assign]
+        socket.socket.connect_ex = _patched_connect_ex  # type: ignore[method-assign]
         _installed = True
         logger.info("Egress monitor installed (observing outbound connections).")
     except Exception:
@@ -333,9 +334,9 @@ def get_egress_report() -> dict:
 def _fmt_ts(ts) -> str:
     """Epoch seconds -> a readable UTC timestamp (or '-' if unavailable)."""
     try:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        return datetime.fromtimestamp(float(ts), timezone.utc).strftime(
+        return datetime.fromtimestamp(float(ts), UTC).strftime(
             "%Y-%m-%d %H:%M:%SZ"
         )
     except Exception:
@@ -351,11 +352,11 @@ def format_audit_report() -> str:
     is honest about the monitor's scope. English-only; carries nothing that ties
     it to any particular operator.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     report = get_egress_report()
     rows = report["destinations"]
-    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+    generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%SZ")
 
     lines: list[str] = []
     lines.append("NEXUS-OSINT - DATA-HANDLING AUDIT REPORT")

@@ -13,13 +13,14 @@ import re
 import threading
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import Body, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 
 from nexus import __version__, wayback
 from nexus.adapters.registry import all_adapters, get_adapter
@@ -30,11 +31,10 @@ from nexus.envstore import (
     EDITABLE_KEYS,
     custom_source_env_name,
     custom_source_key_configured,
-    is_configured,
     reload_settings,
     update_env,
 )
-from nexus.evidence import capture_evidence, list_evidence
+from nexus.evidence import capture_evidence
 from nexus.graph import render_entity_graph_html, render_graph_html
 from nexus.reporting import (
     feed_rows_to_csv,
@@ -54,13 +54,10 @@ from nexus.storage import (
     all_case_terms,
     attention_count,
     attention_items,
-    case_alert_terms,
-    case_timeline,
-    delete_entity_alias,
-    dismiss_item,
-    get_entity_aliases,
-    case_items,
+    case_archive_summary,
+    case_archive_targets,
     case_evidence,
+    case_items,
     case_live_items,
     case_new_count,
     case_new_items,
@@ -69,33 +66,40 @@ from nexus.storage import (
     case_reviewed_items,
     case_terms,
     case_terms_map,
+    case_timeline,
     case_unread_count,
     count_items,
     count_matching_items,
+    count_new_watchlist_hits,
     create_case,
     create_custom_source,
     create_list,
     create_watchlist,
+    decode_entities,
     delete_capsule,
     delete_case,
     delete_custom_source,
+    delete_entity_alias,
     delete_list,
-    update_list,
     delete_note,
     delete_requirement,
     delete_subscription,
     delete_watchlist,
-    toggle_watchlist,
+    dismiss_item,
     distinct_sources,
     enrich_feed_rows,
     entity_profile,
+    fail_stale_archive_jobs,
     feed_item,
     get_active_case,
     get_case,
     get_custom_source,
-    get_meta,
+    get_entity_aliases,
+    get_item_archive,
     get_list,
+    get_meta,
     intel_items,
+    item_archives_map,
     list_cases,
     list_custom_sources,
     list_lists,
@@ -105,35 +109,30 @@ from nexus.storage import (
     list_subscriptions,
     list_watchlist_hits,
     list_watchlists,
-    count_new_watchlist_hits,
-    mark_watchlist_hits_seen,
     mark_case_read,
     mark_read,
     mark_unread,
+    mark_watchlist_hits_seen,
     related_cases,
     remove_bookmark,
     remove_case_term,
     remove_from_list,
-    undismiss_item,
-    update_case_term,
     search_items,
     set_active_case,
-    set_meta,
-    set_requirement_enabled,
-    touch_case_visit,
-    toggle_custom_source,
-    topic_entity_graph,
-    update_case,
-    update_custom_source,
-    update_note,
-    decode_entities,
-    case_archive_summary,
-    case_archive_targets,
-    fail_stale_archive_jobs,
-    get_item_archive,
-    item_archives_map,
     set_case_auto_archive,
     set_item_archive,
+    set_meta,
+    set_requirement_enabled,
+    toggle_custom_source,
+    toggle_watchlist,
+    topic_entity_graph,
+    touch_case_visit,
+    undismiss_item,
+    update_case,
+    update_case_term,
+    update_custom_source,
+    update_list,
+    update_note,
 )
 
 logger = logging.getLogger("nexus")
@@ -175,24 +174,23 @@ def _safe_url(value) -> str:
 TEMPLATES.env.filters["safe_url"] = _safe_url
 
 
-def _linkify(value: str) -> "markupsafe.Markup":
+def _linkify(value: str) -> Markup:
     """Escape text, then turn bare http/https URLs into clickable links."""
-    import re as _re
-    from markupsafe import Markup, escape
     safe = str(escape(value))
-    safe = _re.sub(
+    safe = re.sub(
         r"(https?://[^\s&quot;&lt;&gt;\"']+)",
         r'<a href="\1" target="_blank" rel="noopener" '
         r'class="text-sky-400 hover:text-sky-300 break-all">\1</a>',
         safe,
     )
-    return Markup(safe)
+    # Safe: the input was HTML-escaped above; only the anchor markup is added.
+    return Markup(safe)  # noqa: S704
 
 
 TEMPLATES.env.filters["linkify"] = _linkify
 
 
-def _auto_scan_loop(collector: "Collector") -> None:
+def _auto_scan_loop(collector: Collector) -> None:
     """Daemon thread: fires collector.scan() on the DB-configured interval.
 
     Checks every 60 s whether an auto-scan is due, reads the interval live from
@@ -209,11 +207,11 @@ def _auto_scan_loop(collector: "Collector") -> None:
                 if last_raw:
                     try:
                         last_dt = datetime.fromisoformat(last_raw)
-                        if datetime.now(timezone.utc) - last_dt < timedelta(hours=interval_h):
+                        if datetime.now(UTC) - last_dt < timedelta(hours=interval_h):
                             continue
                     except ValueError:
                         pass
-                set_meta(conn, "last_auto_scan_at", datetime.now(timezone.utc).isoformat())
+                set_meta(conn, "last_auto_scan_at", datetime.now(UTC).isoformat())
             logger.info("Auto-scan: starting scheduled scan (interval=%dh)", interval_h)
             collector.scan()
             logger.info("Auto-scan: completed")
@@ -268,7 +266,10 @@ async def lifespan(app: FastAPI):
 
     # Boot Sync: silent gap-fill, off the event loop so startup stays fast.
     if app.state.collector.available_sources():
-        asyncio.create_task(asyncio.to_thread(app.state.collector.boot_sync))
+        # Keep a reference so the task cannot be garbage-collected mid-run.
+        app.state.boot_sync_task = asyncio.create_task(
+            asyncio.to_thread(app.state.collector.boot_sync)
+        )
     yield
 
 
@@ -325,9 +326,7 @@ app.mount("/data", StaticFiles(directory=str(_DATA_DIR)), name="data")
 
 # When this server process started (UTC ISO). The desktop launcher compares it
 # to the newest source-file time to detect a stale server and restart it.
-from datetime import datetime as _dt, timezone as _tz
-
-_STARTED_AT = _dt.now(_tz.utc).isoformat()
+_STARTED_AT = datetime.now(UTC).isoformat()
 
 
 @app.get("/health")
@@ -438,9 +437,9 @@ def _window_since_ts(window: str | None) -> str | None:
     hours = _WINDOW_HOURS.get((window or "").strip())
     if not hours:
         return None
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
     return cutoff.isoformat()
 
 
@@ -992,7 +991,7 @@ def attention_count_route() -> JSONResponse:
 
 
 @app.get("/entity", response_class=HTMLResponse)
-def entity_page(request: Request, name: str = "") -> HTMLResponse:
+def entity_page(request: Request, name: str = "") -> Response:
     """One entity's dossier: stats, the items mentioning it, who it co-occurs
     with, and the cases it appears in. Reachable by clicking any entity name."""
     settings = get_settings()
@@ -2235,7 +2234,6 @@ def case_ai_brief(request: Request, case_id: int) -> HTMLResponse:
         if not briefing:
             error = "The AI couldn't produce a briefing just now. Please try again."
         else:
-            import json as _json
             items_data = [
                 {
                     "id": it.get("id"),
@@ -2271,7 +2269,7 @@ def _resolve_since(preset: str) -> str | None:
     """Convert a date preset ('today', 'week', 'month') to a YYYY-MM-DD cutoff."""
     from datetime import date, timedelta
     preset = (preset or "").strip().lower()
-    today = date.today()
+    today = date.today()  # noqa: DTZ011 (the analyst's local calendar day is intended)
     if preset == "today":
         return today.isoformat()
     if preset == "week":
@@ -2754,7 +2752,7 @@ def case_evidence_manifest(case_id: int) -> Response:
     """Download a plain-text chain-of-custody manifest for a case: every captured
     evidence screenshot with its SHA-256 hash and capture timestamp. Court-ready
     provenance the analyst can keep alongside the exported screenshots."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     with get_connection() as conn:
         case = get_case(conn, case_id)
@@ -2771,7 +2769,7 @@ def case_evidence_manifest(case_id: int) -> Response:
     ]
     archive_by_item = {int(p["id"]): a for p, a in archived}
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     lines = [
         "NEXUS-OSINT — EVIDENCE MANIFEST",
         "=" * 72,
@@ -2898,9 +2896,9 @@ def feed_export(
             since_ts=since_ts, unread_only=unread_only, terms=terms,
         )
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M")
     fmt = (format or "pdf").strip().lower()
 
     # Machine-readable exports for analysts who want the raw data in a spreadsheet
@@ -2972,7 +2970,7 @@ def transfer_export(
     only_new: str | None = Form(default=None),
 ) -> Response:
     """Build a ``.nexusbundle`` and stream it as a download for the USB stick."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from nexus.transfer import export_bundle
 
@@ -2981,7 +2979,7 @@ def transfer_export(
         blob, summary = export_bundle(
             conn, scope=scope, case_id=cid, only_new=bool(only_new)
         )
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M")
     filename = f"nexus_bundle_{stamp}.nexusbundle"
     logger.info(
         "Transfer export: %s item(s), %s evidence file(s), scope=%s",
@@ -3099,12 +3097,12 @@ def security_scan_file(request: Request, upload: UploadFile = File(...)) -> HTML
 @app.get("/security/report")
 def security_audit_report() -> Response:
     """Download a plain-text data-handling audit report (egress snapshot)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from nexus.security import format_audit_report
 
     text = format_audit_report()
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M")
     filename = f"nexus_data_handling_report_{stamp}.txt"
     return Response(
         content=text,
@@ -3173,7 +3171,7 @@ def assistant_save_log(transcript: list = Body(default=[], embed=True)) -> JSONR
     no secrets) so the analyst keeps a private record of what they asked.
     """
     import json as _json
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     turns: list[dict] = []
     if isinstance(transcript, list):
@@ -3189,7 +3187,7 @@ def assistant_save_log(transcript: list = Body(default=[], embed=True)) -> JSONR
         settings = get_settings()
         log_dir = settings.data_path / "assistant_logs"
         log_dir.mkdir(parents=True, exist_ok=True)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         path = log_dir / f"sherlock_{now.strftime('%Y%m%d')}.jsonl"
         record = {"saved_at": now.isoformat(timespec="seconds"), "turns": turns}
         with path.open("a", encoding="utf-8") as fh:
@@ -3406,7 +3404,7 @@ def topics(request: Request) -> HTMLResponse:
             "capsules": capsules,
             "capsule_templates": CAPSULE_TEMPLATES,
             "source_stats": [dict(r) for r in source_stats],
-            "today_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "today_date": datetime.now(UTC).strftime("%Y-%m-%d"),
         },
     )
 
@@ -3575,10 +3573,10 @@ def topics_add(
 ) -> HTMLResponse:
     """Add a single custom collection target."""
     value = (value or "").strip()
-    label = (label or "").strip() or None
+    clean_label = (label or "").strip() or None
     if source in _TOPIC_SOURCE_IDS and value:
         with get_connection() as conn:
-            add_subscription(conn, source, value, label)
+            add_subscription(conn, source, value, clean_label)
     with get_connection() as conn:
         grouped = _grouped_subscriptions(conn)
     return TEMPLATES.TemplateResponse(
@@ -3725,7 +3723,7 @@ def intel_export(
     format: str = "csv",
 ) -> Response:
     """Download the relevance-ranked intelligence view as CSV or JSON data."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     rid = _to_int(requirement_id)
     score = _to_int(min_score, 1) or 1
@@ -3737,8 +3735,8 @@ def intel_export(
     # Append the relevance score as an extra column — the whole point of this view.
     from nexus.reporting import DATA_EXPORT_FIELDS
 
-    fields = DATA_EXPORT_FIELDS + ["rel_score"]
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    fields = [*DATA_EXPORT_FIELDS, "rel_score"]
+    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M")
     if (format or "csv").strip().lower() == "json":
         return Response(
             content=feed_rows_to_json(rows, fields=fields),
@@ -3829,7 +3827,7 @@ def intel_scan(
 # Secret variables the analyst can set from the dashboard. Each maps to one
 # allow-listed key in nexus/envstore.py. The actual values are written to .env
 # only (never the DB) and are never rendered back — the UI shows Set / Not set.
-SECRET_FIELDS = [
+SECRET_FIELDS: list[dict] = [
     {"key": "ANTHROPIC_API_KEY", "label": "Anthropic (Claude) API key",
      "hint": "Powers AI summaries, translation and threat scoring.",
      "url": "https://console.anthropic.com/settings/keys",
@@ -3990,7 +3988,7 @@ SECRET_FIELDS = [
 ]
 
 
-from nexus.analysis.ollama_admin import RECOMMENDED_MODELS as OLLAMA_RECOMMENDED
+from nexus.analysis.ollama_admin import RECOMMENDED_MODELS as OLLAMA_RECOMMENDED  # noqa: E402
 
 
 def _secret_status(settings) -> dict[str, bool]:
@@ -4176,7 +4174,7 @@ async def settings_set_secrets(request: Request) -> HTMLResponse:
         if form.get(f"clear_{key}"):
             updates[key] = ""  # explicit removal
             continue
-        value = (form.get(key) or "").strip()
+        value = str(form.get(key) or "").strip()
         if value:  # blank = leave as-is (don't overwrite an existing secret)
             updates[key] = value
 
@@ -4209,9 +4207,8 @@ async def settings_set_translation(request: Request) -> HTMLResponse:
     from nexus.netguard import safe_http_url
 
     form = await request.form()
-    url = (form.get("libretranslate_url") or "").strip()
+    url = str(form.get("libretranslate_url") or "").strip()
 
-    msg = ""
     if url:
         # Validate the /translate endpoint the same way nexus.translate will call it.
         ok, reason = safe_http_url(url.rstrip("/") + "/translate")
@@ -4400,8 +4397,8 @@ async def settings_email_save(request: Request) -> HTMLResponse:
     if port and not (port.isdigit() and 0 < int(port) < 65536):
         problems.append("the port must be a number such as 587 or 465")
     for key, label in (("SMTP_FROM", "From address"), ("SMTP_USERNAME", "email address")):
-        value = updates.get(key)
-        if value and "@" in value and not valid_address(value):
+        addr = updates.get(key)
+        if addr and "@" in addr and not valid_address(addr):
             problems.append(f"the {label} does not look like an email address")
     if "DIGEST_TO" in updates:
         recips = [r.strip() for r in updates["DIGEST_TO"].split(",") if r.strip()]
@@ -4674,11 +4671,11 @@ async def custom_source_plan(request: Request) -> HTMLResponse:
 
     form = await request.form()
     result = plan_source(
-        docs_url=(form.get("docs_url") or "").strip() or None,
-        sample=(form.get("sample") or "").strip() or None,
-        hint=(form.get("hint") or "").strip() or None,
+        docs_url=str(form.get("docs_url") or "").strip() or None,
+        sample=str(form.get("sample") or "").strip() or None,
+        hint=str(form.get("hint") or "").strip() or None,
     )
-    ctx = {"ai_enabled": get_settings().analysis_enabled}
+    ctx: dict = {"ai_enabled": get_settings().analysis_enabled}
     if result.get("ok"):
         ctx["cfg"] = result["config"]
         ctx["plan_ok"] = True
@@ -4695,7 +4692,7 @@ async def custom_source_create(request: Request) -> HTMLResponse:
     cfg = _custom_cfg_from_form(form)
     with get_connection() as conn:
         new_id = create_custom_source(conn, cfg)
-    api_key = (form.get("api_key") or "").strip()
+    api_key = str(form.get("api_key") or "").strip()
     if api_key and cfg.get("auth_type") in ("header", "query", "bearer"):
         update_env({custom_source_env_name(new_id): api_key})
         reload_settings()
@@ -4711,7 +4708,7 @@ async def custom_source_update(request: Request, source_id: int) -> HTMLResponse
     cfg = _custom_cfg_from_form(form)
     with get_connection() as conn:
         update_custom_source(conn, source_id, cfg)
-    api_key = (form.get("api_key") or "").strip()
+    api_key = str(form.get("api_key") or "").strip()
     if api_key and cfg.get("auth_type") in ("header", "query", "bearer"):
         update_env({custom_source_env_name(source_id): api_key})
         reload_settings()

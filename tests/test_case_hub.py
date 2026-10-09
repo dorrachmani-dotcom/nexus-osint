@@ -120,8 +120,11 @@ def test_cross_source_corroboration(temp_db):
 
 def test_case_terms_map_is_one_query_and_correct(temp_db):
     with temp_db() as conn:
-        a = s.create_case(conn, "A"); s.add_case_term(conn, a, "x"); s.add_case_term(conn, a, "y")
-        b = s.create_case(conn, "B"); s.add_case_term(conn, b, "z")
+        a = s.create_case(conn, "A")
+        s.add_case_term(conn, a, "x")
+        s.add_case_term(conn, a, "y")
+        b = s.create_case(conn, "B")
+        s.add_case_term(conn, b, "z")
         c = s.create_case(conn, "C")  # no terms
         m = s.case_terms_map(conn, [a, b, c])
         assert m[a] == ["x", "y"]

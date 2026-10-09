@@ -43,7 +43,7 @@ _JSON_ARRAY_RE = re.compile(r"\[.*\]", re.DOTALL)
 
 def _clamp_score(value) -> int:
     try:
-        return max(0, min(100, int(round(float(value)))))
+        return max(0, min(100, round(float(value))))
     except (TypeError, ValueError):
         return 0
 
@@ -69,8 +69,11 @@ def _parse_scores(text: str, valid_ids: set[int]) -> dict[int, dict]:
     for el in data:
         if not isinstance(el, dict):
             continue
+        raw_id = el.get("id")
+        if raw_id is None:
+            continue
         try:
-            rid = int(el.get("id"))
+            rid = int(raw_id)
         except (TypeError, ValueError):
             continue
         if rid not in valid_ids:

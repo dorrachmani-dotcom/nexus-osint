@@ -34,7 +34,7 @@ import re
 import threading
 import time
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import quote
 
 import httpx
@@ -93,10 +93,11 @@ def _headers(extra: dict | None = None) -> dict:
 def timestamp_to_iso(ts: str | None) -> str:
     """``20260102030405`` -> ``2026-01-02T03:04:05Z`` (empty on bad input)."""
     try:
-        dt = datetime.strptime(str(ts or "")[:14], "%Y%m%d%H%M%S")
+        # Wayback timestamps are UTC without an offset; tz is attached below.
+        dt = datetime.strptime(str(ts or "")[:14], "%Y%m%d%H%M%S")  # noqa: DTZ007
     except ValueError:
         return ""
-    return dt.replace(tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return dt.replace(tzinfo=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def parse_snapshot_path(value: str | None) -> tuple[str, str] | None:
@@ -376,7 +377,7 @@ class ArchiveQueue:
         self._saver = saver
         self._limiter = limiter
         self._autostart = autostart
-        self._q: "queue.Queue[tuple[int, str]]" = queue.Queue()
+        self._q: queue.Queue[tuple[int, str]] = queue.Queue()
         self._queued: set[int] = set()
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
@@ -496,7 +497,7 @@ class ArchiveQueue:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 _QUEUE: ArchiveQueue | None = None

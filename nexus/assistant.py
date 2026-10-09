@@ -511,7 +511,8 @@ def _describe_current(conn: sqlite3.Connection, page: str | None) -> str:
                 "report without naming a case, they mean this one."
             )
     except Exception:
-        pass
+        # The prompt is still useful without the active-case hint.
+        logger.debug("could not read the active case for the prompt", exc_info=True)
     return "\n".join(bits)
 
 
@@ -702,8 +703,8 @@ def _extract_json(text: str | None) -> dict | None:
     try:
         obj = json.loads(text)
         return obj if isinstance(obj, dict) else None
-    except Exception:
-        pass
+    except (ValueError, RecursionError):
+        pass  # not a bare JSON document; fall back to extracting the {...} span
     start, end = text.find("{"), text.rfind("}")
     if start != -1 and end > start:
         try:
@@ -882,6 +883,8 @@ def _do_add_items(conn: sqlite3.Connection, ctx: dict, spec: dict) -> dict:
 
             auto_archive_on_pin(conn, int(r["id"]), cid)
         except Exception:
+            # One bad row must not abort the batch; keep pinning the rest.
+            logger.debug("could not pin item %s to case %s", r["id"], cid, exc_info=True)
             continue
     conn.commit()
 
@@ -1362,7 +1365,8 @@ def act(
             for c in list_cases(conn):
                 ctx["by_name"][c["name"].lower()] = c["id"]
         except Exception:
-            pass
+            # Name lookup is a convenience; actions can still use explicit ids.
+            logger.debug("could not list cases for name resolution", exc_info=True)
         for spec in actions_spec[:_MAX_ACTIONS]:
             if not isinstance(spec, dict):
                 continue

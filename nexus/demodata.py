@@ -9,7 +9,7 @@ it's easy to spot and delete. Idempotent: re-running adds nothing.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from nexus.models import Analysis, RawItem, ThreatLevel
 from nexus.storage import (
@@ -222,7 +222,7 @@ def load_demo_data(conn) -> dict:
     """Insert the demo dataset (items + a sample case). Idempotent."""
     if demo_loaded(conn):
         return {"loaded": False, "items": 0, "note": "Demo data is already loaded."}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     count = 0
     for i, (ext, title, content, summary, threat, ppl, orgs, locs, ids) in enumerate(_ITEMS):
         iid, _ = upsert_item(conn, RawItem(

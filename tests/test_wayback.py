@@ -16,8 +16,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from nexus import storage as s
-from nexus import wayback
+from nexus import storage as s, wayback
 from nexus.models import RawItem
 
 SRC = "https://news.example.org/harbor/story-17"

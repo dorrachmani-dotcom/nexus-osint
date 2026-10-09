@@ -11,8 +11,7 @@ from datetime import datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-from nexus import digest
-from nexus import storage as s
+from nexus import digest, storage as s
 from nexus.models import RawItem
 
 # --- digest_due ----------------------------------------------------------------

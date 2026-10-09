@@ -18,7 +18,7 @@ import re
 logger = logging.getLogger("nexus.casesetup")
 
 # Split a case name into search-worthy parts on common separators.
-_SPLIT = re.compile(r"\s*(?:&|\+|,|/|\||\band\b|\bvs\.?\b|–|—|-)\s*", re.IGNORECASE)
+_SPLIT = re.compile(r"\s*(?:&|\+|,|/|\||\band\b|\bvs\.?\b|–|—|-)\s*", re.IGNORECASE)  # noqa: RUF001 (dashes are intentional separators)
 _STOP = {"the", "a", "an", "of", "on", "in", "for", "and", "case", "investigation", "watch"}
 
 

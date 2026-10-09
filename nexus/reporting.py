@@ -17,7 +17,7 @@ import csv
 import io
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -39,7 +39,7 @@ DATA_EXPORT_FIELDS = [
 
 # Case exports also carry the item's Internet Archive (Wayback Machine) capture,
 # when one exists — independent proof the source page existed.
-CASE_EXPORT_FIELDS = DATA_EXPORT_FIELDS + ["archive_url", "archived_at"]
+CASE_EXPORT_FIELDS = [*DATA_EXPORT_FIELDS, "archive_url", "archived_at"]
 
 
 def _export_value(row: dict, field: str):
@@ -119,7 +119,7 @@ def render_report_html(templates, case_id: int) -> str | None:
     bundle = _gather(case_id)
     if bundle is None:
         return None
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     template = templates.get_template("report.html")
     return template.render(generated_at=generated_at, **bundle)
 
@@ -139,7 +139,7 @@ def render_feed_report_html(
     analysis (summary, threat, translation, entities) included so the export is
     a complete, offline-readable intelligence digest.
     """
-    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     template = templates.get_template("feed_report.html")
     return template.render(
         items=items,

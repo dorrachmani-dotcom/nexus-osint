@@ -25,7 +25,7 @@ from __future__ import annotations
 import html as html_lib
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 logger = logging.getLogger("nexus.digest")
 
@@ -150,7 +150,7 @@ def collect_digest_data(conn, since_ts: str, now: datetime | None = None) -> dic
         attention = []
     counts = threat_counts_since(conn, since_ts)
     total_new = sum(counts.values())
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     return {
         "since": since_ts,
         "generated_at": now.astimezone().strftime("%Y-%m-%d %H:%M"),
@@ -337,12 +337,12 @@ def _html(data: dict, brief_text: str, author: str) -> str:
     counts = ", ".join(f"{_esc(k)}: {v}" for k, v in data["threat_counts"].items()) or "none"
     reports = ""
     if data["reports"]:
-        lis = "".join(
+        report_lis = "".join(
             f'<li><a href="{LOCAL_BASE_URL}/cases/{r["case_id"]}/reports/{_esc(r["filename"])}" style="color:#0369a1">'
             f'{_esc(r["case_name"])} — {_esc(r["date"])} ({_esc(r["format"]).upper()}, {r["items"]} items)</a></li>'
             for r in data["reports"]
         )
-        reports = f'<h2 style="font-size:15px;margin:20px 0 4px">Daily reports</h2><ul style="margin:0 0 0 18px;padding:0">{lis}</ul>'
+        reports = f'<h2 style="font-size:15px;margin:20px 0 4px">Daily reports</h2><ul style="margin:0 0 0 18px;padding:0">{report_lis}</ul>'
     return f"""<!doctype html><html><body style="margin:0;background:#f8fafc">
 <div style="max-width:680px;margin:0 auto;padding:20px;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#0f172a;font-size:14px;line-height:1.45">
 <p style="font-size:12px;color:#64748b;margin:0 0 4px">Nexus-OSINT daily brief · {_esc(data["date"])} · {data["total_new"]} new item(s) · by {_esc(author)}</p>
@@ -366,9 +366,14 @@ def compose_digest(settings, data: dict, *, use_ai: bool = True) -> dict:
     if not brief:
         brief = _fallback_text(data)
     text = "\n".join(
-        [f"Nexus-OSINT daily brief — {data['date']} — by {author}", "", brief]
-        + _link_items_text(data)
-        + ["", "Links to 127.0.0.1 open your local Nexus-OSINT and work only on the computer running it."]
+        [
+            f"Nexus-OSINT daily brief — {data['date']} — by {author}",
+            "",
+            brief,
+            *_link_items_text(data),
+            "",
+            "Links to 127.0.0.1 open your local Nexus-OSINT and work only on the computer running it.",
+        ]
     )
     return {"subject": digest_subject(data), "text": text, "html": _html(data, brief, author), "author": author}
 
@@ -388,7 +393,7 @@ def _since_for_digest(conn, now_utc: datetime) -> str:
         if parsed.tzinfo is None:
             parsed = parsed.astimezone()
         # Never look back further than a week (a long pause is not a backlog).
-        return max(parsed.astimezone(timezone.utc), now_utc - timedelta(days=7)).isoformat()
+        return max(parsed.astimezone(UTC), now_utc - timedelta(days=7)).isoformat()
     except ValueError:
         return default
 
@@ -418,7 +423,7 @@ def build_and_send_digest(settings, *, now: datetime | None = None, reports: lis
     from nexus.db import get_connection
     from nexus.mailer import send_email
 
-    now_utc = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    now_utc = (now or datetime.now(UTC)).astimezone(UTC)
     try:
         with get_connection() as conn:
             data = collect_digest_data(conn, _since_for_digest(conn, now_utc), now=now_utc)
@@ -452,7 +457,7 @@ def run_daily_jobs(settings, templates, collector=None, now: datetime | None = N
     from nexus.storage import get_meta, set_meta
 
     ran: dict = {"scan": False, "reports": [], "email": None}
-    now_utc = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    now_utc = (now or datetime.now(UTC)).astimezone(UTC)
     try:
         with get_connection() as conn:
             dtime = get_meta(conn, "digest_time") or DEFAULT_DIGEST_TIME

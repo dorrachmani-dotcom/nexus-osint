@@ -1,0 +1,25 @@
+# Git hooks. Install once with:  pre-commit install
+# Run on everything with:        pre-commit run --all-files
+# The ruff rev matches the ruff pin in requirements-dev.txt; bump them together.
+
+# Build outputs (compiled Tailwind CSS, vendored htmx) must stay byte-identical
+# to what `npm run build` produces; the CI "assets" job diffs them.
+exclude: ^nexus/web/static/(css|vendor)/
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff-check
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        # Markdown uses two trailing spaces as a hard line break.
+        args: [--markdown-linebreak-ext=md]
+      - id: check-added-large-files
+        args: [--maxkb=2000]
+      - id: detect-private-key
+      - id: check-merge-conflict

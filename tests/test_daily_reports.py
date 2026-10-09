@@ -11,8 +11,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from nexus import daily_reports as dr
-from nexus import storage as s
+from nexus import daily_reports as dr, storage as s
 from nexus.models import RawItem
 
 

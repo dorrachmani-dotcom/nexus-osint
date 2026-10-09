@@ -13,8 +13,8 @@ import json
 
 import nexus.assistant as A
 from nexus.assistant import (
-    PROJECT_GUIDE,
     _BEHAVIOUR,
+    PROJECT_GUIDE,
     _describe_current,
     _extract_json,
     _keywords,
@@ -188,7 +188,6 @@ class _FakeDeepProvider:
 def test_deep_mode_runs_a_search_loop_then_answers(temp_db, monkeypatch):
     import json as _json
 
-    from nexus.models import RawItem
 
     # gather step 1: search 'messi'; step 2: enough; then the final answer.
     fake = _FakeDeepProvider([

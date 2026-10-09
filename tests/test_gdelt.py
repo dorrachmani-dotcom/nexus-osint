@@ -6,7 +6,7 @@ exercise the JSON->RawItem mapping deterministically.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -59,7 +59,7 @@ def _settings(queries: str) -> Settings:
 # ---------------------------------------------------------------- date parsing
 def test_parse_seendate():
     assert _parse_seendate("20260603T120000Z") == datetime(
-        2026, 6, 3, 12, 0, 0, tzinfo=timezone.utc
+        2026, 6, 3, 12, 0, 0, tzinfo=UTC
     )
     assert _parse_seendate(None) is None
     assert _parse_seendate("garbage") is None
@@ -178,7 +178,7 @@ def test_sustained_429_trips_circuit_breaker(monkeypatch):
     monkeypatch.setattr(gdelt_mod, "_MAX_CONSECUTIVE_THROTTLE", 2)
 
     items = GdeltSource(_settings("a,b,c,d,e")).fetch()
-    # 2 queries × (1 try + 1 retry) = 4 calls, then the breaker trips and the
+    # 2 queries x (1 try + 1 retry) = 4 calls, then the breaker trips and the
     # remaining three queries are skipped entirely.
     assert calls["n"] == 4
     assert items == []

@@ -50,6 +50,14 @@ to [Semantic Versioning](https://semver.org/).
 - Documentation reorganized: the feature catalogue moved to `docs/FEATURES.md`,
   the project overview to `docs/OVERVIEW.md`, and the README rewritten around
   architecture and engineering trade-offs.
+- **Code-quality gates**: `pyproject.toml` now holds project metadata and the
+  ruff, mypy and pytest configuration. CI gains `lint` (ruff) and `types` (mypy)
+  jobs, a `.pre-commit-config.yaml` provides local hooks, and Dependabot checks
+  pip, npm and GitHub Actions weekly (Tailwind major versions are ignored: v4 is
+  a different toolchain). The codebase was brought to zero ruff and mypy
+  findings with no behaviour change: import order, `datetime.UTC`, silent
+  `except: pass` blocks now log at debug level, a mutable default argument, an
+  unresolved `markupsafe` annotation and an unreferenced background task.
 
 ### Fixed
 - The automatic-scan background thread never ran: `@asynccontextmanager` was

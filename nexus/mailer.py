@@ -26,7 +26,6 @@ import hashlib
 import logging
 import re
 import smtplib
-import socket
 import ssl
 from dataclasses import dataclass, field
 from email.message import EmailMessage
@@ -112,9 +111,8 @@ class EmailConfig:
                     )
             elif self.username and not self.password:
                 need.append("SMTP password (SMTP_PASSWORD)")
-        else:
-            if not self.api_key:
-                need.append(f"{self.label} API key")
+        elif not self.api_key:
+            need.append(f"{self.label} API key")
         if not valid_address(self.sender):
             need.append("a valid From address (SMTP_FROM)")
         if not self.recipients:
@@ -248,6 +246,7 @@ def _build_message(
 def _send_smtp(cfg: EmailConfig, msg: EmailMessage) -> SendResult:
     where = f"{cfg.host}:{cfg.port}"
     context = ssl.create_default_context()
+    server: smtplib.SMTP
     try:
         if cfg.port == 465:
             server = smtplib.SMTP_SSL(cfg.host, cfg.port, timeout=SMTP_TIMEOUT, context=context)
@@ -273,7 +272,8 @@ def _send_smtp(cfg: EmailConfig, msg: EmailMessage) -> SendResult:
             try:
                 server.quit()
             except Exception:
-                pass
+                # The message outcome is already decided; a failed QUIT is harmless.
+                logger.debug("SMTP QUIT failed", exc_info=True)
     except smtplib.SMTPAuthenticationError:
         hint = (
             " For Gmail you must use an App Password (not your normal password); "
@@ -291,7 +291,7 @@ def _send_smtp(cfg: EmailConfig, msg: EmailMessage) -> SendResult:
             "The mail server refused the From address. It usually has to be the "
             "same account you sign in with."
         ))
-    except (socket.timeout, TimeoutError):
+    except TimeoutError:
         return SendResult(False, f"Timed out connecting to the mail server at {where}.")
     except ssl.SSLError:
         return SendResult(False, (

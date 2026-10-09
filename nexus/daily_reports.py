@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 logger = logging.getLogger("nexus.daily_reports")
@@ -170,7 +170,7 @@ def enabled_case_ids(conn) -> list[int]:
         return []
     placeholders = ",".join("?" * len(out))
     existing = conn.execute(
-        f"SELECT id FROM cases WHERE id IN ({placeholders})", out
+        f"SELECT id FROM cases WHERE id IN ({placeholders})", out  # noqa: S608 (only a ?-placeholder list is interpolated)
     ).fetchall()
     return sorted(int(r[0]) for r in existing)
 
@@ -197,7 +197,7 @@ def generate_case_report(
     case = get_case(conn, case_id)
     if case is None:
         return None
-    now_utc = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    now_utc = (now or datetime.now(UTC)).astimezone(UTC)
     cfg = get_config(conn, case_id)
     want = fmt if fmt in REPORT_FORMATS else cfg["format"]
 
@@ -298,7 +298,10 @@ def list_reports(settings, case_id: int | None = None) -> list[dict]:
         except OSError:
             continue
         for f in files:
-            day, fmt = _FILE_RE.fullmatch(f.name).groups()
+            match = _FILE_RE.fullmatch(f.name)
+            if match is None:  # unreachable: files were filtered by valid_filename
+                continue
+            day, fmt = match.groups()
             meta: dict = {}
             try:
                 meta = json.loads((folder / f"{day}.json").read_text(encoding="utf-8"))
@@ -347,8 +350,9 @@ def delete_case_report(settings, case_id: int, filename: str) -> bool:
     path = found[1]
     try:
         path.unlink()
-        day = _FILE_RE.fullmatch(filename).group(1)
-        if not any((path.parent / f"{day}.{f}").is_file() for f in REPORT_FORMATS):
+        match = _FILE_RE.fullmatch(filename)  # validated by find_case_report
+        day = match.group(1) if match else None
+        if day and not any((path.parent / f"{day}.{f}").is_file() for f in REPORT_FORMATS):
             sidecar = path.parent / f"{day}.json"
             if sidecar.is_file():
                 sidecar.unlink()

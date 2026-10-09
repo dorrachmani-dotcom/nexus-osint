@@ -91,7 +91,7 @@ def test_obsidian_vault_export(temp_db):
     assert "Tracking words" in index and "Neymar" in index
     assert "Transfer status?" in index  # the question
 
-    item_note = zf.read([n for n in names if n.startswith("items/")][0]).decode("utf-8")
+    item_note = zf.read(next(n for n in names if n.startswith("items/"))).decode("utf-8")
     # Entities are [[wikilinks]] -> Obsidian builds the graph from these.
     assert "[[Neymar]]" in item_note
     assert "[[Mbappe]]" in item_note

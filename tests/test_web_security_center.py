@@ -88,8 +88,7 @@ def test_audit_report_lists_a_recorded_destination():
     # surfaces it and flags it as UNEXPECTED.
     import socket
 
-    import nexus.security.egress as egress
-    from nexus.security import format_audit_report
+    from nexus.security import egress, format_audit_report
 
     with egress._lock:
         egress._destinations.clear()

@@ -193,7 +193,7 @@ def detect_script_iso(text: str) -> str | None:
     # Chinese regardless of which script has more characters.
     if "kana" in counts:
         return "ja"
-    dominant = max(counts, key=counts.get)
+    dominant = max(counts, key=counts.__getitem__)
     return _SCRIPT_TO_ISO.get(dominant)
 
 
@@ -299,7 +299,7 @@ def detect_language(text: str | None) -> str | None:
     # Japanese mixes Han + kana; kana's presence disambiguates it from Chinese.
     if "ja" in counts:
         return "ja"
-    return max(counts, key=counts.get)
+    return max(counts, key=counts.__getitem__)
 
 
 def is_english(text: str | None) -> bool:

@@ -150,7 +150,7 @@ def test_edit_term_merges_on_clash(temp_db):
         s.add_case_term(conn, cid, "Neymar")
         s.add_case_term(conn, cid, "World Cup")
         terms = s.case_terms(conn, cid)
-        wc_id = [t["id"] for t in terms if t["term"] == "World Cup"][0]
+        wc_id = next(t["id"] for t in terms if t["term"] == "World Cup")
         s.update_case_term(conn, cid, wc_id, "Neymar")  # clash
         names = [t["term"] for t in s.case_terms(conn, cid)]
         assert names == ["Neymar"]
