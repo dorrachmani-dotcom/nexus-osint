@@ -16,6 +16,9 @@ updates:
       # to it is a deliberate migration, not a dependency bump.
       - dependency-name: tailwindcss
         update-types: ["version-update:semver-major"]
+      # htmx 2 changes hx-on syntax and request defaults; upgrade deliberately.
+      - dependency-name: htmx.org
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
