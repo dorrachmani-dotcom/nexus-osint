@@ -77,8 +77,9 @@ class AnthropicProvider(LLMProvider):
             ],
             messages=[{"role": "user", "content": user_prompt}],
         )
+        # getattr: content is a union of block types and only text blocks have .text.
         return "".join(
-            block.text
+            getattr(block, "text", "")
             for block in message.content
             if getattr(block, "type", None) == "text"
         )
