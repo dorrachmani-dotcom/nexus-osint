@@ -40,11 +40,20 @@ uvicorn nexus.web.app:app --host 127.0.0.1 --port 8000 --reload
 
 Python 3.11 or 3.12. Playwright and the OSINT CLI tools are optional.
 
+**Changing styles.** The compiled stylesheet and htmx are committed, so running
+the app needs no Node. If you add or change Tailwind classes in a template,
+rebuild and commit the result (CI fails otherwise):
+
+```bash
+npm install
+npm run build        # writes nexus/web/static/css/app.css and vendor/htmx.min.js
+```
+
 ## Tests
 
 ```bash
-pytest -q                          # whole suite
-pytest tests/test_assistant.py -q  # one file
+python -m pytest -q                          # whole suite
+python -m pytest tests/test_assistant.py -q  # one file
 ```
 
 Tests use temporary SQLite databases (see `tests/conftest.py`) and must not hit

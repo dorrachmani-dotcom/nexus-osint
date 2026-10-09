@@ -62,3 +62,6 @@ evidence/
 # Local env files (secrets). The template .env.example stays tracked.
 .env.*
 !.env.example
+
+# Build-time Node tooling (Tailwind / htmx vendoring)
+node_modules/

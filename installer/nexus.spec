@@ -27,11 +27,12 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 REPO = Path(SPECPATH).resolve().parent
 
 # ---------------------------------------------------------------- data files
-# Jinja templates are loaded by path at runtime, so they must ship as data.
-# (There is no static/ dir — CSS/JS come from CDNs.) The .env.example seeds a
-# fresh, user-writable .env on first run.
+# Jinja templates and the bundled UI assets (compiled CSS, vendored htmx) are
+# loaded by path at runtime, so they must ship as data — the app makes no CDN
+# requests. The .env.example seeds a fresh, user-writable .env on first run.
 datas = [
     (str(REPO / "nexus" / "web" / "templates"), "nexus/web/templates"),
+    (str(REPO / "nexus" / "web" / "static"), "nexus/web/static"),
     (str(REPO / ".env.example"), "."),
 ]
 

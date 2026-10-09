@@ -31,3 +31,18 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+  assets:
+    # The compiled stylesheet and vendored htmx are committed so the app needs
+    # no Node and no CDN at runtime. Fail if they drift from their sources.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Bundled assets are up to date
+        run: git diff --exit-code -- nexus/web/static

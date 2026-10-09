@@ -33,6 +33,7 @@ REPO = Path(SPECPATH).resolve().parent
 # ---------------------------------------------------------------- data files
 datas = [
     (str(REPO / "nexus" / "web" / "templates"), "nexus/web/templates"),
+    (str(REPO / "nexus" / "web" / "static"), "nexus/web/static"),
     (str(REPO / ".env.example"), "."),
 ]
 

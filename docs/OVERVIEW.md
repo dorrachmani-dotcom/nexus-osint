@@ -70,8 +70,9 @@ Five principles shape every part of the codebase:
 - **Provider-agnostic AI.** All model access goes through one interface, so cloud
   (Anthropic Claude, Google Gemini, OpenAI) and a fully local model (Ollama) are
   interchangeable and switchable live.
-- **No frontend build step.** The UI is server-rendered Jinja2 + htmx + Tailwind
-  (CDN). There is no JavaScript toolchain to install.
+- **No frontend build step at runtime.** The UI is server-rendered Jinja2 + htmx +
+  Tailwind. The stylesheet is prebuilt and bundled, so the app renders fully
+  offline and needs no JavaScript toolchain to run.
 
 ---
 
@@ -194,7 +195,7 @@ machine — and it has no knowledge of who built the software.
 | --- | --- |
 | Language | Python 3.11+ |
 | Web | FastAPI + uvicorn |
-| Templates / UI | Jinja2 + htmx + Tailwind (CDN) — no build step |
+| Templates / UI | Jinja2 + htmx + Tailwind (prebuilt, bundled) — works offline |
 | Storage | SQLite (WAL) with an FTS5 full-text index kept in sync by triggers |
 | AI | Pluggable: Anthropic Claude · Google Gemini · OpenAI · local Ollama |
 | Screenshots | Playwright (headless Chromium) |

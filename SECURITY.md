@@ -83,8 +83,8 @@ OSINT CLI tools the platform can orchestrate.
 - Every response carries `X-Content-Type-Options: nosniff`,
   `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`,
   `Cross-Origin-Opener-Policy: same-origin`, and a Content-Security-Policy that
-  restricts scripts/styles/connections to `self` plus the small, explicit set of
-  CDNs the UI loads, with `object-src 'none'`, `base-uri 'self'`,
+  restricts scripts/styles/connections to `self` only (every asset ships with
+  the app; nothing is loaded from a CDN), with `object-src 'none'`, `base-uri 'self'`,
   `form-action 'self'`, and `frame-ancestors 'none'`.
 
 ### Injection protection
