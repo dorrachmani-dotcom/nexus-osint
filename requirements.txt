@@ -39,7 +39,7 @@ playwright==1.49.1          # headless screenshots for the evidence vault
 # OCR over evidence screenshots so their visible text becomes searchable.
 # Optional + guarded: needs the Tesseract engine binary on the host (installed
 # in the Docker image). Without pytesseract OR the binary, OCR is skipped.
-pillow==11.3.0              # image loading for OCR (also a Playwright-adjacent dep)
+pillow==12.3.0              # image loading for OCR (also a Playwright-adjacent dep)
 pytesseract==0.3.13         # thin wrapper around the Tesseract OCR engine
 # PDF export tries WeasyPrint first (best CSS, needs native GTK libs — ships in
 # the Docker image) then falls back to xhtml2pdf (pure Python, no system deps,
