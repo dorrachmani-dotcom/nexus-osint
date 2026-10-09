@@ -51,6 +51,11 @@ one SQLite file you own, and every outbound connection can be audited.
 - **Preserves and exports**: hashed, timestamped page screenshots (Evidence
   Vault), PDF/HTML/CSV/JSON/Obsidian exports, and an air-gap bundle format for
   moving data between machines.
+- **Archives sources on the Wayback Machine** (opt-in per action): request a
+  public Internet Archive capture of an item's page, or look up its newest
+  snapshot, as independent proof the page existed even if it is later deleted.
+  Captures run on a polite, rate-limited background queue and their links land
+  in the evidence manifest and case reports.
 - **Audits itself**: an egress monitor records every outbound connection and a
   file scanner vets anything you import.
 
@@ -279,6 +284,10 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
 - **Do not use it to stalk, harass or target individuals.** That is not a
   supported use, and pull requests that add offensive capability will not be
   accepted.
+- **Archiving is public.** A Wayback Machine capture tells the Internet Archive
+  which URL you are interested in and creates a snapshot anyone can find. Use it
+  for material you are content to point at publicly; for sensitive work, keep to
+  the local Evidence Vault screenshot.
 
 ## Security model
 
@@ -297,6 +306,10 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
   reports themselves stay on disk and are served only on `127.0.0.1`.
 - Reports and transfer bundles leave the machine only when you export them, and
   bundles never contain secrets.
+- **Internet Archive captures are an explicit, per-action opt-in** (a one-time
+  warning explains the trade-off): the item's URL is sent to archive.org and the
+  resulting snapshot is public. Auto-archiving on pin is off unless you enable
+  it for a case, and the whole feature can be switched off in Settings.
 - Secrets live in `.env` only (git-ignored). They are never written to the
   database, shown back in the UI, or emitted in logs (a redaction filter scrubs
   configured keys).

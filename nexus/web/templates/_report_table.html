@@ -43,6 +43,7 @@
       <td class="c-link">
         <span class="src">{{ it.source }}</span>
         {% if it.url %}<div><a href="{{ it.url | safe_url }}">{{ it.display_url or it.url }}</a></div>{% endif %}
+        {% if it.archive_url %}<div class="muted">Archived: <a href="{{ it.archive_url | safe_url }}">web.archive.org</a>{% if it.archived_at %} &middot; {{ it.archived_at[:16] | replace('T', ' ') }} UTC{% endif %}</div>{% endif %}
       </td>
       <td class="c-sum">
         {% if it.title %}<div class="sum-title">{{ it.title }}</div>{% endif %}

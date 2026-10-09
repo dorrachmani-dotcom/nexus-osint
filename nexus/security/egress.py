@@ -76,6 +76,8 @@ _STATIC_ALLOW: tuple[tuple[str, str], ...] = (
     ("twimg.com", "Source (X / Twitter)"),
     ("telemetr.io", "Source (Telegram / Telemetry)"),
     ("telemetryapp.io", "Source (Telegram / Telemetry)"),
+    # Wayback Machine captures/lookups (only when the analyst archives a source).
+    ("archive.org", "Archive (Internet Archive)"),
 )
 
 # How long a built allow-list of configured hosts is reused before refreshing.

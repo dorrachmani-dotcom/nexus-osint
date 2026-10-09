@@ -72,6 +72,17 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   source at collection time, stored locally so they survive deletion upstream.
   Visible text in each screenshot is read by OCR (when the Tesseract engine is
   present — bundled in the Docker image) so image-only sources stay searchable.
+- **Internet Archive (Wayback Machine)** — from the item drawer, **Archive**
+  requests a fresh public capture through Save Page Now (anonymous, or the
+  authenticated SPN2 API when `ARCHIVE_ORG_ACCESS_KEY` + `ARCHIVE_ORG_SECRET_KEY`
+  are set) and **Find existing snapshot** looks up the newest capture. Captures
+  run on a background queue spaced for the archive's rate limits (about a dozen a
+  minute anonymously) and the drawer polls until done; failures show the reason
+  and a Retry button. A case's Pinned tab has **Archive all pinned items** with
+  progress and an opt-in **Auto-archive items when pinned**. Archive links and
+  capture times appear in the evidence manifest, case reports and CSV/JSON case
+  exports. A one-time OpSec warning explains that captures are public; the
+  feature has a global on/off in Settings (on for manual use, auto-archive off).
 - **Watchlists & alerts** — keyword / regex / wallet / phone patterns matched
   against new items on every scan.
 - **Plug & Play OSINT tools** — wraps installed CLI tools (Sherlock, Maigret,
@@ -164,6 +175,7 @@ Everything is optional:
 | `TELEMETRY_API_KEY` + `TELEGRAM_CHANNELS` | Telegram collection | paid |
 | `INSTAGRAM_SESSIONID` | Toutatis adapter (Instagram account lookup) | free |
 | `VIRUSTOTAL_API_KEY` | Security center: hash-only VirusTotal lookup (opt-in) | free tier |
+| `ARCHIVE_ORG_ACCESS_KEY` + `ARCHIVE_ORG_SECRET_KEY` | Authenticated Wayback Machine captures (SPN2); archiving also works without them | free |
 | `ANALYSIS_MAX_ITEMS_PER_RUN` | Budget guard: items analyzed per scan (default 100) | — |
 
 Secrets are read from `.env` only and are never written to the database — and a

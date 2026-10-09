@@ -1,0 +1,79 @@
+{# Internet Archive (Wayback Machine) box for the item drawer. Expects `ar`
+   (see app._item_archive_ctx). While a capture is pending it re-polls itself
+   every 3 s, like the scan-status chip. #}
+{% set a = ar.arch or {} %}
+{% set st = a.status or '' %}
+<div id="archive-box-{{ ar.item_id }}" class="space-y-1">
+  <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Internet Archive</p>
+
+  {% if ar.warn_action %}
+  <div class="rounded-lg border border-amber-800/70 bg-amber-950/40 p-3 space-y-2 text-xs text-amber-300">
+    <p class="font-semibold">&#9888; Before you archive</p>
+    <p class="text-slate-300">Archiving tells the Internet Archive which URL you are interested in and
+      creates a <span class="font-semibold">PUBLIC</span> capture that anyone can find. For sensitive
+      investigations, prefer the local Evidence Vault screenshot, which never leaves this computer.</p>
+    <p class="text-slate-400">This warning is shown once.</p>
+    <div class="flex flex-wrap items-center gap-2 mono">
+      <button hx-post="/items/{{ ar.item_id }}/archive{% if ar.warn_action == 'lookup' %}/lookup{% endif %}"
+        hx-vals='{"acknowledge": "1"}'
+        hx-target="#archive-box-{{ ar.item_id }}" hx-swap="outerHTML"
+        class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 text-xs font-medium">
+        I understand, continue</button>
+      <button hx-get="/items/{{ ar.item_id }}/archive"
+        hx-target="#archive-box-{{ ar.item_id }}" hx-swap="outerHTML"
+        class="rounded border border-slate-700 hover:border-slate-600 text-slate-400 px-2.5 py-1">Cancel</button>
+    </div>
+  </div>
+  {% else %}
+
+  <div class="flex flex-wrap items-center gap-2 text-xs mono">
+    {% if st == 'pending' %}
+      <span class="text-amber-400">&#9203; archiving&hellip;</span>
+      <span hx-get="/items/{{ ar.item_id }}/archive" hx-trigger="load delay:3s"
+            hx-target="#archive-box-{{ ar.item_id }}" hx-swap="outerHTML"></span>
+    {% elif st in ['done', 'existing'] and a.archive_url %}
+      <a href="{{ a.archive_url | safe_url }}" target="_blank" rel="noopener"
+         class="text-emerald-400 hover:text-emerald-300"
+         title="{{ a.archive_url }}">&#10003; {{ 'Archived' if st == 'done' else 'Snapshot' }}
+        {{ (a.archived_at or '')[:16] | replace('T', ' ') }} on web.archive.org</a>
+    {% elif st == 'failed' %}
+      <span class="text-rose-400" title="{{ a.error or '' }}">&#10005; Archiving failed</span>
+    {% else %}
+      <span class="text-slate-500">Not archived</span>
+    {% endif %}
+  </div>
+  {% if st == 'failed' and a.error %}
+  <p class="text-xs text-rose-400">{{ a.error }}</p>
+  {% endif %}
+
+  {% if not ar.item_url %}
+    <p class="text-xs text-slate-500">This item has no source link to archive.</p>
+  {% elif not ar.enabled %}
+    <p class="text-xs text-slate-500">Archiving is turned off &mdash; switch it on in
+      <a href="/settings" class="text-sky-400 hover:text-sky-300">Settings</a>.</p>
+  {% elif st != 'pending' %}
+  <div class="flex flex-wrap items-center gap-2 text-xs mono">
+    <button hx-post="/items/{{ ar.item_id }}/archive"
+      hx-target="#archive-box-{{ ar.item_id }}" hx-swap="outerHTML"
+      class="rounded border border-slate-700 hover:border-emerald-600 hover:text-emerald-300 text-slate-300 px-2.5 py-1"
+      title="Ask the Wayback Machine to capture this page now (public)">
+      &#127963; {% if st == 'failed' %}Retry archive{% elif st in ['done', 'existing'] %}Archive again{% else %}Archive{% endif %}</button>
+    <button hx-post="/items/{{ ar.item_id }}/archive/lookup"
+      hx-target="#archive-box-{{ ar.item_id }}" hx-swap="outerHTML"
+      hx-indicator="#archive-spin-{{ ar.item_id }}"
+      class="rounded border border-slate-700 hover:border-sky-600 hover:text-sky-300 text-slate-300 px-2.5 py-1"
+      title="Look up the newest snapshot that already exists">&#128269; Find existing snapshot</button>
+    {% if ar.acked and ar.item_url.startswith(('http://', 'https://')) %}
+    <a href="{{ ('https://web.archive.org/save/' ~ ar.item_url) | safe_url }}" target="_blank" rel="noopener noreferrer"
+      class="rounded border border-slate-700 hover:border-sky-600 hover:text-sky-300 text-slate-300 px-2.5 py-1"
+      title="Open Save Page Now in your own browser (works with your archive.org login, no keys needed)">&#8599; Save in my browser</a>
+    {% endif %}
+    <span id="archive-spin-{{ ar.item_id }}" class="htmx-indicator text-sky-300">looking&hellip;</span>
+  </div>
+  {% endif %}
+
+  {% if ar.message %}
+  <p class="text-xs {% if ar.message_ok %}text-emerald-400{% else %}text-slate-400{% endif %}">{{ ar.message }}</p>
+  {% endif %}
+  {% endif %}
+</div>

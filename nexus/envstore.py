@@ -60,6 +60,9 @@ EDITABLE_KEYS: frozenset[str] = frozenset(
         "SENDGRID_API_KEY",
         # The local OpenAI-compatible server address (not a secret; shown back).
         "LOCAL_LLM_BASE_URL",
+        # Optional Internet Archive keys (Save Page Now 2). Secrets.
+        "ARCHIVE_ORG_ACCESS_KEY",
+        "ARCHIVE_ORG_SECRET_KEY",
     }
 )
 

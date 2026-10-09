@@ -7,6 +7,17 @@ to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Internet Archive (Wayback Machine) preservation**: archive an item's source
+  from the item drawer (Save Page Now, anonymous or authenticated SPN2 with
+  optional `ARCHIVE_ORG_ACCESS_KEY` / `ARCHIVE_ORG_SECRET_KEY`), or find its
+  newest existing snapshot. Captures run on a rate-limited background queue
+  with htmx status polling; a case can **Archive all pinned items** and opt in
+  to **auto-archive on pin**. New `item_archives` table (one row per item, the
+  latest attempt) and a `cases.auto_archive` column, both added by migration.
+  Archive URL and capture time are included in the evidence manifest, case
+  reports and CSV/JSON case exports. A one-time OpSec warning (captures are
+  public), a global on/off in Settings, every URL through the SSRF guard, and
+  archive.org added to the egress allow-list.
 - **Fully offline UI**: the Tailwind stylesheet is prebuilt and bundled, htmx
   and vis-network are vendored, and the CSP allows only the app's own origin.
   A CI job fails if the committed assets drift from their sources.

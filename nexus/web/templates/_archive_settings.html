@@ -1,0 +1,24 @@
+{# Settings: global on/off for the Internet Archive (Wayback Machine) features. #}
+<div id="archive-settings" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+  <div>
+    <h2 class="text-sm font-semibold text-slate-200">&#127963; Internet Archive (Wayback Machine)</h2>
+    <p class="text-xs text-slate-400 mt-0.5">
+      Preserve an item's source on web.archive.org as independent proof that the page existed,
+      even if it is deleted later. Archiving creates a <span class="font-medium">public</span> capture and
+      tells the Internet Archive which URL you care about &mdash; for sensitive work, prefer the local
+      Evidence Vault screenshot. Auto-archive is off unless you switch it on for a case.
+    </p>
+  </div>
+  <form hx-post="/settings/archive" hx-target="#archive-settings" hx-swap="outerHTML"
+        hx-trigger="change" class="flex items-center gap-2 text-sm text-slate-300">
+    <input type="checkbox" name="enabled" value="1" id="archive-enabled"
+           {% if archive_enabled %}checked{% endif %} />
+    <label for="archive-enabled">Enable archiving (item drawer and case page)</label>
+    {% if archive_saved %}<span class="text-xs text-emerald-400">Saved.</span>{% endif %}
+  </form>
+  <p class="text-xs text-slate-500">
+    Mode: {% if archive_keys_set %}<span class="text-emerald-400">authenticated (Save Page Now 2)</span>
+    {% else %}anonymous &mdash; optional archive.org keys can be added in the key list above{% endif %}
+    &middot; Public-capture warning: {{ 'acknowledged' if archive_acked else 'shown before first use' }}
+  </p>
+</div>
