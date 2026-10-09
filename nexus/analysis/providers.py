@@ -4,7 +4,8 @@ The analysis pipeline does not care *which* model produces an assessment — it
 only needs text in, JSON-ish text out. This module hides every supported backend
 behind one small interface so the rest of the system stays identical whichever
 one the analyst picks — Anthropic (Claude), Google (Gemini), OpenAI (ChatGPT),
-or a fully local model via Ollama:
+xAI (Grok), or a fully local model via Ollama or any local OpenAI-compatible
+server (LM Studio, llama.cpp, vLLM, Jan, LocalAI):
 
   * `LLMProvider.complete(system, user)` -> raw model text.
   * `get_provider(settings)` -> the backend the analyst selected, or None.
@@ -226,6 +227,139 @@ class OllamaProvider(LLMProvider):
         return (data.get("message") or {}).get("content", "") or ""
 
 
+class OpenAICompatibleProvider(LLMProvider):
+    """Any server that speaks the OpenAI Chat Completions wire format.
+
+    One small httpx client (no extra SDK) covers both:
+      * xAI Grok in the cloud (https://api.x.ai/v1, bearer key), and
+      * a local server on this machine: LM Studio, llama.cpp ``server``, vLLM,
+        Jan, LocalAI (key usually not needed; content never leaves the machine).
+
+    Like ``OpenAIProvider``, the JSON shape is requested in the prompt; we do not
+    force ``response_format`` because many local servers reject or ignore it and
+    the downstream parser extracts JSON tolerantly.
+    """
+
+    def __init__(
+        self,
+        base_url: str,
+        model: str,
+        api_key: str | None = None,
+        *,
+        name: str = "openai_compatible",
+        timeout: float = 60.0,
+    ) -> None:
+        super().__init__(model)
+        import httpx  # always installed (used by other sources)
+
+        self._httpx = httpx
+        self._base_url = (base_url or "").rstrip("/")
+        self._api_key = api_key or None
+        self._timeout = timeout
+        self.name = name
+
+    def _headers(self) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+        return headers
+
+    def complete(self, system_prompt: str, user_prompt: str, max_tokens: int = 1024) -> str:
+        response = self._httpx.post(
+            f"{self._base_url}/chat/completions",
+            headers=self._headers(),
+            json={
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": max_tokens,
+                "stream": False,
+            },
+            timeout=self._timeout,
+        )
+        response.raise_for_status()
+        try:
+            data = response.json()
+            content = data["choices"][0]["message"].get("content")
+        except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+            return ""
+        return content if isinstance(content, str) else ""
+
+
+def check_openai_compatible(base_url: str, model: str, api_key: str | None = None) -> dict:
+    """Plain-language health check for a local OpenAI-compatible server.
+
+    GETs ``{base}/models`` and lists the model ids the server offers. Returns a
+    dict for the Settings UI (mirrors ``check_ollama``):
+      - server_up, model_present, models, error, base_url, model
+    Never raises — a stopped server is the normal "not set up yet" state.
+    """
+    result = {
+        "server_up": False,
+        "model_present": False,
+        "models": [],
+        "error": "",
+        "base_url": base_url,
+        "model": model,
+    }
+    base = (base_url or "").strip().rstrip("/")
+    if not base:
+        result["error"] = "No server address is set. Enter one such as http://localhost:1234/v1."
+        return result
+    try:
+        import httpx
+
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        resp = httpx.get(f"{base}/models", headers=headers, timeout=4.0)
+    except Exception:
+        result["error"] = (
+            "Could not reach the server. Make sure the app (for example LM Studio) "
+            "is running and its local server is started, and that the address "
+            "ends in /v1."
+        )
+        return result
+    if resp.status_code in (401, 403):
+        result["server_up"] = True
+        result["error"] = (
+            "The server is running but refused the request. It needs an API key: "
+            "set LOCAL_LLM_API_KEY in the API keys box."
+        )
+        return result
+    if resp.status_code == 404:
+        result["error"] = (
+            "Something answered at that address, but it is not an OpenAI-compatible "
+            "server. Check that the address ends in /v1."
+        )
+        return result
+    if resp.status_code >= 400:
+        result["error"] = f"The server answered with an error (HTTP {resp.status_code})."
+        return result
+    result["server_up"] = True
+    try:
+        data = resp.json().get("data", []) or []
+        names = [str(m.get("id")) for m in data if isinstance(m, dict) and m.get("id")]
+    except Exception:
+        names = []
+    result["models"] = names
+    wanted = (model or "").strip()
+    if not wanted:
+        result["error"] = (
+            "The server is running. Now pick one of its models below and save it."
+            if names else
+            "The server is running, but no model is loaded. Load a model in the app first."
+        )
+        return result
+    result["model_present"] = wanted in names
+    if not result["model_present"]:
+        result["error"] = (
+            f'The server is running, but it does not offer the model "{wanted}". '
+            "Pick one of the models it lists, or load it in the app first."
+        )
+    return result
+
+
 def check_ollama(base_url: str, model: str) -> dict:
     """Plain-language health check for the local Ollama server.
 
@@ -293,6 +427,19 @@ def get_provider(settings: Settings) -> LLMProvider | None:
         if provider == "ollama":
             return OllamaProvider(
                 settings.ollama_base_url, settings.effective_ollama_model()
+            )
+        if provider == "grok":
+            return OpenAICompatibleProvider(
+                settings.xai_base_url or "https://api.x.ai/v1",
+                settings.grok_model or "grok-4.6",
+                settings.xai_api_key,
+                name="grok", timeout=60.0,
+            )
+        if provider == "local_openai":
+            # Local generation can be slow on CPU-only machines; allow more time.
+            return OpenAICompatibleProvider(
+                settings.local_llm_base_url, settings.effective_local_llm_model(),
+                settings.local_llm_api_key, name="local_openai", timeout=180.0,
             )
     except ImportError:
         logger.warning("%s SDK not installed; skipping analysis.", provider)

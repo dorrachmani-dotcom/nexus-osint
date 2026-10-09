@@ -1,0 +1,23 @@
+<div id="local-llm-check" class="text-xs">
+  {% if check.server_up and check.model_present %}
+  <div class="rounded border border-emerald-800 bg-emerald-950/30 text-emerald-300 px-3 py-2">
+    &#10003; All set. The server at <span class="mono">{{ check.base_url }}</span> is running and offers
+    <span class="mono">{{ check.model }}</span>. AI analysis will run on this machine.
+  </div>
+  {% elif check.server_up %}
+  <div class="rounded border border-amber-800 bg-amber-950/30 text-amber-300 px-3 py-2 space-y-1">
+    <p>&#9888; {{ check.error }}</p>
+    {% if check.models %}
+    <p class="text-slate-300">Models this server offers (click the Model box to pick one, then Save):
+      <span class="mono text-slate-200">{{ check.models|join(', ') }}</span></p>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="rounded border border-rose-800 bg-rose-950/30 text-rose-300 px-3 py-2">
+    <p>&#10007; {{ check.error }}</p>
+  </div>
+  {% endif %}
+  <datalist id="local-llm-models">
+    {% for m in check.models %}<option value="{{ m }}"></option>{% endfor %}
+  </datalist>
+</div>

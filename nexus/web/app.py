@@ -185,7 +185,6 @@ def _linkify(value: str) -> "markupsafe.Markup":
 TEMPLATES.env.filters["linkify"] = _linkify
 
 
-@asynccontextmanager
 def _auto_scan_loop(collector: "Collector") -> None:
     """Daemon thread: fires collector.scan() on the DB-configured interval.
 
@@ -215,6 +214,24 @@ def _auto_scan_loop(collector: "Collector") -> None:
             logger.exception("Auto-scan: failed")
 
 
+def _daily_jobs_loop(app_ref: FastAPI) -> None:
+    """Daemon thread (sibling of auto-scan): once a minute, check whether the
+    daily case reports and the daily email brief are due, and run them.
+
+    Reads every setting live from the DB/.env so changes apply without a
+    restart. Never raises; a failure is logged and retried on a later tick.
+    """
+    from nexus.digest import run_daily_jobs
+
+    while True:
+        time.sleep(60)
+        try:
+            run_daily_jobs(get_settings(), TEMPLATES, getattr(app_ref.state, "collector", None))
+        except Exception:
+            logger.exception("Daily jobs: failed")
+
+
+@asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     # Re-run after uvicorn has installed its own log handlers, so the secret
@@ -230,6 +247,11 @@ async def lifespan(app: FastAPI):
         target=_auto_scan_loop, args=(app.state.collector,), daemon=True, name="auto-scan"
     )
     t.start()
+
+    # Daily jobs daemon — scheduled case reports + the daily email brief.
+    threading.Thread(
+        target=_daily_jobs_loop, args=(app,), daemon=True, name="daily-jobs"
+    ).start()
 
     # Boot Sync: silent gap-fill, off the event loop so startup stays fast.
     if app.state.collector.available_sources():
@@ -1564,8 +1586,9 @@ def daily_brief(request: Request) -> HTMLResponse:
         if not settings.analysis_enabled:
             readiness.append({
                 "label": "AI analysis is off",
-                "hint": "Add an API key (Gemini / Anthropic / OpenAI) or run a local Ollama "
-                        "model so items get summaries, scores and translations.",
+                "hint": "Add an API key (Gemini / OpenAI / Anthropic / Grok) or run a local "
+                        "model (Ollama or a local server such as LM Studio) so items get "
+                        "summaries, scores and translations.",
                 "link": "/settings", "cta": "Open Settings",
             })
         if not has_sources:
@@ -1581,6 +1604,13 @@ def daily_brief(request: Request) -> HTMLResponse:
                         "and questions from a one-line brief.",
                 "link": "/cases", "cta": "Create a case",
             })
+    # Newest saved daily report per case (from the local reports folder).
+    try:
+        from nexus import daily_reports as dr
+
+        latest_reports = [g["reports"][0] for g in dr.group_by_case(dr.list_reports(settings))]
+    except Exception:
+        latest_reports = []
     return TEMPLATES.TemplateResponse(
         request,
         "brief.html",
@@ -1590,6 +1620,7 @@ def daily_brief(request: Request) -> HTMLResponse:
             "total_new": total_new,
             "open_cases": len(cases),
             "readiness": readiness,
+            "latest_reports": latest_reports[:12],
             "active_case": active,
             "analysis_enabled": settings.analysis_enabled,
             "status": settings.availability_report(),
@@ -1687,7 +1718,7 @@ def cases_delete(request: Request, case_id: int) -> HTMLResponse:
     )
 
 
-_CASE_TABS = {"feed", "pinned", "questions", "subcases", "timeline", "graph"}
+_CASE_TABS = {"feed", "pinned", "questions", "subcases", "timeline", "graph", "reports"}
 
 
 @app.get("/cases/{case_id}", response_class=HTMLResponse)
@@ -3532,6 +3563,23 @@ SECRET_FIELDS = [
          "Go to API keys and click 'Create new secret key'.",
          "Copy the key (starts with sk-) and paste it here.",
      ]},
+    {"key": "XAI_API_KEY", "label": "xAI (Grok) API key",
+     "hint": "Alternative cloud AI provider for analysis (Grok models).",
+     "url": "https://console.x.ai",
+     "steps": [
+         "Open console.x.ai and sign in (or create an account).",
+         "Add credits or a payment method under Billing — usage is pay-as-you-go.",
+         "Open 'API Keys' and click 'Create API Key'.",
+         "Copy the key (starts with xai-) and paste it here.",
+         "Then pick 'xAI (Grok)' (or 'Automatic') as the AI provider above.",
+     ]},
+    {"key": "LOCAL_LLM_API_KEY", "label": "Local AI server key (optional)",
+     "hint": "Only if your local OpenAI-compatible server requires a key. LM Studio does not.",
+     "url": "",
+     "steps": [
+         "Most local servers (LM Studio, llama.cpp, Jan) need no key — leave this empty.",
+         "If you started vLLM or LocalAI with an --api-key option, paste that same value here.",
+     ]},
     {"key": "SERPAPI_KEY", "label": "SERPAPI key (Google News)",
      "hint": "Lets capsule terms search Google News.",
      "url": "https://serpapi.com/manage-api-key",
@@ -3600,6 +3648,37 @@ SECRET_FIELDS = [
          "Find the cookie named 'sessionid' and copy its value.",
          "Paste it here. Note: it expires when you log out of that session.",
      ]},
+    # --- Email (daily brief). Rendered by the "Connect your email" wizard, not
+    # the generic key list (group "email"), but kept here so set/not-set status
+    # and the .env-only handling are identical to every other secret.
+    {"key": "SMTP_PASSWORD", "label": "Email password / app password", "group": "email",
+     "hint": "For Gmail this must be an App Password, not your normal password.",
+     "url": "https://myaccount.google.com/apppasswords",
+     "steps": [
+         "Gmail: turn on 2-Step Verification at myaccount.google.com/security (required for app passwords).",
+         "Open myaccount.google.com/apppasswords, type a name such as 'Nexus brief' and click Create.",
+         "Copy the 16-character password Google shows (spaces don't matter) and paste it here.",
+         "Outlook / Microsoft 365: use your account password, or an app password if your account has 2-step sign-in.",
+         "Other SMTP servers: use the password your mail provider gives for SMTP sign-in.",
+     ]},
+    {"key": "RESEND_API_KEY", "label": "Resend API key", "group": "email",
+     "hint": "Sends the brief through resend.com (free tier available).",
+     "url": "https://resend.com/api-keys",
+     "steps": [
+         "Sign up at resend.com and add + verify a sending domain under 'Domains'.",
+         "Open 'API Keys', click 'Create API Key' with 'Sending access'.",
+         "Copy the key (starts with re_) and paste it here.",
+         "Use a From address on your verified domain.",
+     ]},
+    {"key": "SENDGRID_API_KEY", "label": "SendGrid API key", "group": "email",
+     "hint": "Sends the brief through SendGrid (Twilio).",
+     "url": "https://app.sendgrid.com/settings/api_keys",
+     "steps": [
+         "Sign up at sendgrid.com and verify a Single Sender or a domain under 'Sender Authentication'.",
+         "Open Settings → API Keys → 'Create API Key' with 'Mail Send' permission.",
+         "Copy the key (starts with SG.) and paste it here.",
+         "Use the verified sender as the From address.",
+     ]},
 ]
 
 
@@ -3630,6 +3709,13 @@ def _settings_context(settings) -> dict:
         "ollama_model": settings.effective_ollama_model(),
         "ollama_base_url": settings.ollama_base_url,
         "ollama_recommended": OLLAMA_RECOMMENDED,
+        "grok_enabled": settings.grok_enabled,
+        "grok_model": settings.grok_model,
+        "local_openai_enabled": settings.local_openai_enabled,
+        "local_llm_model": settings.effective_local_llm_model(),
+        "local_llm_base_url": settings.local_llm_base_url,
+        "local_msg": "",
+        "local_ok": True,
         "secret_fields": SECRET_FIELDS,
         "secret_status": _secret_status(settings),
         # Keyless English-translation fallback. The URL is NOT a secret, so unlike
@@ -3662,7 +3748,10 @@ def settings_page(request: Request) -> HTMLResponse:
     The provider *choice* (not a secret) is stored in the DB meta table.
     """
     settings = get_settings()
-    return TEMPLATES.TemplateResponse(request, "settings.html", _settings_context(settings))
+    return TEMPLATES.TemplateResponse(
+        request, "settings.html",
+        {**_settings_context(settings), **_email_context(settings)},
+    )
 
 
 @app.post("/settings/auto-scan", response_class=JSONResponse)
@@ -3696,7 +3785,7 @@ def settings_auto_scan_status() -> JSONResponse:
 
 @app.post("/settings/provider", response_class=HTMLResponse)
 def settings_set_provider(request: Request, provider: str = Form(...)) -> HTMLResponse:
-    """Switch the active AI provider (anthropic / gemini / off). Not a secret."""
+    """Switch the active AI provider (auto / a named backend / off). Not a secret."""
     settings = get_settings()
     if provider in settings.PROVIDER_CHOICES:
         with get_connection() as conn:
@@ -3785,6 +3874,10 @@ async def settings_set_secrets(request: Request) -> HTMLResponse:
     if updates:
         update_env(updates)
         reload_settings()
+        if _EMAIL_KEYS.intersection(updates):
+            # A changed email connection must pass a fresh test before sending.
+            with get_connection() as conn:
+                clear_email_verified(conn)
         # Rebuild the collector so its sources pick up the new keys without a restart.
         request.app.state.collector = Collector(get_settings())
 
@@ -3837,6 +3930,380 @@ async def settings_set_translation(request: Request) -> HTMLResponse:
         ),
     }
     return TEMPLATES.TemplateResponse(request, "_settings_left.html", ctx)
+
+
+# --- Local OpenAI-compatible server (LM Studio, llama.cpp, vLLM, Jan, ...) ---
+
+# Model ids on local servers look like "qwen2.5-7b-instruct",
+# "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF" or "model@q4_k_m".
+_LOCAL_MODEL_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/:@+-]{0,199}")
+
+
+def _valid_local_base_url(url: str) -> bool:
+    from urllib.parse import urlsplit
+
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    return parts.scheme in ("http", "https") and bool(parts.hostname) and not parts.username
+
+
+@app.post("/settings/local-llm", response_class=HTMLResponse)
+def settings_local_llm(
+    request: Request, base_url: str = Form(""), model: str = Form("")
+) -> HTMLResponse:
+    """Save the local server address (.env, not a secret) and model (DB meta).
+
+    The address is the operator's own machine/LAN server, so the public-URL SSRF
+    guard used for LibreTranslate deliberately does not apply; it only has to
+    be a well-formed http(s) URL.
+    """
+    settings = get_settings()
+    base_url = (base_url or "").strip()
+    model = (model or "").strip()
+    msg, ok = "", True
+    if base_url and not _valid_local_base_url(base_url):
+        msg, ok = "Not saved — the server address must look like http://localhost:1234/v1.", False
+    elif model and not _LOCAL_MODEL_RE.fullmatch(model):
+        msg, ok = "Not saved — that model name contains characters a server would not use.", False
+    else:
+        if base_url and base_url != settings.local_llm_base_url:
+            update_env({"LOCAL_LLM_BASE_URL": base_url})
+            reload_settings()
+        with get_connection() as conn:
+            set_meta(conn, "local_llm_model", model or None)
+        msg = "Saved." if model else "Saved. Pick a model so the local server can be used."
+    settings = get_settings()
+    return TEMPLATES.TemplateResponse(
+        request, "_provider_status.html",
+        {**_settings_context(settings), "local_msg": msg, "local_ok": ok},
+    )
+
+
+@app.post("/settings/local-llm/check", response_class=HTMLResponse)
+def settings_local_llm_check(request: Request) -> HTMLResponse:
+    """Ping the local OpenAI-compatible server and list its models. Never raises."""
+    from nexus.analysis.providers import check_openai_compatible
+
+    settings = get_settings()
+    result = check_openai_compatible(
+        settings.local_llm_base_url, settings.effective_local_llm_model(),
+        settings.local_llm_api_key,
+    )
+    return TEMPLATES.TemplateResponse(request, "_local_llm_check.html", {"check": result})
+
+
+# --- Email connection + daily brief (by Sherlock) ------------------------------
+
+from nexus.mailer import (  # noqa: E402
+    EMAIL_ENV_KEYS as _EMAIL_KEYS,
+    PROVIDERS as EMAIL_PROVIDERS,
+    clear_verified as clear_email_verified,
+)
+
+# Plain (non-secret) email fields the wizard writes and shows back.
+_EMAIL_PLAIN_FIELDS = ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_FROM", "DIGEST_TO")
+_EMAIL_SECRET_FIELDS = ("SMTP_PASSWORD", "RESEND_API_KEY", "SENDGRID_API_KEY")
+_MAX_RECIPIENTS = 10
+
+
+def _email_context(settings, **extra) -> dict:
+    """Everything the email wizard + digest box render. Never includes a secret."""
+    from nexus.mailer import is_verified, resolve_email_config
+
+    cfg = resolve_email_config(settings)
+    with get_connection() as conn:
+        verified = is_verified(conn, cfg)
+        digest_enabled = get_meta(conn, "digest_enabled") == "1" and verified
+        digest_time = get_meta(conn, "digest_time") or "08:00"
+        scan_first = get_meta(conn, "digest_scan_first") == "1"
+        last_sent = get_meta(conn, "last_digest_sent_at") or ""
+        last_status = get_meta(conn, "last_digest_status") or ""
+    ctx = {
+        "email_providers": EMAIL_PROVIDERS,
+        "email_provider": cfg.provider,
+        "email_label": cfg.label,
+        "email_kind": cfg.kind,
+        "email_host": cfg.host,
+        "email_port": cfg.port,
+        "email_missing": cfg.missing,
+        "email_ready": cfg.ready,
+        "email_verified": verified,
+        "smtp_host": settings.smtp_host or "",
+        "smtp_port": settings.smtp_port or "587",
+        "smtp_username": settings.smtp_username or "",
+        "smtp_from": settings.smtp_from or "",
+        "digest_to": settings.digest_to or "",
+        "digest_enabled": digest_enabled,
+        "digest_time": digest_time,
+        "digest_scan_first": scan_first,
+        "last_digest_sent_at": last_sent[:16].replace("T", " "),
+        "last_digest_status": last_status,
+        "email_msg": "",
+        "email_ok": True,
+        "digest_msg": "",
+        "digest_ok": True,
+    }
+    ctx.update(extra)
+    return ctx
+
+
+def _render_email(request: Request, **extra) -> HTMLResponse:
+    settings = get_settings()
+    ctx = {**_settings_context(settings), **_email_context(settings, **extra)}
+    return TEMPLATES.TemplateResponse(request, "_email_settings.html", ctx)
+
+
+@app.post("/settings/email/provider", response_class=HTMLResponse)
+def settings_email_provider(request: Request, provider: str = Form("")) -> HTMLResponse:
+    """Pick how email is sent (a preference, stored in DB meta, not a secret)."""
+    provider = (provider or "").strip().lower()
+    if provider not in EMAIL_PROVIDERS:
+        return _render_email(request, email_msg="Unknown email provider.", email_ok=False)
+    with get_connection() as conn:
+        set_meta(conn, "email_provider", provider)
+        clear_email_verified(conn)
+    return _render_email(request)
+
+
+@app.post("/settings/email", response_class=HTMLResponse)
+async def settings_email_save(request: Request) -> HTMLResponse:
+    """Save the email connection: plain fields are written (and shown back);
+    secrets are written only when typed (blank = unchanged), always to .env."""
+    from nexus.mailer import valid_address
+
+    form = await request.form()
+    updates: dict[str, str] = {}
+    for key in _EMAIL_PLAIN_FIELDS:
+        if key in form:
+            updates[key] = str(form.get(key) or "").strip()
+    for key in _EMAIL_SECRET_FIELDS:
+        if form.get(f"clear_{key}"):
+            updates[key] = ""
+            continue
+        value = str(form.get(key) or "").strip()
+        if value:
+            updates[key] = value
+
+    problems: list[str] = []
+    port = updates.get("SMTP_PORT")
+    if port and not (port.isdigit() and 0 < int(port) < 65536):
+        problems.append("the port must be a number such as 587 or 465")
+    for key, label in (("SMTP_FROM", "From address"), ("SMTP_USERNAME", "email address")):
+        value = updates.get(key)
+        if value and "@" in value and not valid_address(value):
+            problems.append(f"the {label} does not look like an email address")
+    if "DIGEST_TO" in updates:
+        recips = [r.strip() for r in updates["DIGEST_TO"].split(",") if r.strip()]
+        if any(not valid_address(r) for r in recips):
+            problems.append("every recipient must be a plain email address, separated by commas")
+        elif len(recips) > _MAX_RECIPIENTS:
+            problems.append(f"at most {_MAX_RECIPIENTS} recipients")
+        updates["DIGEST_TO"] = ", ".join(recips)
+    host = updates.get("SMTP_HOST")
+    if host and not re.fullmatch(r"[A-Za-z0-9.-]{1,253}", host):
+        problems.append("the SMTP server must be a host name such as smtp.example.com")
+    if problems:
+        return _render_email(request, email_msg="Not saved — " + "; ".join(problems) + ".", email_ok=False)
+
+    settings = get_settings()
+    changed = {
+        k: v for k, v in updates.items()
+        if (getattr(settings, k.lower(), None) or "") != v
+    }
+    if changed:
+        update_env(changed)
+        reload_settings()
+        with get_connection() as conn:
+            clear_email_verified(conn)
+    msg = (
+        "Saved. Now press “Send test email” — the daily brief unlocks after a successful test."
+        if changed else "Nothing changed."
+    )
+    return _render_email(request, email_msg=msg, email_ok=True)
+
+
+@app.post("/settings/email/test", response_class=HTMLResponse)
+def settings_email_test(request: Request) -> HTMLResponse:
+    """Send a short test email; on success the connection is marked verified."""
+    from nexus.mailer import mark_verified, resolve_email_config, send_email
+
+    settings = get_settings()
+    cfg = resolve_email_config(settings)
+    if not cfg.ready:
+        return _render_email(
+            request, email_ok=False,
+            email_msg="Not sent — still missing: " + ", ".join(cfg.missing) + ".",
+        )
+    text = (
+        "This is a test message from your local Nexus-OSINT.\n\n"
+        "If you can read this, the email connection works and the daily brief "
+        "written by Sherlock can now be switched on in Settings."
+    )
+    html = (
+        "<p>This is a test message from your local <b>Nexus-OSINT</b>.</p>"
+        "<p>If you can read this, the email connection works and the daily brief "
+        "written by Sherlock can now be switched on in Settings.</p>"
+    )
+    result = send_email(cfg, "Nexus-OSINT: test email", text, html)
+    if result.ok:
+        with get_connection() as conn:
+            mark_verified(conn, cfg)
+        return _render_email(
+            request, email_ok=True,
+            email_msg=result.message + " Check the inbox (and spam folder). The daily brief can now be switched on.",
+        )
+    return _render_email(request, email_ok=False, email_msg=result.message)
+
+
+@app.post("/settings/digest", response_class=HTMLResponse)
+def settings_digest(
+    request: Request,
+    enabled: str = Form(""),
+    digest_time: str = Form("08:00"),
+    scan_first: str = Form(""),
+) -> HTMLResponse:
+    """Daily brief schedule: on/off (only once the email is verified), time, scan-first."""
+    from nexus.digest import parse_digest_time
+    from nexus.mailer import is_verified, resolve_email_config
+
+    settings = get_settings()
+    want_on = enabled == "1"
+    h, m = parse_digest_time(digest_time)
+    with get_connection() as conn:
+        verified = is_verified(conn, resolve_email_config(settings))
+        if want_on and not verified:
+            return _render_email(
+                request, digest_ok=False,
+                digest_msg="Connect your email and pass “Send test email” first.",
+            )
+        set_meta(conn, "digest_enabled", "1" if want_on else "0")
+        set_meta(conn, "digest_time", f"{h:02d}:{m:02d}")
+        set_meta(conn, "digest_scan_first", "1" if scan_first == "1" else "0")
+    msg = (f"Saved — the brief will be emailed daily at {h:02d}:{m:02d}." if want_on
+           else "Saved — the daily email brief is off.")
+    return _render_email(request, digest_ok=True, digest_msg=msg)
+
+
+@app.post("/settings/digest/test", response_class=HTMLResponse)
+def settings_digest_test(request: Request) -> HTMLResponse:
+    """Compose and send a real brief now (marked [Test]); schedule untouched."""
+    from nexus.digest import build_and_send_digest
+
+    settings = get_settings()
+    if not settings.email_enabled:
+        return _render_email(
+            request, digest_ok=False,
+            digest_msg="Set up the email connection above before sending a brief.",
+        )
+    ok, message = build_and_send_digest(settings, test=True)
+    return _render_email(request, digest_ok=ok, digest_msg=("Test brief sent. " if ok else "") + message)
+
+
+# --- Daily case reports (case "Reports" tab) ---------------------------------
+
+
+def _render_case_reports(request: Request, case_id: int, **extra) -> HTMLResponse:
+    from nexus import daily_reports as dr
+
+    settings = get_settings()
+    with get_connection() as conn:
+        case = get_case(conn, case_id)
+        if case is None:
+            return HTMLResponse("Case not found", status_code=404)
+        cfg = dr.get_config(conn, case_id)
+        digest_time = get_meta(conn, "digest_time") or "08:00"
+    ctx = {
+        "case": case,
+        "report_cfg": cfg,
+        "reports": dr.list_reports(settings, case_id=case_id),
+        "digest_time": digest_time,
+        "pdf_note": "If no PDF engine is installed, the report is saved as HTML instead.",
+        "report_msg": "",
+        "report_ok": True,
+    }
+    ctx.update(extra)
+    return TEMPLATES.TemplateResponse(request, "_case_reports.html", ctx)
+
+
+@app.get("/cases/{case_id}/reports", response_class=HTMLResponse)
+def case_reports_tab(request: Request, case_id: int) -> HTMLResponse:
+    return _render_case_reports(request, case_id)
+
+
+@app.post("/cases/{case_id}/reports/settings", response_class=HTMLResponse)
+def case_reports_settings(
+    request: Request, case_id: int,
+    enabled: str = Form(""), format: str = Form("pdf"), email: str = Form("link"),
+) -> HTMLResponse:
+    from nexus import daily_reports as dr
+
+    with get_connection() as conn:
+        if get_case(conn, case_id) is None:
+            return HTMLResponse("Case not found", status_code=404)
+        cfg = dr.set_config(conn, case_id, enabled=enabled == "1", fmt=format, email=email)
+    msg = ("Saved — a report will be generated every day." if cfg["enabled"]
+           else "Saved — the daily report is off.")
+    return _render_case_reports(request, case_id, report_msg=msg, report_ok=True)
+
+
+@app.post("/cases/{case_id}/reports/generate", response_class=HTMLResponse)
+def case_reports_generate(request: Request, case_id: int) -> HTMLResponse:
+    from nexus import daily_reports as dr
+
+    settings = get_settings()
+    try:
+        with get_connection() as conn:
+            wanted = dr.get_config(conn, case_id)["format"]
+            info = dr.generate_case_report(settings, TEMPLATES, conn, case_id)
+    except Exception:
+        logger.exception("Generate report for case %s failed", case_id)
+        return _render_case_reports(
+            request, case_id, report_ok=False,
+            report_msg="The report could not be generated. Nothing was changed.",
+        )
+    if info is None:
+        return HTMLResponse("Case not found", status_code=404)
+    note = " (saved as HTML: no PDF engine available)" if info["format"] != wanted else ""
+    return _render_case_reports(
+        request, case_id, report_ok=True,
+        report_msg=f"Report for {info['date']} saved — {info['items']} new item(s){note}.",
+    )
+
+
+@app.get("/cases/{case_id}/reports/{filename}")
+def case_report_file(case_id: int, filename: str, download: int = 0) -> Response:
+    """Serve one saved daily report from the local reports folder only.
+
+    Strictly validated (filename shape + resolved-path containment), so this
+    can never read anything outside DATA_DIR/reports/<this case's folder>/.
+    """
+    from fastapi.responses import FileResponse
+
+    from nexus import daily_reports as dr
+
+    found = dr.find_case_report(get_settings(), case_id, filename)
+    if found is None:
+        return HTMLResponse("Report not found", status_code=404)
+    slug, path = found
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        str(path),
+        media_type=dr.media_type_for(filename),
+        headers={"Content-Disposition": f'{disposition}; filename="{slug}-{filename}"'},
+    )
+
+
+@app.post("/cases/{case_id}/reports/{filename}/delete", response_class=HTMLResponse)
+def case_report_delete(request: Request, case_id: int, filename: str) -> HTMLResponse:
+    from nexus import daily_reports as dr
+
+    ok = dr.delete_case_report(get_settings(), case_id, filename)
+    return _render_case_reports(
+        request, case_id, report_ok=ok,
+        report_msg="Report deleted." if ok else "That report was not found.",
+    )
 
 
 # --------------------------------------------------------------- custom sources

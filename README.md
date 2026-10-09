@@ -36,9 +36,15 @@ one SQLite file you own, and every outbound connection can be audited.
 - **Deduplicates and searches**: exact re-fetches are no-ops, near-duplicates
   collapse into one row with an "echoed N times" badge, and the whole history is
   searchable through SQLite FTS5.
-- **Enriches** items with a pluggable AI provider (Gemini, OpenAI, Anthropic, or a
-  fully local Ollama model): summary, translation, threat level, entity
-  extraction, and 0-100 relevance scores against your standing questions.
+- **Enriches** items with a pluggable AI provider (Gemini, OpenAI, Anthropic,
+  xAI Grok, or a fully local model via Ollama or any OpenAI-compatible server
+  such as LM Studio, llama.cpp, vLLM, Jan or LocalAI; "Automatic" picks the first
+  one that is ready): summary, translation, threat level, entity extraction, and
+  0-100 relevance scores against your standing questions.
+- **Briefs you by email** (opt-in): once a day Sherlock writes a short analyst
+  brief of what is new in your open cases and sends it through Gmail, Outlook,
+  Resend, SendGrid or any SMTP server; per-case daily reports are saved locally
+  as PDF/HTML and listed on each case's Reports tab.
 - **Organizes** work into cases with tracking terms, pinned items, notes,
   sub-cases, a daily brief, watchlists and a "Focus" view of the few items that
   most need attention.
@@ -157,7 +163,9 @@ offered, and targets are validated before they reach a subprocess.
 
 The morning read: what is new in each case since you last opened it. The set-up
 checklist at the top says, in plain language, what is not configured yet (here,
-AI analysis is off) instead of failing silently.
+AI analysis is off) instead of failing silently. Optionally, Sherlock emails a
+written version of this brief every morning, and each case can save a daily
+PDF/HTML report that shows up in a "Latest reports" strip here.
 
 #### 7. Sherlock: an assistant that can act, inside a fence
 
@@ -278,8 +286,15 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
   security headers; user-supplied URLs pass an SSRF guard before being fetched.
 - **Collected data stays on your machine unless you configure a cloud AI
   provider.** In that case the text of items being analyzed is sent to that
-  provider. Choose the local Ollama backend, or no AI, to keep analysis fully
-  offline. Collection itself necessarily contacts the sources you enable.
+  provider. Cloud AI providers (Gemini, OpenAI, Anthropic, Grok) are explicit
+  opt-ins: nothing is sent until you add a key. Choose a local model (Ollama or a
+  local OpenAI-compatible server such as LM Studio), or no AI, to keep analysis
+  fully offline. Collection itself necessarily contacts the sources you enable.
+- **The daily email brief is an explicit opt-in that sends data off the
+  machine**: titles, summaries and links of new items go to the mail service you
+  connect (your SMTP server, Resend or SendGrid), and only after a successful
+  test email. App passwords and API keys only, no OAuth. The per-case daily
+  reports themselves stay on disk and are served only on `127.0.0.1`.
 - Reports and transfer bundles leave the machine only when you export them, and
   bundles never contain secrets.
 - Secrets live in `.env` only (git-ignored). They are never written to the

@@ -1,4 +1,5 @@
-{% set names = {'anthropic': 'Anthropic (Claude)', 'gemini': 'Google (Gemini)', 'openai': 'OpenAI (ChatGPT)', 'ollama': 'Local model (Ollama)', 'off': 'Off (no AI)'} %}
+{% set names = {'auto': 'Automatic (first one that works)', 'anthropic': 'Anthropic (Claude)', 'gemini': 'Google (Gemini)', 'openai': 'OpenAI (ChatGPT)', 'grok': 'xAI (Grok)', 'local_openai': 'Local server (LM Studio, llama.cpp, vLLM…)', 'ollama': 'Local model (Ollama)', 'off': 'Off (no AI)'} %}
+{% set key_names = {'anthropic': 'ANTHROPIC_API_KEY', 'gemini': 'GEMINI_API_KEY', 'openai': 'OPENAI_API_KEY', 'grok': 'XAI_API_KEY'} %}
 <div id="provider-status" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
   <div class="flex items-center justify-between text-sm">
     <span class="text-slate-400">Active AI provider</span>
@@ -14,7 +15,7 @@
       <select name="provider" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
         {% for p in provider_choices %}
         <option value="{{ p }}" {% if chosen_provider == p %}selected{% endif %}>
-          {{ names.get(p, p) }}{% if p == 'anthropic' and not claude_enabled %} — no key{% elif p == 'gemini' and not gemini_enabled %} — no key{% elif p == 'openai' and not openai_enabled %} — no key{% elif p == 'ollama' %} — runs offline, no key{% endif %}
+          {{ names.get(p, p) }}{% if p == 'anthropic' and not claude_enabled %} — no key{% elif p == 'gemini' and not gemini_enabled %} — no key{% elif p == 'openai' and not openai_enabled %} — no key{% elif p == 'grok' and not grok_enabled %} — no key{% elif p == 'local_openai' %} — runs offline{% if not local_openai_enabled %}, pick a model{% endif %}{% elif p == 'ollama' %} — runs offline, no key{% endif %}
         </option>
         {% endfor %}
       </select>
@@ -71,6 +72,45 @@
       Active model: <span class="mono">{{ ollama_model }}</span>. Your model choice is saved instantly &mdash; no restart.</p>
   </div>
   {% endif %}
+  {% if chosen_provider == 'local_openai' %}
+  <div class="rounded border border-emerald-900/60 bg-emerald-950/20 p-3 space-y-3 text-xs">
+    <p class="text-emerald-300 font-medium">&#128274; Local server &mdash; your own AI app on this computer, nothing leaves it.</p>
+    <p class="text-slate-300">Works with any app that offers an <span class="font-medium">OpenAI-compatible</span> server:
+      LM Studio, llama.cpp <span class="mono">server</span>, vLLM, Jan or LocalAI.
+      In LM Studio: open the <span class="font-medium">Developer</span> tab, load a model and switch
+      <span class="font-medium">Start server</span> on (address <span class="mono">http://localhost:1234/v1</span>).</p>
+    <form hx-post="/settings/local-llm" hx-target="#provider-status" hx-swap="outerHTML"
+          class="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-end">
+      <label class="block">
+        <span class="text-slate-400">Server address</span>
+        <input name="base_url" value="{{ local_llm_base_url }}" placeholder="http://localhost:1234/v1"
+               spellcheck="false" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 mono">
+      </label>
+      <label class="block">
+        <span class="text-slate-400">Model</span>
+        <input name="model" value="{{ local_llm_model }}" placeholder="click Test connection to list models"
+               spellcheck="false" list="local-llm-models" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 mono">
+      </label>
+      <button class="rounded bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 font-medium">Save</button>
+    </form>
+    <button hx-post="/settings/local-llm/check" hx-target="#local-llm-check" hx-swap="outerHTML"
+            class="rounded bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1 font-medium">Test connection</button>
+    <div id="local-llm-check"></div>
+    <p class="text-slate-500">Needs a key? Only some servers (vLLM / LocalAI started with <span class="mono">--api-key</span>) do &mdash;
+      set <span class="mono">LOCAL_LLM_API_KEY</span> in the API keys box.</p>
+  </div>
+  {% endif %}
+  {% if local_msg %}
+  <p class="text-xs {% if local_ok %}text-emerald-300{% else %}text-rose-300{% endif %}">Local server: {{ local_msg }}</p>
+  {% endif %}
+  {% if chosen_provider == 'auto' %}
+  <p class="text-xs text-slate-400">
+    Automatic uses the first AI that is ready, in this order: Gemini, OpenAI,
+    Anthropic, Grok, then a local server (once a model is picked). Ollama is
+    used only when you choose it yourself.
+    {% if active_provider != 'off' %}Right now that is <span class="text-emerald-300">{{ names.get(active_provider, active_provider) }}</span>.{% endif %}
+  </p>
+  {% endif %}
   {% if chosen_provider == 'off' %}
   <p class="text-xs text-slate-400">
     AI is off. Items are still collected, stored, deduplicated and fully
@@ -79,11 +119,21 @@
     analyzing new items.
   </p>
   {% endif %}
-  {% if chosen_provider != 'off' and chosen_provider != 'ollama' and active_provider == 'off' %}
+  {% if chosen_provider != 'off' and active_provider == 'off' %}
   <p class="text-xs text-amber-400">
+    {% if chosen_provider == 'auto' %}
+    No AI is ready yet: add an API key (<span class="mono">GEMINI_API_KEY</span>,
+    <span class="mono">OPENAI_API_KEY</span>, <span class="mono">ANTHROPIC_API_KEY</span> or
+    <span class="mono">XAI_API_KEY</span>) below, or choose a local model, so analysis is currently off.
+    {% elif chosen_provider == 'local_openai' %}
+    No local model is picked yet: start your local server, click Test connection and save one of its
+    models, so analysis is currently off.
+    {% elif chosen_provider == 'ollama' %}
+    No Ollama model is set, so analysis is currently off.
+    {% else %}
     Selected provider has no API key in <span class="mono">.env</span>
-    ({% if chosen_provider == 'anthropic' %}ANTHROPIC_API_KEY{% elif chosen_provider == 'openai' %}OPENAI_API_KEY{% else %}GEMINI_API_KEY{% endif %}),
-    so analysis is currently off.
+    (<span class="mono">{{ key_names.get(chosen_provider, '') }}</span>), so analysis is currently off.
+    {% endif %}
   </p>
   {% endif %}
   <p class="text-xs text-slate-500">

@@ -37,8 +37,10 @@ class Settings(BaseSettings):
     # --- Intelligence core ---
     # Which AI backend analyses items. Default comes from .env; the dashboard can
     # override it at runtime (stored in the DB meta table). One of:
-    #   anthropic | gemini | openai | ollama | off
-    ai_provider: str = Field(default="anthropic")
+    #   auto | gemini | openai | anthropic | grok | local_openai | ollama | off
+    # "auto" (the default) picks the first backend that is actually usable — see
+    # Settings.AUTO_ORDER — so pasting any one key is enough to switch AI on.
+    ai_provider: str = Field(default="auto")
     anthropic_api_key: str | None = Field(default=None)
     claude_model: str = Field(default="claude-opus-4-7")
     # Google Gemini as an alternative backend (key stays in .env, OpSec).
@@ -55,6 +57,19 @@ class Settings(BaseSettings):
     # up to gemma4:12b, or qwen3.8:27b / gemma4:31b on a strong GPU. Fully
     # offline, no key.
     ollama_model: str = Field(default="gemma4:e4b")
+    # xAI (Grok) — an OpenAI-compatible cloud API (key stays in .env, OpSec).
+    # Default is xAI's current flagship (Oct 2026). Any id listed at
+    # docs.x.ai works; pick a cheaper one for high-volume scans.
+    xai_api_key: str | None = Field(default=None)
+    grok_model: str = Field(default="grok-4.6")
+    xai_base_url: str = Field(default="https://api.x.ai/v1")
+    # A local OpenAI-compatible server (LM Studio, llama.cpp server, vLLM, Jan,
+    # LocalAI). Runs on this machine, so content never leaves it. The model name
+    # is usually picked from the dashboard (DB meta "local_llm_model", like the
+    # Ollama model); the optional key is only for servers that require one.
+    local_llm_base_url: str = Field(default="http://localhost:1234/v1")
+    local_llm_model: str = Field(default="")
+    local_llm_api_key: str | None = Field(default=None)
     # Budget guard: how many items reach the model per run. Kept modest so a
     # single scan stays inside free-tier rate/quota limits (e.g. Gemini free);
     # any overflow simply waits for the next scan. Raise it if you're on a paid
@@ -124,6 +139,24 @@ class Settings(BaseSettings):
     # without it the adapter reports itself unavailable and is skipped.
     instagram_sessionid: str | None = Field(default=None)
 
+    # --- Daily email brief (written by Sherlock) ---
+    # Off unless the operator connects an email account in Settings. Every
+    # secret (SMTP password / email-API key) lives in .env only. The provider
+    # can also be picked from the dashboard (DB meta "email_provider"):
+    #   gmail | outlook | smtp | resend | sendgrid
+    email_provider: str = Field(default="")
+    smtp_host: str = Field(default="")
+    # A string on purpose: an empty "SMTP_PORT=" line (what the key editor
+    # writes when a value is cleared) must never fail int validation and take
+    # the whole app down. Parsed (default 587) in nexus.mailer.
+    smtp_port: str = Field(default="587")
+    smtp_username: str = Field(default="")
+    smtp_password: str | None = Field(default=None)
+    smtp_from: str = Field(default="")
+    digest_to: str = Field(default="")
+    resend_api_key: str | None = Field(default=None)
+    sendgrid_api_key: str | None = Field(default=None)
+
     # --- Storage ---
     data_dir: str = Field(default="data")
     database_path: str = Field(default="data/nexus.db")
@@ -180,6 +213,31 @@ class Settings(BaseSettings):
         return bool(self.openai_api_key)
 
     @property
+    def grok_enabled(self) -> bool:
+        return bool(self.xai_api_key)
+
+    @property
+    def local_openai_enabled(self) -> bool:
+        # No key needed, but a model name must be set: servers like LM Studio
+        # serve whatever is loaded, and there is no safe universal default.
+        return bool(self.local_llm_base_url and self.effective_local_llm_model())
+
+    def effective_local_llm_model(self) -> str:
+        """The local-server model in use: the dashboard pick (DB meta) if set,
+        else the .env default. A preference, not a secret."""
+        from nexus.storage import get_meta_value
+
+        choice = (get_meta_value("local_llm_model", None) or "").strip()
+        return choice or (self.local_llm_model or "").strip()
+
+    @property
+    def email_enabled(self) -> bool:
+        """Whether an email account is fully configured (not necessarily tested)."""
+        from nexus.mailer import resolve_email_config
+
+        return resolve_email_config(self).ready
+
+    @property
     def ollama_enabled(self) -> bool:
         # No API key — just needs a host and a model name configured. Whether the
         # local server is actually up is checked at call time (graceful: a down
@@ -208,37 +266,68 @@ class Settings(BaseSettings):
 
     # Providers the analyst may pick from in the UI.
     PROVIDER_CHOICES: ClassVar[tuple[str, ...]] = (
-        "anthropic",
+        "auto",
         "gemini",
         "openai",
+        "anthropic",
+        "grok",
+        "local_openai",
         "ollama",
         "off",
     )
+
+    # The order "auto" tries backends in. Ollama is deliberately absent: its
+    # defaults (host + model) always look configured, so auto-picking it would
+    # silently route analysis to a server that may not exist. It is used only
+    # when the analyst explicitly chooses it.
+    AUTO_ORDER: ClassVar[tuple[str, ...]] = (
+        "gemini",
+        "openai",
+        "anthropic",
+        "grok",
+        "local_openai",
+    )
+
+    def _provider_usable(self, name: str) -> bool:
+        checks = {
+            "anthropic": lambda: self.claude_enabled,
+            "gemini": lambda: self.gemini_enabled,
+            "openai": lambda: self.openai_enabled,
+            "grok": lambda: self.grok_enabled,
+            "local_openai": lambda: self.local_openai_enabled,
+            "ollama": lambda: self.ollama_enabled,
+        }
+        check = checks.get(name)
+        return bool(check and check())
 
     def chosen_provider(self) -> str:
         """The provider the analyst selected (DB override else env default).
 
         This is the raw preference; it may name a backend with no API key. Use
-        `active_provider()` to get the one actually usable right now.
+        `active_provider()` to get the one actually usable right now. Unknown
+        values fall back to "auto".
         """
         from nexus.storage import get_meta_value
 
-        choice = (get_meta_value("ai_provider", None) or self.ai_provider or "anthropic")
+        choice = (get_meta_value("ai_provider", None) or self.ai_provider or "auto")
         choice = choice.strip().lower()
-        return choice if choice in self.PROVIDER_CHOICES else "anthropic"
+        return choice if choice in self.PROVIDER_CHOICES else "auto"
 
     def active_provider(self) -> str:
-        """Resolved provider that also has a usable key; 'off' otherwise."""
+        """Resolved provider that is actually usable right now; 'off' otherwise.
+
+        An explicit choice is honoured only if usable (never a silent switch to
+        a different vendor). "auto" picks the first usable one in AUTO_ORDER.
+        """
         choice = self.chosen_provider()
-        if choice == "anthropic" and self.claude_enabled:
-            return "anthropic"
-        if choice == "gemini" and self.gemini_enabled:
-            return "gemini"
-        if choice == "openai" and self.openai_enabled:
-            return "openai"
-        if choice == "ollama" and self.ollama_enabled:
-            return "ollama"
-        return "off"
+        if choice == "off":
+            return "off"
+        if choice == "auto":
+            for name in self.AUTO_ORDER:
+                if self._provider_usable(name):
+                    return name
+            return "off"
+        return choice if self._provider_usable(choice) else "off"
 
     @property
     def analysis_enabled(self) -> bool:
@@ -261,6 +350,10 @@ class Settings(BaseSettings):
             return self.openai_model
         if active == "ollama":
             return self.effective_ollama_model()
+        if active == "grok":
+            return self.grok_model
+        if active == "local_openai":
+            return self.effective_local_llm_model()
         return self.claude_model
 
     @property
@@ -373,6 +466,8 @@ class Settings(BaseSettings):
             "gemini": "gemini",
             "openai": "openai",
             "ollama": "local",
+            "grok": "grok",
+            "local_openai": "local",
             "off": "ai",
         }.get(self.active_provider(), "ai")
         has_queries = bool(self.investigation_query_targets())

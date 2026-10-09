@@ -32,6 +32,8 @@ EDITABLE_KEYS: frozenset[str] = frozenset(
         "ANTHROPIC_API_KEY",
         "GEMINI_API_KEY",
         "OPENAI_API_KEY",
+        "XAI_API_KEY",
+        "LOCAL_LLM_API_KEY",
         "SERPAPI_KEY",
         "GOOGLE_CSE_KEY",
         "GOOGLE_CSE_CX",
@@ -44,6 +46,20 @@ EDITABLE_KEYS: frozenset[str] = frozenset(
         # configured from the dashboard (no .env editing). It is a plain URL and,
         # unlike the keys above, is shown back to the operator in the UI.
         "LIBRETRANSLATE_URL",
+        # Daily email brief. SMTP_PASSWORD / RESEND_API_KEY / SENDGRID_API_KEY
+        # are secrets (never shown back). The rest are plain connection details
+        # (server, port, addresses) that the email wizard shows back so the
+        # operator can see and correct them.
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_USERNAME",
+        "SMTP_PASSWORD",
+        "SMTP_FROM",
+        "DIGEST_TO",
+        "RESEND_API_KEY",
+        "SENDGRID_API_KEY",
+        # The local OpenAI-compatible server address (not a secret; shown back).
+        "LOCAL_LLM_BASE_URL",
     }
 )
 

@@ -66,6 +66,7 @@ _STATIC_ALLOW: tuple[tuple[str, str], ...] = (
     ("google.com", "Source / Google"),
     ("gstatic.com", "Support (Google static)"),
     ("openai.com", "AI provider (OpenAI)"),
+    ("x.ai", "AI provider (xAI Grok)"),
     ("serpapi.com", "Source (SERPAPI news)"),
     ("reddit.com", "Source (Reddit)"),
     ("redditmedia.com", "Source (Reddit)"),
@@ -130,6 +131,29 @@ def _configured_allow() -> dict[str, str]:
         h = _host_of(str(getattr(settings, "telemetry_base_url", "") or ""))
         if h:
             allow[h] = "Source (Telegram / Telemetry)"
+
+        # A local OpenAI-compatible server (LM Studio etc.). Usually loopback
+        # (already "Local machine"), but it may sit on another host the
+        # operator configured.
+        h = _host_of(str(getattr(settings, "local_llm_base_url", "") or ""))
+        if h:
+            allow[h] = "AI provider (local OpenAI-compatible server)"
+
+        # The email brief: only the destination the operator configured.
+        try:
+            from nexus.mailer import resolve_email_config
+
+            cfg = resolve_email_config(settings)
+            if cfg.provider in ("gmail", "outlook", "smtp") and cfg.host:
+                h = _host_of(cfg.host)
+                if h:
+                    allow[h] = "Email (your SMTP server)"
+            elif cfg.provider in ("resend", "sendgrid") and cfg.api_key:
+                h = _host_of(cfg.api_url)
+                if h:
+                    allow[h] = f"Email (your {cfg.label} API)"
+        except Exception:
+            logger.debug("Could not read email settings for egress allow-list", exc_info=True)
     except Exception:
         logger.debug("Could not read settings for egress allow-list", exc_info=True)
 
