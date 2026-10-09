@@ -47,7 +47,8 @@ These constrain every feature and every contribution.
 ## Architecture (current)
 
 - **Backend:** Python + FastAPI, served locally. No build step on the frontend
-  (Jinja2 + htmx + Tailwind via CDN), dark "terminal" UI.
+  (Jinja2 + htmx + Tailwind, prebuilt and bundled for offline use), dark
+  "terminal" UI.
 - **Storage:** a single SQLite database with WAL mode and an FTS5 full-text
   index. Idempotent migrations.
 - **Sources:** a `Source` ABC (`is_available()`, `fetch(since)`) with per-source
@@ -106,8 +107,6 @@ These constrain every feature and every contribution.
 - **Triage tuning.** The Focus view already shows why each item surfaced; next
   is making its thresholds configurable. Items are never hidden from the main
   feed.
-- **Fully offline UI.** Ship a prebuilt Tailwind stylesheet instead of the CDN
-  script, so the interface renders on an air-gapped machine.
 - **Engineering hygiene.** Lint and type-check gates in CI (ruff, mypy), a
   Python version matrix, and route-level smoke tests for every page.
 

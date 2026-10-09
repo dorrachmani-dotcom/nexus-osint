@@ -300,6 +300,10 @@ async def _friendly_error_handler(request: Request, exc: Exception) -> HTMLRespo
     return HTMLResponse(body, status_code=500)
 
 
+# Bundled UI assets (compiled stylesheet, vendored htmx) — no CDN at runtime.
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
 # Serve stored evidence screenshots (and any other data assets) read-only.
 _DATA_DIR = Path(get_settings().data_dir)
 _DATA_DIR.mkdir(parents=True, exist_ok=True)

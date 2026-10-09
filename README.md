@@ -299,9 +299,11 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
   bundles never contain secrets.
 - Secrets live in `.env` only (git-ignored). They are never written to the
   database, shown back in the UI, or emitted in logs (a redaction filter scrubs
-  configured keys). One caveat: the UI currently loads Tailwind from its CDN for styling. That
-  request carries no data, but it does mean a fully air-gapped machine needs a
-  vendored stylesheet; shipping a prebuilt CSS file is on the roadmap.
+  configured keys).
+- **Works fully offline.** The stylesheet, htmx and the graph library ship
+  with the app; the UI makes no CDN or font requests, and the
+  Content-Security-Policy only allows the app's own origin. A test asserts that
+  no page loads a remote asset.
 - The Security center lists every outbound destination the app has contacted and
   flags any that is not a configured source or AI provider.
 

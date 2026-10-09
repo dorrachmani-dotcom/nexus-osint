@@ -9,6 +9,7 @@ rest of the platform runs even when they are not installed.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Iterable
 
 from nexus.adapters.base import Finding
@@ -70,6 +71,19 @@ _KIND_COLOR = {
 }
 
 
+# pyvis's template still links Bootstrap from a CDN even in "in_line" mode. The
+# graph does not use it (no select/filter menus), so drop those tags: the
+# rendered page must make no network requests at all.
+_REMOTE_TAG = re.compile(
+    r'<(?:link|script)\b[^>]*\b(?:href|src)="https?://[^"]*"[^>]*>(?:\s*</script>)?',
+    re.IGNORECASE,
+)
+
+
+def _offline(html: str) -> str:
+    return _REMOTE_TAG.sub("", html)
+
+
 def build_graph(target: str, findings: Iterable[Finding]):
     """Return a networkx.Graph centred on `target`, or None if networkx is absent."""
     try:
@@ -117,6 +131,7 @@ def render_graph_html(target: str, findings: Iterable[Finding]) -> str | None:
         font_color="#e2e8f0",
         notebook=False,
         directed=False,
+        cdn_resources="in_line",  # embed vis-network: the graph renders offline
     )
     for node, attrs in graph.nodes(data=True):
         kind = attrs.get("kind", "entity")
@@ -133,7 +148,7 @@ def render_graph_html(target: str, findings: Iterable[Finding]) -> str | None:
     net.set_options(_GRAPH_OPTIONS)
     try:
         # generate_html avoids writing to disk.
-        return net.generate_html(notebook=False)
+        return _offline(net.generate_html(notebook=False))
     except Exception:
         logger.exception("pyvis failed to render graph")
         return None
@@ -178,6 +193,7 @@ def render_entity_graph_html(graph_data: dict) -> str | None:
         font_color="#e2e8f0",
         notebook=False,
         directed=False,
+        cdn_resources="in_line",  # embed vis-network: the graph renders offline
     )
 
     max_mentions = max((n["mentions"] for n in nodes), default=1) or 1
@@ -201,7 +217,7 @@ def render_entity_graph_html(graph_data: dict) -> str | None:
 
     net.set_options(_GRAPH_OPTIONS)
     try:
-        return net.generate_html(notebook=False)
+        return _offline(net.generate_html(notebook=False))
     except Exception:
         logger.exception("pyvis failed to render entity graph")
         return None

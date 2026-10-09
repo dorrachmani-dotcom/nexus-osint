@@ -41,8 +41,11 @@ These are load-bearing — keep them in mind for every change:
   scan, an auto-scan timer, or a quiet boot sync.
 - **Provider-agnostic AI.** All model access goes through one interface so cloud
   and local backends are interchangeable.
-- **No build step for the frontend.** Jinja2 + htmx + Tailwind (CDN). Avoid adding
-  a JS toolchain.
+- **No runtime build step for the frontend.** Jinja2 + htmx + Tailwind. The
+  compiled stylesheet (`nexus/web/static/css/app.css`) and htmx are committed,
+  so running the app needs neither Node nor a CDN. After changing classes in
+  templates, rebuild with `npm install && npm run build` (CI fails if the
+  committed files are stale).
 
 ---
 
@@ -53,7 +56,7 @@ These are load-bearing — keep them in mind for every change:
 | Language | Python 3.11+ |
 | Web framework | FastAPI + uvicorn |
 | Templates | Jinja2 |
-| Interactivity | htmx 1.9 (+ small vanilla JS); Tailwind via CDN |
+| Interactivity | htmx 1.9 (+ small vanilla JS); Tailwind 3.4, prebuilt and bundled |
 | Storage | SQLite (WAL mode) with an FTS5 full-text index kept in sync by triggers |
 | AI | Pluggable: Anthropic Claude, Google Gemini, OpenAI, or local Ollama |
 | Screenshots | Playwright (headless Chromium) |

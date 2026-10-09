@@ -1,0 +1,40 @@
+/* Source for nexus/web/static/css/app.css. Rebuild with: npm run build:css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { @apply scroll-smooth; }
+  body {
+    @apply bg-slate-950 text-slate-200 antialiased;
+    /* Subtle depth: two faint radial glows over the dark base. */
+    background-image:
+      radial-gradient(60rem 40rem at 85% -10%, rgba(251,191,36,.06), transparent 60%),
+      radial-gradient(50rem 40rem at -10% 0%, rgba(56,189,248,.05), transparent 55%);
+    background-attachment: fixed;
+  }
+  ::selection { background: rgba(251,191,36,.30); color: #fff; }
+  :focus-visible { @apply outline-none ring-2 ring-amber-500/70 ring-offset-2 ring-offset-slate-950 rounded; }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #334155; background-clip: content-box; }
+}
+@layer components {
+  /* Monospace helper used across templates (kept as a stable class name). */
+  .mono { @apply font-mono; }
+  /* htmx loading indicators: hidden until a request is in flight. */
+  .htmx-indicator { opacity: 0; transition: opacity .2s; }
+  .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+  /* Top navigation links + active state. */
+  .nav-link { @apply px-2.5 py-1 rounded-md text-slate-400 hover:text-amber-300 hover:bg-slate-800/60 transition-colors; }
+  .nav-active { @apply text-amber-300 bg-slate-800/80 font-medium; }
+  /* Connection status chips. */
+  .chip { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] mono whitespace-nowrap; }
+  .chip-on { @apply border-emerald-700/70 text-emerald-300 bg-emerald-950/40; }
+  .chip-off { @apply border-slate-700/70 text-slate-500 bg-slate-900/40; }
+  /* Reusable building blocks pages can opt into. */
+  .card { @apply rounded-xl border border-slate-800 bg-slate-900/60 shadow-sm; }
+  .btn-primary { @apply inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold px-3.5 py-1.5 transition-colors shadow-sm; }
+  .btn-ghost { @apply inline-flex items-center gap-1.5 rounded-lg border border-slate-700 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm px-3 py-1.5 transition-colors; }
+}

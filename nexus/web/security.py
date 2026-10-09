@@ -39,19 +39,20 @@ _ALLOWED_HOSTS = {"127.0.0.1", "localhost", "[::1]", "::1"}
 # read-only methods are exempt (they can't mutate anything).
 _UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
-# Content-Security-Policy. The UI loads Tailwind's Play CDN (which compiles in
-# the browser and needs 'unsafe-eval' + injects inline <style>) and htmx, plus a
-# couple of inline <script>/onclick handlers and the pyvis graph (cdnjs). We
-# allow exactly those origins and still lock down the high-value directives:
-# no plugins (object-src), no other site may frame us (frame-ancestors), forms
-# can only post back to us (form-action), and <base> can't be hijacked.
+# Content-Security-Policy. Every script and stylesheet ships with the app
+# (no CDN), so only our own origin may serve them. 'unsafe-inline' remains for
+# a few inline <script>/onclick handlers and the self-contained pyvis graph
+# (rendered into a sandboxed srcdoc iframe); 'unsafe-eval' remains because
+# htmx compiles hx-on:: handlers with Function(). The high-value directives stay
+# locked down: no plugins (object-src), no other site may frame us
+# (frame-ancestors), forms only post back to us (form-action), and <base>
+# can't be hijacked.
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
-    "https://cdn.tailwindcss.com https://unpkg.com https://cdnjs.cloudflare.com; "
-    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
-    "font-src 'self' data: https://cdnjs.cloudflare.com; "
+    "font-src 'self' data:; "
     "connect-src 'self'; "
     "frame-src 'self'; "
     "object-src 'none'; "

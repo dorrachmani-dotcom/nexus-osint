@@ -7,6 +7,9 @@ to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Fully offline UI**: the Tailwind stylesheet is prebuilt and bundled, htmx
+  and vis-network are vendored, and the CSP allows only the app's own origin.
+  A CI job fails if the committed assets drift from their sources.
 - `CONTRIBUTING.md`, issue templates and a pull request template.
 - AI provider **xAI (Grok)** via its OpenAI-compatible API (`XAI_API_KEY`,
   `GROK_MODEL`, default `grok-4.6`).
