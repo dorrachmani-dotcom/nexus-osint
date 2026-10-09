@@ -35,7 +35,7 @@ httpx==0.28.1               # SERPAPI / TelemetryApp / Twitter / Ollama REST cal
 # future release; v1 is API-only.
 
 # --- Evidence / reporting ---
-playwright==1.49.1          # headless screenshots for the evidence vault
+playwright==1.63.0          # headless screenshots for the evidence vault
 # OCR over evidence screenshots so their visible text becomes searchable.
 # Optional + guarded: needs the Tesseract engine binary on the host (installed
 # in the Docker image). Without pytesseract OR the binary, OCR is skipped.
