@@ -37,6 +37,10 @@ DATA_EXPORT_FIELDS = [
     "shared_count", "summary", "translation", "entities", "content",
 ]
 
+# Case exports also carry the item's Internet Archive (Wayback Machine) capture,
+# when one exists — independent proof the source page existed.
+CASE_EXPORT_FIELDS = DATA_EXPORT_FIELDS + ["archive_url", "archived_at"]
+
 
 def _export_value(row: dict, field: str):
     """One field of one row, flattened to a scalar safe for CSV/JSON."""

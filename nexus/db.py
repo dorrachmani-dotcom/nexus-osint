@@ -320,6 +320,7 @@ _KNOWN_TABLES = frozenset({
     "notes", "watchlists", "subscriptions", "watchlist_hits", "item_reads", "lists",
     "list_memberships", "meta", "case_terms", "requirements", "requirement_hits",
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
+    "item_archives",
 })
 
 
@@ -404,6 +405,29 @@ def init_db() -> None:
         if not _column_exists(conn, "items", "dismissed"):
             conn.execute(
                 "ALTER TABLE items ADD COLUMN dismissed INTEGER NOT NULL DEFAULT 0"
+            )
+        # Internet Archive (Wayback Machine) captures: one row per item holding
+        # the latest attempt. Created here (not in SCHEMA) so existing databases
+        # pick it up on the next start, like entity_aliases above.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS item_archives (
+                item_id      INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+                url          TEXT NOT NULL DEFAULT '',
+                archive_url  TEXT,
+                status       TEXT NOT NULL DEFAULT 'pending'
+                             CHECK (status IN ('pending', 'done', 'failed', 'existing')),
+                requested_at TEXT NOT NULL DEFAULT (datetime('now')),
+                archived_at  TEXT,
+                error        TEXT
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_item_archives_status ON item_archives(status)"
+        )
+        if not _column_exists(conn, "cases", "auto_archive"):
+            # Opt-in per case: queue a Wayback capture whenever an item is pinned.
+            conn.execute(
+                "ALTER TABLE cases ADD COLUMN auto_archive INTEGER NOT NULL DEFAULT 0"
             )
         _migrate_capsules_to_cases(conn)
         _backfill_entity_index(conn)

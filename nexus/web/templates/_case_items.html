@@ -31,6 +31,10 @@
       <div class="mt-1.5 flex items-center gap-3 text-[11px] mono">
         {% if it.url %}<a href="{{ it.url | safe_url }}" target="_blank" rel="noopener"
             class="text-sky-400 hover:text-sky-300">&#128279; source</a>{% endif %}
+        {% if it.archive_url %}<a href="{{ it.archive_url | safe_url }}" target="_blank" rel="noopener"
+            class="text-emerald-400 hover:text-emerald-300"
+            title="Wayback Machine capture {{ it.archived_at }}">&#127963; archived</a>
+        {% elif it.archive and it.archive.status == 'pending' %}<span class="text-amber-400">&#9203; archiving</span>{% endif %}
         <button hx-get="/items/{{ it.id }}/detail"
           hx-target="#item-drawer-content" hx-swap="innerHTML"
           class="text-slate-500 hover:text-sky-400" title="View full item details">&#8599; Details</button>

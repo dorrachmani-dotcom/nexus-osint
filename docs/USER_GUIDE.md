@@ -383,6 +383,30 @@ transcript (stored only on this machine, never sent anywhere).
    sources.
 3. **Export** → PDF (or HTML / CSV / JSON / Obsidian vault).
 
+### Preserve a source on the Internet Archive
+Pages get edited or deleted. Besides the local **Evidence** screenshot, you can
+ask the Wayback Machine (web.archive.org) to keep an independent, public copy:
+
+1. Open an item (click it to open the drawer). The **Internet Archive** box shows
+   its state: *Not archived*, *archiving…*, *Archived <date>* (a link to the
+   snapshot) or *Archiving failed* with the reason and a **Retry archive** button.
+2. Click **Archive** to request a fresh capture, or **Find existing snapshot** to
+   look up the newest copy that already exists. A capture usually takes 10-60
+   seconds; the box updates by itself.
+3. In a case's **Pinned** tab, **Archive all pinned items** queues every pinned
+   link that is not archived yet and shows progress. Tick **Auto-archive items
+   when pinned to this case** to archive new pins automatically.
+
+The first time, a warning explains the trade-off: archiving tells the Internet
+Archive which URL you are interested in and creates a **public** capture. For
+sensitive investigations, use the local Evidence screenshot instead. Captures
+are spaced out to respect the archive's limits (roughly a dozen a minute without
+keys); adding free archive.org keys (`ARCHIVE_ORG_ACCESS_KEY` /
+`ARCHIVE_ORG_SECRET_KEY`, pasted in Settings) uses the more reliable
+authenticated API. The whole feature can be switched off in **Settings →
+Internet Archive**. Archive links and capture times are included in the
+evidence manifest, case reports and CSV/JSON case exports.
+
 ### Daily routine across machines (air-gap)
 1. On the online machine: **Scan**, then **Transfer → Export**, tick *only new
    since last export*. Copy the `.nexusbundle` to a USB stick.

@@ -878,6 +878,9 @@ def _do_add_items(conn: sqlite3.Connection, ctx: dict, spec: dict) -> dict:
         try:
             add_bookmark(conn, int(r["id"]), cid)
             added += 1
+            from nexus.wayback import auto_archive_on_pin
+
+            auto_archive_on_pin(conn, int(r["id"]), cid)
         except Exception:
             continue
     conn.commit()

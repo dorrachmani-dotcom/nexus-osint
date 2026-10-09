@@ -1,0 +1,59 @@
+{# Internet Archive panel on the case page (Pinned tab). Expects `ca`
+   (see app._case_archive_ctx). Re-polls every 3 s while captures are queued. #}
+{% set sm = ca.summary %}
+<div id="case-archive" class="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 space-y-2">
+  <div class="flex flex-wrap items-center gap-3">
+    <span class="text-[11px] text-slate-300">&#127963; Internet Archive</span>
+    <span class="text-[11px] mono text-slate-500">
+      {{ sm.archived }} of {{ sm.total }} pinned link(s) archived
+      {% if sm.pending %}&middot; <span class="text-amber-400">{{ sm.pending }} in queue&hellip;</span>{% endif %}
+      {% if sm.failed %}&middot; <span class="text-rose-400">{{ sm.failed }} failed</span>{% endif %}
+    </span>
+    {% if sm.pending %}
+    <span hx-get="/cases/{{ ca.case_id }}/archive" hx-trigger="load delay:3s"
+          hx-target="#case-archive" hx-swap="outerHTML"></span>
+    {% endif %}
+    <span class="flex-1"></span>
+    {% if ca.enabled and not ca.warn_action %}
+    <button hx-post="/cases/{{ ca.case_id }}/archive-all" hx-target="#case-archive" hx-swap="outerHTML"
+            class="text-[11px] rounded border border-slate-700 hover:border-emerald-600 hover:text-emerald-300 text-slate-300 px-2.5 py-1"
+            title="Ask the Wayback Machine to capture every pinned item not archived yet (public captures)">
+      Archive all pinned items</button>
+    {% endif %}
+  </div>
+
+  {% if ca.warn_action %}
+  <div class="rounded-lg border border-amber-800/70 bg-amber-950/40 p-3 space-y-2 text-xs text-amber-300">
+    <p class="font-semibold">&#9888; Before you archive</p>
+    <p class="text-slate-300">Archiving tells the Internet Archive which URLs you are interested in and
+      creates <span class="font-semibold">PUBLIC</span> captures that anyone can find. For sensitive
+      investigations, prefer the local Evidence Vault screenshot, which never leaves this computer.</p>
+    <p class="text-slate-400">This warning is shown once.</p>
+    <div class="flex flex-wrap items-center gap-2 mono">
+      {% if ca.warn_action == 'auto' %}
+      <button hx-post="/cases/{{ ca.case_id }}/auto-archive" hx-vals='{"enabled": "1", "acknowledge": "1"}'
+              hx-target="#case-archive" hx-swap="outerHTML"
+              class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 text-xs font-medium">I understand, continue</button>
+      {% else %}
+      <button hx-post="/cases/{{ ca.case_id }}/archive-all" hx-vals='{"acknowledge": "1"}'
+              hx-target="#case-archive" hx-swap="outerHTML"
+              class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 text-xs font-medium">I understand, continue</button>
+      {% endif %}
+      <button hx-get="/cases/{{ ca.case_id }}/archive" hx-target="#case-archive" hx-swap="outerHTML"
+              class="rounded border border-slate-700 hover:border-slate-600 text-slate-400 px-2.5 py-1">Cancel</button>
+    </div>
+  </div>
+  {% elif ca.enabled %}
+  <form hx-post="/cases/{{ ca.case_id }}/auto-archive" hx-target="#case-archive" hx-swap="outerHTML"
+        hx-trigger="change" class="flex items-center gap-2 text-[11px] text-slate-400">
+    <input type="checkbox" name="enabled" value="1" id="auto-archive-{{ ca.case_id }}"
+           {% if ca.auto %}checked{% endif %} />
+    <label for="auto-archive-{{ ca.case_id }}">Auto-archive items when pinned to this case</label>
+  </form>
+  {% else %}
+  <p class="text-[11px] text-slate-500">Archiving is turned off &mdash; switch it on in
+    <a href="/settings" class="text-sky-400 hover:text-sky-300">Settings</a>.</p>
+  {% endif %}
+
+  {% if ca.message %}<p class="text-[11px] text-slate-400">{{ ca.message }}</p>{% endif %}
+</div>

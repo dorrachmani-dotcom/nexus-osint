@@ -157,6 +157,13 @@ class Settings(BaseSettings):
     resend_api_key: str | None = Field(default=None)
     sendgrid_api_key: str | None = Field(default=None)
 
+    # --- Internet Archive (Wayback Machine) ---
+    # Optional S3-style keys from archive.org/account/s3.php. With both set,
+    # captures use the authenticated Save Page Now 2 API (more reliable, higher
+    # limits); without them archiving still works anonymously. .env only.
+    archive_org_access_key: str | None = Field(default=None)
+    archive_org_secret_key: str | None = Field(default=None)
+
     # --- Storage ---
     data_dir: str = Field(default="data")
     database_path: str = Field(default="data/nexus.db")

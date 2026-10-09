@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from nexus import __version__
+from nexus import __version__, wayback
 from nexus.adapters.registry import all_adapters, get_adapter
 from nexus.collector import Collector
 from nexus.config import get_settings
@@ -127,6 +127,13 @@ from nexus.storage import (
     update_custom_source,
     update_note,
     decode_entities,
+    case_archive_summary,
+    case_archive_targets,
+    fail_stale_archive_jobs,
+    get_item_archive,
+    item_archives_map,
+    set_case_auto_archive,
+    set_item_archive,
 )
 
 logger = logging.getLogger("nexus")
@@ -238,6 +245,12 @@ async def lifespan(app: FastAPI):
     # redaction filter covers those too.
     install_log_redaction()
     init_db()
+    # Archive jobs queued before a restart were lost with the in-memory queue.
+    try:
+        with get_connection() as conn:
+            fail_stale_archive_jobs(conn)
+    except Exception:
+        logger.exception("Could not reset interrupted archive jobs")
     app.state.collector = Collector(settings)
     report = settings.availability_report()
     logger.info("Nexus-OSINT v%s ready. Sources: %s", __version__, report)
@@ -1061,6 +1074,7 @@ def bookmark_item(
     callers with hx-swap=none (drawer, intel feed) ignore the response."""
     with get_connection() as conn:
         add_bookmark(conn, item_id, case_id)
+        wayback.auto_archive_on_pin(conn, item_id, case_id)
         return _render_card(request, conn, item_id, case_id)
 
 
@@ -1094,6 +1108,235 @@ def capture_item_evidence(item_id: int) -> HTMLResponse:
     return HTMLResponse(
         f'<span class="text-rose-400" title="{escape(result.get("error", ""))}">capture failed</span>'
     )
+
+
+# --- Internet Archive (Wayback Machine) -------------------------------------
+# Captures run on nexus.wayback's background queue (SPN can take 10-60 s); the
+# drawer / case page poll these fragments like the scan-status chip. The first
+# use shows a one-time OpSec warning (archiving is public and tells the Internet
+# Archive which URL you care about); acknowledging it is stored in DB meta.
+
+
+def _fmt_archive_time(value: str | None) -> str:
+    v = (value or "").replace("T", " ").rstrip("Z")
+    return v[:16]
+
+
+def _item_archive_ctx(conn, item_id: int, url: str, **extra) -> dict:
+    ctx = {
+        "item_id": item_id,
+        "item_url": url or "",
+        "arch": get_item_archive(conn, item_id),
+        "enabled": wayback.is_enabled(conn),
+        "acked": wayback.opsec_acknowledged(conn),
+        "message": "",
+        "message_ok": False,
+        "warn_action": "",
+    }
+    ctx.update(extra)
+    return ctx
+
+
+def _render_item_archive(request: Request, ctx: dict, status_code: int = 200) -> HTMLResponse:
+    return TEMPLATES.TemplateResponse(
+        request, "_item_archive.html", {"ar": ctx}, status_code=status_code
+    )
+
+
+def _item_url(conn, item_id: int) -> str | None:
+    row = conn.execute("SELECT url FROM items WHERE id = ?", (item_id,)).fetchone()
+    return None if row is None else (row["url"] or "")
+
+
+@app.get("/items/{item_id}/archive", response_class=HTMLResponse)
+def item_archive_status(request: Request, item_id: int) -> HTMLResponse:
+    """The drawer's archive box (also its polling target while pending)."""
+    with get_connection() as conn:
+        url = _item_url(conn, item_id)
+        if url is None:
+            return HTMLResponse('<span class="text-rose-400">item not found</span>', status_code=404)
+        ctx = _item_archive_ctx(conn, item_id, url)
+    return _render_item_archive(request, ctx)
+
+
+def _archive_precheck(conn, url: str, acknowledge: str | None) -> tuple[str, bool]:
+    """Shared gate for archive actions: returns ``(message, needs_warning)``.
+
+    An empty message and False means the action may proceed.
+    """
+    if not url:
+        return "This item has no source link to archive.", False
+    if not wayback.is_enabled(conn):
+        return "Archiving is turned off in Settings.", False
+    if acknowledge == "1":
+        wayback.acknowledge_opsec(conn)
+    if not wayback.opsec_acknowledged(conn):
+        return "", True
+    return "", False
+
+
+@app.post("/items/{item_id}/archive", response_class=HTMLResponse)
+def item_archive_save(
+    request: Request, item_id: int, acknowledge: str | None = Form(default=None)
+) -> HTMLResponse:
+    """Queue a fresh Wayback Machine capture of the item's source."""
+    with get_connection() as conn:
+        url = _item_url(conn, item_id)
+        if url is None:
+            return HTMLResponse('<span class="text-rose-400">item not found</span>', status_code=404)
+        msg, warn = _archive_precheck(conn, url, acknowledge)
+        if warn:
+            return _render_item_archive(request, _item_archive_ctx(conn, item_id, url, warn_action="save"))
+        if not msg:
+            blocked = wayback.check_url(url)
+            if blocked:
+                msg = blocked
+            elif not wayback.get_queue().enqueue(item_id, url, conn=conn):
+                msg = "A capture of this item is already in progress."
+        ctx = _item_archive_ctx(conn, item_id, url, message=msg)
+    return _render_item_archive(request, ctx)
+
+
+@app.post("/items/{item_id}/archive/lookup", response_class=HTMLResponse)
+def item_archive_lookup(
+    request: Request, item_id: int, acknowledge: str | None = Form(default=None)
+) -> HTMLResponse:
+    """Find the newest existing Wayback snapshot (no new capture is made)."""
+    with get_connection() as conn:
+        url = _item_url(conn, item_id)
+        if url is None:
+            return HTMLResponse('<span class="text-rose-400">item not found</span>', status_code=404)
+        msg, warn = _archive_precheck(conn, url, acknowledge)
+        if warn:
+            return _render_item_archive(request, _item_archive_ctx(conn, item_id, url, warn_action="lookup"))
+        if msg:
+            return _render_item_archive(request, _item_archive_ctx(conn, item_id, url, message=msg))
+    # Network call outside the DB connection.
+    res = wayback.lookup(url)
+    ok = False
+    with get_connection() as conn:
+        if res.get("ok"):
+            ok = True
+            current = get_item_archive(conn, item_id) or {}
+            newer_own = (
+                current.get("status") == "done"
+                and (current.get("archived_at") or "") >= (res.get("archived_at") or "")
+            )
+            if current.get("status") != "pending" and not newer_own:
+                set_item_archive(
+                    conn, item_id, url, "existing",
+                    archive_url=res["archive_url"], archived_at=res.get("archived_at") or None,
+                )
+            msg = f"Found a snapshot from {_fmt_archive_time(res.get('archived_at')) or 'an unknown date'}."
+        else:
+            msg = res.get("error") or "No snapshot found."
+        ctx = _item_archive_ctx(conn, item_id, url, message=msg, message_ok=ok)
+    return _render_item_archive(request, ctx)
+
+
+def _case_archive_ctx(conn, case_id: int, **extra) -> dict:
+    ctx = {
+        "case_id": case_id,
+        "summary": case_archive_summary(conn, case_id),
+        "auto": bool((get_case(conn, case_id) or {}).get("auto_archive")),
+        "enabled": wayback.is_enabled(conn),
+        "acked": wayback.opsec_acknowledged(conn),
+        "message": "",
+        "warn_action": "",
+    }
+    ctx.update(extra)
+    return ctx
+
+
+def _render_case_archive(request: Request, ctx: dict) -> HTMLResponse:
+    return TEMPLATES.TemplateResponse(request, "_case_archive.html", {"ca": ctx})
+
+
+@app.get("/cases/{case_id}/archive", response_class=HTMLResponse)
+def case_archive_status(request: Request, case_id: int) -> HTMLResponse:
+    """Archive progress panel for a case (polled while captures are queued)."""
+    with get_connection() as conn:
+        if get_case(conn, case_id) is None:
+            return HTMLResponse("Case not found", status_code=404)
+        ctx = _case_archive_ctx(conn, case_id)
+    return _render_case_archive(request, ctx)
+
+
+@app.post("/cases/{case_id}/archive-all", response_class=HTMLResponse)
+def case_archive_all(
+    request: Request, case_id: int, acknowledge: str | None = Form(default=None)
+) -> HTMLResponse:
+    """Queue a capture for every pinned item that is not archived yet."""
+    with get_connection() as conn:
+        if get_case(conn, case_id) is None:
+            return HTMLResponse("Case not found", status_code=404)
+        msg, warn = _archive_precheck(conn, "-", acknowledge)
+        if warn:
+            return _render_case_archive(request, _case_archive_ctx(conn, case_id, warn_action="all"))
+        if not msg:
+            q = wayback.get_queue()
+            queued = sum(
+                1 for t in case_archive_targets(conn, case_id)
+                if q.enqueue(int(t["id"]), t["url"], conn=conn)
+            )
+            msg = (f"Queued {queued} item(s) for archiving." if queued
+                   else "Nothing to archive: every pinned link is archived or already queued.")
+        ctx = _case_archive_ctx(conn, case_id, message=msg)
+    return _render_case_archive(request, ctx)
+
+
+@app.post("/cases/{case_id}/auto-archive", response_class=HTMLResponse)
+def case_set_auto_archive(
+    request: Request, case_id: int,
+    enabled: str | None = Form(default=None),
+    acknowledge: str | None = Form(default=None),
+) -> HTMLResponse:
+    """Opt this case in/out of archiving items automatically when pinned."""
+    want_on = enabled == "1"
+    with get_connection() as conn:
+        if get_case(conn, case_id) is None:
+            return HTMLResponse("Case not found", status_code=404)
+        msg = ""
+        if want_on:
+            msg, warn = _archive_precheck(conn, "-", acknowledge)
+            if warn:
+                return _render_case_archive(request, _case_archive_ctx(conn, case_id, warn_action="auto"))
+        if not msg:
+            set_case_auto_archive(conn, case_id, want_on)
+            msg = ("New pins in this case will be archived automatically." if want_on
+                   else "Auto-archive is off for this case.")
+        ctx = _case_archive_ctx(conn, case_id, message=msg)
+    return _render_case_archive(request, ctx)
+
+
+def _archive_settings_page_ctx(settings) -> dict:
+    try:
+        with get_connection() as conn:
+            return _archive_settings_ctx(conn, settings)
+    except Exception:
+        logger.exception("Could not read archive settings")
+        return _archive_settings_ctx(None, settings)
+
+
+def _archive_settings_ctx(conn, settings, **extra) -> dict:
+    ctx = {
+        "archive_enabled": wayback.is_enabled(conn) if conn is not None else True,
+        "archive_acked": wayback.opsec_acknowledged(conn) if conn is not None else False,
+        "archive_keys_set": wayback.keys_configured(settings),
+        "archive_saved": False,
+    }
+    ctx.update(extra)
+    return ctx
+
+
+@app.post("/settings/archive", response_class=HTMLResponse)
+def settings_set_archive(request: Request, enabled: str | None = Form(default=None)) -> HTMLResponse:
+    """Global on/off for Internet Archive features (a DB meta flag, not a secret)."""
+    settings = get_settings()
+    with get_connection() as conn:
+        set_meta(conn, wayback.META_ENABLED, "1" if enabled == "1" else "0")
+        ctx = _archive_settings_ctx(conn, settings, archive_saved=True)
+    return TEMPLATES.TemplateResponse(request, "_archive_settings.html", ctx)
 
 
 def _render_card(
@@ -1282,6 +1525,7 @@ def bulk_add_to_case(
         if get_case(conn, case_id) is not None:
             for iid in item_ids:
                 add_bookmark(conn, iid, case_id)
+                wayback.auto_archive_on_pin(conn, iid, case_id)
     return _feed_partial_response(
         request, q=q, source=source, threat=threat, since=since, until=until,
         window=window, unread_only=bool(unread), scope=(scope or "topics"),
@@ -1376,6 +1620,7 @@ def item_detail(request: Request, item_id: int) -> HTMLResponse:
         open_cases = conn.execute(
             "SELECT id, name FROM cases WHERE status = 'open' ORDER BY priority DESC, name",
         ).fetchall()
+        archive_ctx = _item_archive_ctx(conn, item_id, item.get("url") or "")
     return TEMPLATES.TemplateResponse(
         request,
         "_item_detail.html",
@@ -1386,6 +1631,7 @@ def item_detail(request: Request, item_id: int) -> HTMLResponse:
             "lists": [dict(r) for r in lists_],
             "open_cases": [dict(r) for r in open_cases],
             "pinned_case_ids": pinned_case_ids,
+            "ar": archive_ctx,
         },
     )
 
@@ -1773,6 +2019,7 @@ def case_detail(
         active_case = get_active_case(conn)
         # Opening the case counts as "seen" — reset its new-since-visit badge.
         touch_case_visit(conn, case_id)
+        case_archive_ctx = _case_archive_ctx(conn, case_id)
     return TEMPLATES.TemplateResponse(
         request,
         "case_detail.html",
@@ -1802,6 +2049,7 @@ def case_detail(
             "all_lists": all_lists,
             "all_cases": all_cases,
             "active_case": active_case,
+            "ca": case_archive_ctx,
             "status": settings.availability_report(),
         },
     )
@@ -2335,6 +2583,7 @@ def case_pin_all(case_id: int, item_ids: list[int] = Form(default=[])) -> HTMLRe
     with get_connection() as conn:
         for iid in item_ids:
             add_bookmark(conn, iid, case_id)
+            wayback.auto_archive_on_pin(conn, iid, case_id)
     return HTMLResponse(
         '<span class="text-emerald-400 text-xs mono">&#10003; All pinned</span>'
     )
@@ -2344,6 +2593,7 @@ def case_pin_all(case_id: int, item_ids: list[int] = Form(default=[])) -> HTMLRe
 def case_add_item(request: Request, case_id: int, item_id: int = Form(...)) -> HTMLResponse:
     with get_connection() as conn:
         add_bookmark(conn, item_id, case_id)
+        wayback.auto_archive_on_pin(conn, item_id, case_id)
         return _render_case_items(request, conn, case_id)
 
 
@@ -2355,6 +2605,7 @@ def case_add_item_card(
     """Add an item to a case from a feed card's menu; returns the refreshed card."""
     with get_connection() as conn:
         add_bookmark(conn, item_id, case_id)
+        wayback.auto_archive_on_pin(conn, item_id, case_id)
         return _render_card(request, conn, item_id, context_case_id)
 
 
@@ -2418,15 +2669,17 @@ def case_report(case_id: int, format: str = "pdf", scope: str = "pinned") -> Res
                 return HTMLResponse("Case not found", status_code=404)
             base = case_live_items(conn, case_id, unread_only=False) if use_live else case_items(conn, case_id)
             rows = enrich_feed_rows(conn, base)
+        from nexus.reporting import CASE_EXPORT_FIELDS
+
         suffix = "tracked" if use_live else "items"
         if fmt == "csv":
             return Response(
-                content=feed_rows_to_csv(rows),
+                content=feed_rows_to_csv(rows, CASE_EXPORT_FIELDS),
                 media_type="text/csv; charset=utf-8",
                 headers={"Content-Disposition": f'attachment; filename="case_{case_id}_{suffix}.csv"'},
             )
         return Response(
-            content=feed_rows_to_json(rows),
+            content=feed_rows_to_json(rows, CASE_EXPORT_FIELDS),
             media_type="application/json; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="case_{case_id}_{suffix}.json"'},
         )
@@ -2508,6 +2761,15 @@ def case_evidence_manifest(case_id: int) -> Response:
         if case is None:
             return HTMLResponse("Case not found", status_code=404)
         rows = case_evidence(conn, case_id)
+        pinned = case_items(conn, case_id)
+        archives = item_archives_map(conn, [int(p["id"]) for p in pinned])
+    archived = [
+        (p, archives[int(p["id"])]) for p in pinned
+        if int(p["id"]) in archives
+        and archives[int(p["id"])].get("status") in ("done", "existing")
+        and archives[int(p["id"])].get("archive_url")
+    ]
+    archive_by_item = {int(p["id"]): a for p, a in archived}
 
     now = datetime.now(timezone.utc)
     lines = [
@@ -2531,10 +2793,37 @@ def case_evidence_manifest(case_id: int) -> Response:
             f"    captured_at : {r.get('captured_at') or '?'}",
             f"    sha256      : {r.get('sha256') or '?'}",
             f"    file        : {r.get('screenshot') or '?'}",
-            "",
         ]
+        arch = archive_by_item.get(int(r["item_id"]))
+        if arch:
+            lines += [
+                f"    archive_url : {arch['archive_url']}",
+                f"    archived_at : {arch.get('archived_at') or '?'}",
+            ]
+        lines.append("")
     if not rows:
         lines.append("(No evidence captured for this case yet — capture some from a feed card.)")
+    lines += [
+        "",
+        "=" * 72,
+        "INTERNET ARCHIVE (WAYBACK MACHINE) CAPTURES",
+        "=" * 72,
+        "Independent, third-party public snapshots of pinned sources on",
+        "web.archive.org. 'done' = captured from Nexus; 'existing' = a snapshot",
+        "that already existed and was looked up.",
+        "",
+    ]
+    for n, (p, a) in enumerate(archived, 1):
+        lines += [
+            f"[A{n}] item #{p['id']} — {(p.get('title') or '(untitled)')}",
+            f"    url         : {p.get('url') or '(none)'}",
+            f"    archive_url : {a['archive_url']}",
+            f"    archived_at : {a.get('archived_at') or '?'}",
+            f"    status      : {a.get('status')}",
+            "",
+        ]
+    if not archived:
+        lines.append("(No pinned item has an Internet Archive capture yet.)")
     text = "\n".join(lines)
 
     safe = "".join(ch if ch.isalnum() else "_" for ch in case["name"])[:40] or "case"
@@ -3652,6 +3941,21 @@ SECRET_FIELDS = [
          "Find the cookie named 'sessionid' and copy its value.",
          "Paste it here. Note: it expires when you log out of that session.",
      ]},
+    {"key": "ARCHIVE_ORG_ACCESS_KEY", "label": "Internet Archive access key (optional)",
+     "hint": "Archiving works without it; with both keys captures use the more reliable Save Page Now 2 API.",
+     "url": "https://archive.org/account/s3.php",
+     "steps": [
+         "Sign in at archive.org (a free account; consider a dedicated one).",
+         "Open archive.org/account/s3.php to see your S3-like API keys.",
+         "Copy the 'access key' and paste it here, then the secret key below.",
+     ]},
+    {"key": "ARCHIVE_ORG_SECRET_KEY", "label": "Internet Archive secret key (optional)",
+     "hint": "The second half of the archive.org API key pair.",
+     "url": "https://archive.org/account/s3.php",
+     "steps": [
+         "On the same archive.org/account/s3.php page, copy the 'secret key'.",
+         "Paste it here. It stays in the local .env file only.",
+     ]},
     # --- Email (daily brief). Rendered by the "Connect your email" wizard, not
     # the generic key list (group "email"), but kept here so set/not-set status
     # and the .env-only handling are identical to every other secret.
@@ -3754,7 +4058,8 @@ def settings_page(request: Request) -> HTMLResponse:
     settings = get_settings()
     return TEMPLATES.TemplateResponse(
         request, "settings.html",
-        {**_settings_context(settings), **_email_context(settings)},
+        {**_settings_context(settings), **_email_context(settings),
+         **_archive_settings_page_ctx(settings)},
     )
 
 

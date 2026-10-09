@@ -214,6 +214,9 @@
     </div>
     {% endif %}
 
+  {# --- Internet Archive: archive-all + per-case auto-archive --- #}
+  {% if ca %}{% include "_case_archive.html" %}{% endif %}
+
   {# --- AI briefing (lazy, collapses after generation) --- #}
   <div id="case-briefing" class="rounded-lg border border-violet-900/40 bg-violet-950/10 px-4 py-3 flex items-center gap-3">
     <span class="text-[11px] text-violet-300">&#129504; AI briefing</span>
