@@ -46,3 +46,30 @@ jobs:
       - run: npm run build
       - name: Bundled assets are up to date
         run: git diff --exit-code -- nexus/web/static
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff (version pinned in requirements-dev.txt)
+        run: pip install "$(grep -oE '^ruff==[^ ]+' requirements-dev.txt)"
+      - name: Ruff lint
+        run: ruff check --output-format=github .
+
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Mypy
+        run: mypy

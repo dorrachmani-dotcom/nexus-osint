@@ -62,8 +62,27 @@ a test against a seeded database.
 
 ## Linting and typing
 
-`ruff` and `mypy` are being introduced and will be enforced in CI. Until then,
-match the surrounding style, add type hints to new code, and keep functions small.
+Both are configured in `pyproject.toml` and enforced in CI (the `lint` and
+`types` jobs), so run them before pushing:
+
+```bash
+pip install -r requirements-dev.txt
+ruff check .          # lint (add --fix for the safe auto-fixes)
+mypy                  # type-check the nexus package
+pre-commit install    # optional: run ruff and basic hygiene hooks on every commit
+```
+
+- The ruff rule set is pycodestyle, pyflakes, isort, bugbear, pyupgrade,
+  simplify, comprehensions, ruff-specific, pylint, bandit (security) and
+  datetimez. Each global or per-file ignore in `pyproject.toml` carries a reason.
+- Prefer fixing a finding over silencing it. If a `# noqa: CODE` or
+  `# type: ignore[code]` is genuinely needed, scope it to the one code and say
+  why on the same line.
+- Do not swallow exceptions silently: catch the narrowest exception you can,
+  and where a broad catch is needed to keep a feature degrading gracefully, log
+  it with `logger.debug(..., exc_info=True)`.
+- `ruff format` is not applied to the whole codebase yet; match the surrounding
+  style and keep diffs focused. Add type hints to new code and keep functions small.
 
 ## Commits and pull requests
 

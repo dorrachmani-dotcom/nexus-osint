@@ -1,0 +1,120 @@
+[project]
+name = "nexus-osint"
+version = "1.0.0"
+description = "Local-first open-source intelligence workstation: collect, enrich and analyse open sources on 127.0.0.1."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+
+# --------------------------------------------------------------------------- #
+# Ruff: lint only (the codebase is not mass-reformatted; see CONTRIBUTING.md). #
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["nexus", "tests"]
+extend-exclude = [
+    "installer/build",
+    "installer/dist",
+    "node_modules",
+    ".claude",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+    "C4",   # flake8-comprehensions
+    "RUF",  # ruff-specific
+    "PL",   # pylint
+    "S",    # flake8-bandit (security)
+    "DTZ",  # flake8-datetimez (naive datetimes)
+]
+ignore = [
+    # Line length is a formatting concern. The codebase is not mass-reformatted
+    # in one PR; long lines are mostly prompt/HTML/help text where wrapping hurts.
+    "E501",
+    # Function-local imports are deliberate: optional dependencies (OCR, Telegram,
+    # embeddings, ...) are imported lazily so a missing extra only disables one
+    # feature instead of breaking startup (graceful degradation).
+    "PLC0415",
+    # Complexity counters: noisy on route handlers and source adapters; tracked
+    # in review rather than by hard thresholds.
+    "PLR0911",  # too-many-return-statements
+    "PLR0912",  # too-many-branches
+    "PLR0913",  # too-many-arguments
+    "PLR0915",  # too-many-statements
+    "PLR0917",  # too-many-positional-arguments
+    # Magic numbers: HTTP status codes, limits and score thresholds read better inline.
+    "PLR2004",
+    # Rebinding a loop variable after normalising it (`line = line.strip()`)
+    # is idiomatic in the line-oriented tool parsers.
+    "PLW2901",
+    # Process-wide singletons (egress monitor state, archive queue) are set via
+    # `global` deliberately; wrapping them in classes adds nothing here.
+    "PLW0603",
+    # Guard-clause chains that end in `return True` read more clearly than
+    # folding the last check into one boolean expression.
+    "SIM103",
+    # `class X(str, Enum)` -> `StrEnum` changes str()/format() output of the
+    # members, which is persisted and rendered; not a safe mechanical change.
+    "UP042",
+]
+
+[tool.ruff.lint.isort]
+# Keep `from x import (a as b, c)` as one statement instead of splitting aliases.
+combine-as-imports = true
+# The package lives at the repo root, so declare it explicitly as first-party.
+known-first-party = ["nexus"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency/parameter markers are designed to be called in defaults.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Path",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The data layer builds `IN (?, ?, ...)` placeholder lists and SET/WHERE clauses
+# from column names in fixed in-code tuples; every value is bound as a
+# parameter (audited when this rule was enabled). Elsewhere S608 stays on and
+# each dynamic query carries an inline, justified noqa.
+"nexus/storage.py" = ["S608"]
+"tests/**" = [
+    "S101",  # assert is how pytest works
+    "S104",  # bind-all strings are test inputs for the loopback guard
+    "S105",  # fake credentials in fixtures
+    "S106",  # fake credentials passed to constructors in fixtures
+    "S108",  # literal /tmp paths used as test inputs, never written to
+    "DTZ001",  # naive datetimes are built on purpose to test UTC normalisation
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+# --------------------------------------------------------------------------- #
+[tool.mypy]
+python_version = "3.11"
+files = ["nexus"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = false
+
+# --------------------------------------------------------------------------- #
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

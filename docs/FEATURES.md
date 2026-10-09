@@ -241,4 +241,3 @@ Notes:
   scoring; the cloud models are still stronger for the most nuanced analysis.
   Choose the trade-off that fits your security posture — you can switch backends
   any time from the Settings page.
-
