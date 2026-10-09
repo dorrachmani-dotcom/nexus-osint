@@ -180,11 +180,30 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
 ]
 
 
+def _flatten(routes) -> list:
+    """Routes in effective match order.
+
+    Older FastAPI copies an included router's routes into the parent;
+    newer FastAPI keeps an ``_IncludedRouter`` entry and matches its children
+    in place (first FULL match wins, first PARTIAL is remembered), which is
+    the same as matching the flattened sequence. None of our routers use a
+    prefix, so child paths are already absolute.
+    """
+    out = []
+    for r in routes:
+        inner = getattr(r, "original_router", None)
+        if inner is not None:
+            out.extend(_flatten(inner.routes))
+        else:
+            out.append(r)
+    return out
+
+
 def _current_routes() -> list[tuple[str, str]]:
     from nexus.web.app import app
 
     out = []
-    for r in app.router.routes:
+    for r in _flatten(app.router.routes):
         methods = sorted(getattr(r, "methods", None) or [])
         out.append((",".join(methods) or type(r).__name__, r.path))
     return out
