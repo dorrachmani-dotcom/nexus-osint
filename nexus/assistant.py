@@ -618,8 +618,9 @@ def answer(
             "provider": "off",
             "error": (
                 "The AI assistant needs a model to be configured. Open Settings "
-                "and either add an API key (Anthropic, Gemini or OpenAI) or point "
-                "the app at a local Ollama model — then try again."
+                "and either add an API key (Gemini, OpenAI, Anthropic or Grok) or "
+                "point the app at a local model (Ollama or a local server such as "
+                "LM Studio) — then try again."
             ),
         }
 
@@ -1268,8 +1269,9 @@ def act(
             "ok": False, "answer": "", "provider": "off", "actions": [],
             "error": (
                 "Sherlock needs an AI model to be configured. Open Settings and "
-                "either add an API key (Anthropic, Gemini or OpenAI) or point the "
-                "app at a local Ollama model — then try again."
+                "either add an API key (Gemini, OpenAI, Anthropic or Grok) or point "
+                "the app at a local model (Ollama or a local server such as LM "
+                "Studio) — then try again."
             ),
         }
 

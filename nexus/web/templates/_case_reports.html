@@ -1,0 +1,99 @@
+{# Case "Reports" tab: daily-report schedule + saved report history.
+   Context: case, report_cfg, reports, digest_time, pdf_note, report_msg, report_ok. #}
+<div id="case-reports" class="space-y-4">
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-200">&#128197; Daily report</h2>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Every day at <span class="mono text-slate-300">{{ digest_time }}</span> (the daily-brief time in
+          <a href="/settings#digest-settings" class="text-sky-400 hover:text-sky-300">Settings</a>),
+          Nexus saves a report of this case's items collected since the previous report.
+          Reports stay on this computer.
+        </p>
+      </div>
+      <span class="px-2 py-0.5 rounded text-xs mono
+        {% if report_cfg.enabled %}bg-emerald-950/60 text-emerald-300 border border-emerald-800{% else %}bg-slate-800 text-slate-500{% endif %}">
+        {{ 'scheduled' if report_cfg.enabled else 'off' }}</span>
+    </div>
+
+    <form hx-post="/cases/{{ case.id }}/reports/settings" hx-target="#case-reports" hx-swap="outerHTML"
+          class="flex flex-wrap items-end gap-3 text-sm">
+      <label class="flex items-center gap-2 text-slate-300">
+        <input type="checkbox" name="enabled" value="1" class="accent-amber-500" {% if report_cfg.enabled %}checked{% endif %} />
+        Export a daily report
+      </label>
+      <label class="block">
+        <span class="text-xs text-slate-400">Format</span>
+        <select name="format" class="mt-1 block bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm">
+          <option value="pdf" {% if report_cfg.format == 'pdf' %}selected{% endif %}>PDF</option>
+          <option value="html" {% if report_cfg.format == 'html' %}selected{% endif %}>HTML</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-xs text-slate-400">In the daily email</span>
+        <select name="email" class="mt-1 block bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm">
+          <option value="link" {% if report_cfg.email == 'link' %}selected{% endif %}>Link to it</option>
+          <option value="attach" {% if report_cfg.email == 'attach' %}selected{% endif %}>Attach it</option>
+          <option value="none" {% if report_cfg.email == 'none' %}selected{% endif %}>Don't mention</option>
+        </select>
+      </label>
+      <button class="rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 border border-slate-600">Save</button>
+    </form>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button hx-post="/cases/{{ case.id }}/reports/generate" hx-target="#case-reports" hx-swap="outerHTML"
+              hx-indicator="#report-gen-spin"
+              class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium text-xs px-3 py-1.5">
+        Generate now
+      </button>
+      <span id="report-gen-spin" class="htmx-indicator text-[11px] mono text-amber-300">rendering&hellip;</span>
+      {% if pdf_note %}<span class="text-[11px] text-slate-500">{{ pdf_note }}</span>{% endif %}
+    </div>
+    {% if report_msg %}
+    <p class="text-xs {% if report_ok %}text-emerald-300{% else %}text-rose-300{% endif %}">{{ report_msg }}</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+    <h2 class="text-sm font-medium text-slate-300">Saved reports{% if reports %} <span class="text-slate-500 font-normal">({{ reports|length }})</span>{% endif %}</h2>
+    {% if reports %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500">
+            <th class="py-1 pr-3 font-normal">Date</th>
+            <th class="py-1 pr-3 font-normal">Items</th>
+            <th class="py-1 pr-3 font-normal">Format</th>
+            <th class="py-1 pr-3 font-normal">Size</th>
+            <th class="py-1 font-normal"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reports %}
+          <tr class="border-t border-slate-800">
+            <td class="py-1.5 pr-3 mono text-slate-200">{{ r.date }}{% if r.generated_at %} <span class="text-[11px] text-slate-500">{{ r.generated_at[11:] }}</span>{% endif %}</td>
+            <td class="py-1.5 pr-3 mono text-slate-300">{{ r['items'] if r['items'] is not none else '—' }}</td>
+            <td class="py-1.5 pr-3 mono uppercase text-slate-400">{{ r.format }}</td>
+            <td class="py-1.5 pr-3 mono text-slate-400">{{ r.size_label }}</td>
+            <td class="py-1.5 text-right whitespace-nowrap">
+              <a href="/cases/{{ case.id }}/reports/{{ r.filename }}" target="_blank" rel="noopener"
+                 class="text-xs text-sky-400 hover:text-sky-300">Open</a>
+              <a href="/cases/{{ case.id }}/reports/{{ r.filename }}?download=1"
+                 class="ml-2 text-xs text-sky-400 hover:text-sky-300">Download</a>
+              <button hx-post="/cases/{{ case.id }}/reports/{{ r.filename }}/delete"
+                      hx-target="#case-reports" hx-swap="outerHTML"
+                      hx-confirm="Delete the {{ r.date }} report? This removes the file from this computer."
+                      class="ml-2 text-xs text-rose-400 hover:text-rose-300">Delete</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-xs text-slate-500">No reports yet. Switch on the daily report above, or click
+      <span class="font-medium text-slate-300">Generate now</span> to create today's.</p>
+    {% endif %}
+  </div>
+</div>

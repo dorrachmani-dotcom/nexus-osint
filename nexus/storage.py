@@ -203,6 +203,7 @@ def _item_filter_clauses(
     read_only: bool = False,
     show_dismissed: bool = False,
     terms: list[str] | None,
+    fetched_since: str | None = None,
 ) -> tuple[list[str], list]:
     """Build the shared WHERE clauses + params for item search and counting.
 
@@ -255,6 +256,11 @@ def _item_filter_clauses(
     if since_ts:
         where.append("COALESCE(i.published_at, i.fetched_at) >= ?")
         params.append(since_ts)
+    if fetched_since:
+        # "Collected since" (not "published since"): an item published days ago
+        # but first collected today is still new to the analyst.
+        where.append("i.fetched_at >= ?")
+        params.append(fetched_since)
     if unread_only:
         where.append("i.id NOT IN (SELECT item_id FROM item_reads)")
     if read_only:
@@ -279,6 +285,7 @@ def search_items(
     sort: str = "newest",
     limit: int = 100,
     offset: int = 0,
+    fetched_since: str | None = None,  # ISO cutoff on collection time
 ) -> list[dict]:
     """Full-text + faceted search over the entire local history.
 
@@ -304,7 +311,7 @@ def search_items(
     where, params = _item_filter_clauses(
         q=q, source=source, threat=threat, since=since, until=until,
         since_ts=since_ts, unread_only=unread_only, read_only=read_only,
-        show_dismissed=show_dismissed, terms=terms,
+        show_dismissed=show_dismissed, terms=terms, fetched_since=fetched_since,
     )
 
     order_dir = "ASC" if sort == "oldest" else "DESC"
@@ -328,6 +335,7 @@ def count_matching_items(
     unread_only: bool = False,
     show_dismissed: bool = False,
     terms: list[str] | None = None,
+    fetched_since: str | None = None,
 ) -> int:
     """Total number of items matching the same filters ``search_items`` uses.
 
@@ -337,6 +345,7 @@ def count_matching_items(
     where, params = _item_filter_clauses(
         q=q, source=source, threat=threat, since=since, until=until,
         since_ts=since_ts, unread_only=unread_only, show_dismissed=show_dismissed, terms=terms,
+        fetched_since=fetched_since,
     )
     sql = (
         "SELECT COUNT(*) FROM items i "
@@ -1884,6 +1893,43 @@ def case_new_items(
     return search_items(
         conn, terms=terms, since_ts=get_case_last_visit(conn, case_id), limit=limit
     )
+
+
+def case_items_collected_since(
+    conn: sqlite3.Connection, case_id: int, since_ts: str, limit: int = 20
+) -> tuple[int, list[dict]]:
+    """(count, newest items) of a case's tracked items COLLECTED since ``since_ts``.
+
+    Used by the daily email brief and the scheduled daily case report, which
+    report on "what arrived since the last run" regardless of whether the
+    analyst opened the case. A case with no tracking terms yields (0, []) —
+    never the whole archive.
+    """
+    terms = _required_terms_for_case(conn, case_id)
+    if not terms:
+        return 0, []
+    total = count_matching_items(conn, terms=terms, fetched_since=since_ts)
+    if total <= 0:
+        return 0, []
+    items = search_items(conn, terms=terms, fetched_since=since_ts, limit=limit)
+    return total, items
+
+
+def threat_counts_since(conn: sqlite3.Connection, since_ts: str) -> dict[str, int]:
+    """Items collected since ``since_ts`` grouped by AI threat level.
+
+    Unanalysed items are counted under "unscored". Dismissed items are excluded.
+    """
+    rows = conn.execute(
+        """
+        SELECT COALESCE(a.threat_level, 'unscored') AS level, COUNT(*) AS n
+        FROM items i LEFT JOIN analyses a ON a.item_id = i.id
+        WHERE i.fetched_at >= ? AND COALESCE(i.dismissed, 0) = 0
+        GROUP BY level
+        """,
+        (since_ts,),
+    ).fetchall()
+    return {str(r[0]): int(r[1]) for r in rows}
 
 
 def mark_case_read(conn: sqlite3.Connection, case_id: int, limit: int = 2000) -> int:

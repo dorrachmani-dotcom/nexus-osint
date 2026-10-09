@@ -40,6 +40,21 @@
   </div>
   {% endif %}
 
+  {% if latest_reports %}
+  {# Compact strip: each case's newest saved daily report (local files only). #}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-2.5">
+    <div class="flex flex-wrap items-center gap-2 text-xs">
+      <span class="text-slate-400 mr-1">&#128197; Latest reports</span>
+      {% for r in latest_reports %}
+      <a href="/cases/{{ r.case_id }}/reports/{{ r.filename }}" target="_blank" rel="noopener"
+         title="{{ r.case_name }} — {{ r.date }}{% if r['items'] is not none %}, {{ r['items'] }} item(s){% endif %}"
+         class="rounded border border-slate-700 hover:border-amber-500 hover:text-amber-300 text-slate-300 px-2 py-0.5">
+        {{ r.case_name|truncate(28, True, '…') }} <span class="mono text-slate-500">{{ r.date[5:] }} &middot; {{ r.format|upper }}</span></a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <div id="brief-body" class="space-y-5">
     {% if blocks %}
     <p class="text-sm text-slate-300">

@@ -1,0 +1,193 @@
+{# "Connect your email" wizard + "Daily email brief (by Sherlock)".
+   Secrets are never rendered: only set / not set. Every form re-renders this
+   whole partial so the digest toggle unlocks right after a successful test. #}
+{% macro secret_input(key, label, placeholder) %}
+  {% set f = (secret_fields|selectattr('key', 'equalto', key)|list or [{}])[0] %}
+  <div>
+    <div class="flex items-center justify-between">
+      <label class="text-slate-300">{{ label }}</label>
+      {% if secret_status.get(key) %}
+      <span class="px-2 py-0.5 rounded text-[11px] mono bg-emerald-950/60 text-emerald-300 border border-emerald-800">set</span>
+      {% else %}
+      <span class="px-2 py-0.5 rounded text-[11px] mono bg-slate-800 text-slate-500">not set</span>
+      {% endif %}
+    </div>
+    <div class="mt-1 flex items-center gap-2">
+      <input type="password" name="{{ key }}" autocomplete="off"
+             placeholder="{% if secret_status.get(key) %}•••••• (unchanged){% else %}{{ placeholder }}{% endif %}"
+             class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 mono" />
+      {% if secret_status.get(key) %}
+      <label class="flex items-center gap-1 text-[11px] text-slate-500 whitespace-nowrap">
+        <input type="checkbox" name="clear_{{ key }}" value="1" class="accent-rose-500" /> clear
+      </label>
+      {% endif %}
+    </div>
+    {% if f.get('steps') %}
+    <details class="mt-1">
+      <summary class="cursor-pointer text-[11px] text-sky-400 hover:text-sky-300 select-none">Step-by-step</summary>
+      <ol class="mt-1.5 ml-4 list-decimal space-y-1 text-[11px] text-slate-400">
+        {% for s in f.steps %}<li>{{ s }}</li>{% endfor %}
+      </ol>
+      {% if f.get('url') %}
+      <a href="{{ f.url }}" target="_blank" rel="noopener" class="inline-block mt-1 text-[11px] text-sky-400 hover:text-sky-300">&#128279; Open {{ f.url }}</a>
+      {% endif %}
+    </details>
+    {% endif %}
+  </div>
+{% endmacro %}
+{% macro plain_input(key, label, value, placeholder, type='text') %}
+  <label class="block">
+    <span class="text-slate-300">{{ label }}</span>
+    <input type="{{ type }}" name="{{ key }}" value="{{ value }}" placeholder="{{ placeholder }}" autocomplete="off"
+           spellcheck="false" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 mono" />
+  </label>
+{% endmacro %}
+<div id="email-settings" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-4 text-sm">
+  <div class="flex flex-wrap items-start justify-between gap-2">
+    <div>
+      <h2 class="text-sm font-semibold text-slate-200">&#9993; Daily email brief (by Sherlock)</h2>
+      <p class="text-xs text-slate-400 mt-0.5">
+        Once a day Sherlock writes a short brief of what is new in your open cases and emails it to you.
+        Optional and off by default: the brief is the only thing that leaves this computer, and only to the
+        email service you connect below.
+      </p>
+    </div>
+    {% if email_verified %}
+    <span class="px-2 py-0.5 rounded text-xs mono bg-emerald-950/60 text-emerald-300 border border-emerald-800">verified</span>
+    {% elif email_ready %}
+    <span class="px-2 py-0.5 rounded text-xs mono bg-amber-950/60 text-amber-300 border border-amber-800">configured &middot; not tested</span>
+    {% else %}
+    <span class="px-2 py-0.5 rounded text-xs mono bg-slate-800 text-slate-500">not set up</span>
+    {% endif %}
+  </div>
+
+  {# --- Step 1: choose how to send --- #}
+  <div class="space-y-2">
+    <p class="text-xs text-slate-300"><span class="font-medium text-slate-200">Step 1.</span> Choose how to send email:</p>
+    <div class="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      {% set blurbs = {
+        'gmail': 'Your Gmail account with an App Password.',
+        'outlook': 'Outlook.com or Microsoft 365 over SMTP.',
+        'resend': 'Email API service — paste an API key.',
+        'sendgrid': 'Email API service — paste an API key.',
+        'smtp': 'Any other mail server (host, port, login).'} %}
+      {% for pid, p in email_providers.items() %}
+      <form hx-post="/settings/email/provider" hx-target="#email-settings" hx-swap="outerHTML">
+        <input type="hidden" name="provider" value="{{ pid }}" />
+        <button class="w-full h-full text-left rounded border px-3 py-2 text-xs
+          {% if email_provider == pid %}border-amber-500 bg-amber-500/10 text-amber-200{% else %}border-slate-700 hover:border-slate-500 text-slate-300{% endif %}">
+          <span class="block font-medium">{{ p.label }}</span>
+          <span class="block text-[11px] text-slate-500 mt-0.5">{{ blurbs.get(pid, '') }}</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# --- Step 2: details for the chosen provider --- #}
+  {% if email_provider %}
+  <form hx-post="/settings/email" hx-target="#email-settings" hx-swap="outerHTML" autocomplete="off"
+        class="space-y-3 text-xs">
+    <p class="text-slate-300"><span class="font-medium text-slate-200">Step 2.</span>
+      Connection details for <span class="font-medium">{{ email_label }}</span>.
+      Passwords and keys are saved to <span class="mono">.env</span> only and never shown again.</p>
+    <div class="grid gap-3 sm:grid-cols-2">
+      {% if email_provider == 'gmail' %}
+        {{ plain_input('SMTP_USERNAME', 'Your Gmail address', smtp_username, 'analyst@example.com', 'email') }}
+        {{ secret_input('SMTP_PASSWORD', 'App password (16 characters)', 'paste the app password…') }}
+      {% elif email_provider == 'outlook' %}
+        {{ plain_input('SMTP_USERNAME', 'Your Outlook / Microsoft 365 address', smtp_username, 'analyst@example.com', 'email') }}
+        {{ secret_input('SMTP_PASSWORD', 'Password or app password', 'paste the password…') }}
+      {% elif email_provider == 'resend' %}
+        {{ secret_input('RESEND_API_KEY', 'Resend API key', 're_…') }}
+        {{ plain_input('SMTP_FROM', 'From address (on your verified domain)', smtp_from, 'brief@example.com', 'email') }}
+      {% elif email_provider == 'sendgrid' %}
+        {{ secret_input('SENDGRID_API_KEY', 'SendGrid API key', 'SG.…') }}
+        {{ plain_input('SMTP_FROM', 'From address (your verified sender)', smtp_from, 'brief@example.com', 'email') }}
+      {% else %}
+        {{ plain_input('SMTP_HOST', 'SMTP server', smtp_host, 'smtp.example.com') }}
+        {{ plain_input('SMTP_PORT', 'Port (465 = SSL, 587 = STARTTLS)', smtp_port, '587') }}
+        {{ plain_input('SMTP_USERNAME', 'Username (leave empty if none)', smtp_username, 'analyst@example.com') }}
+        {{ secret_input('SMTP_PASSWORD', 'Password', 'paste the password…') }}
+        {{ plain_input('SMTP_FROM', 'From address', smtp_from, 'brief@example.com', 'email') }}
+      {% endif %}
+      {{ plain_input('DIGEST_TO', 'Send the brief to (comma-separated)', digest_to, 'analyst@example.com, team@example.org') }}
+    </div>
+    {% if email_provider in ('gmail', 'outlook') %}
+    <p class="text-slate-500">Server: <span class="mono">{{ email_host }}:{{ email_port }}</span> (STARTTLS) &middot;
+      the brief is sent from your own address.
+      {% if email_provider == 'outlook' %}Some Microsoft 365 organisations switch SMTP sign-in off; if the test fails with a
+      sign-in error, use Resend or SendGrid instead.{% endif %}</p>
+    {% endif %}
+    {% if email_provider == 'smtp' %}
+    <p class="text-slate-500">Port 465 uses SSL from the start; 587 (and 25) upgrade with STARTTLS. A password is never
+      sent over an unencrypted connection.</p>
+    {% endif %}
+    <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-4 py-1.5">Save email settings</button>
+  </form>
+
+  {# --- Step 3: test --- #}
+  <div class="space-y-2 text-xs">
+    <p class="text-slate-300"><span class="font-medium text-slate-200">Step 3.</span>
+      Send a test email. The daily brief can be switched on only after a successful test (and needs a
+      new test whenever these settings change).</p>
+    {% if email_missing %}
+    <p class="text-amber-300">Still missing: {{ email_missing|join(', ') }}.</p>
+    {% endif %}
+    <button hx-post="/settings/email/test" hx-target="#email-settings" hx-swap="outerHTML"
+            hx-indicator="#email-test-spin"
+            {% if not email_ready %}disabled{% endif %}
+            class="rounded px-3 py-1.5 font-medium {% if email_ready %}bg-emerald-700 hover:bg-emerald-600 text-white{% else %}bg-slate-800 text-slate-500 cursor-not-allowed{% endif %}">
+      Send test email
+    </button>
+    <span id="email-test-spin" class="htmx-indicator mono text-emerald-300">sending&hellip;</span>
+  </div>
+  {% endif %}
+  {% if email_msg %}
+  <p class="text-xs {% if email_ok %}text-emerald-300{% else %}text-rose-300{% endif %}">{{ email_msg }}</p>
+  {% endif %}
+
+  {# --- Schedule --- #}
+  <div id="digest-settings" class="border-t border-slate-800 pt-3 space-y-2 text-xs">
+    <p class="text-slate-300"><span class="font-medium text-slate-200">Schedule.</span>
+      {% if digest_enabled %}The brief is emailed every day at <span class="mono">{{ digest_time }}</span> (this computer's time).
+      {% else %}The daily email brief is off.{% endif %}
+      {% if last_digest_sent_at %}Last sent: <span class="mono">{{ last_digest_sent_at }}</span> UTC.{% endif %}</p>
+    <form hx-post="/settings/digest" hx-target="#email-settings" hx-swap="outerHTML"
+          class="flex flex-wrap items-end gap-3">
+      <label class="flex items-center gap-2 {% if email_verified %}text-slate-200{% else %}text-slate-500{% endif %}"
+             {% if not email_verified %}title="Pass “Send test email” first"{% endif %}>
+        <input type="checkbox" name="enabled" value="1" class="accent-amber-500"
+               {% if digest_enabled %}checked{% endif %} {% if not email_verified %}disabled{% endif %} />
+        Email me the daily brief
+      </label>
+      <label class="block">
+        <span class="text-slate-400">Time</span>
+        <input type="time" name="digest_time" value="{{ digest_time }}"
+               class="mt-1 block bg-slate-950 border border-slate-700 rounded px-2 py-1 mono" />
+      </label>
+      <label class="flex items-center gap-2 text-slate-300" title="Collect fresh items right before the brief is written">
+        <input type="checkbox" name="scan_first" value="1" class="accent-amber-500" {% if digest_scan_first %}checked{% endif %} />
+        Run a scan first
+      </label>
+      <button class="rounded bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 border border-slate-600">Save</button>
+    </form>
+    <p class="text-slate-500">The same time is used for the daily case reports (each case's
+      <span class="font-medium text-slate-400">Reports</span> tab).
+      With no AI connected the brief is still sent, as a plain summary.</p>
+    <div class="flex flex-wrap items-center gap-2">
+      <button hx-post="/settings/digest/test" hx-target="#email-settings" hx-swap="outerHTML"
+              hx-indicator="#digest-test-spin"
+              {% if not email_ready %}disabled{% endif %}
+              class="rounded px-3 py-1.5 font-medium {% if email_ready %}bg-sky-700 hover:bg-sky-600 text-white{% else %}bg-slate-800 text-slate-500 cursor-not-allowed{% endif %}">
+        Send a test brief now
+      </button>
+      <span id="digest-test-spin" class="htmx-indicator mono text-sky-300">Sherlock is writing&hellip;</span>
+    </div>
+    {% if digest_msg %}
+    <p class="{% if digest_ok %}text-emerald-300{% else %}text-rose-300{% endif %}">{{ digest_msg }}</p>
+    {% elif last_digest_status and last_digest_status.startswith('error') %}
+    <p class="text-rose-300">Last scheduled send failed: {{ last_digest_status[7:] }}</p>
+    {% endif %}
+  </div>
+</div>

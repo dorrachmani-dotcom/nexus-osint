@@ -8,11 +8,39 @@ to [Semantic Versioning](https://semver.org/).
 
 ### Added
 - `CONTRIBUTING.md`, issue templates and a pull request template.
+- AI provider **xAI (Grok)** via its OpenAI-compatible API (`XAI_API_KEY`,
+  `GROK_MODEL`, default `grok-4.6`).
+- AI provider **Local server** (`local_openai`) for any local OpenAI-compatible
+  server (LM Studio, llama.cpp, vLLM, Jan, LocalAI), with a Settings box to set
+  the address and model and a **Test connection** button that lists the
+  server's models. Both new providers share one httpx-based
+  `OpenAICompatibleProvider` (no new dependency).
+- **Automatic** AI provider: uses the first ready backend in the order Gemini →
+  OpenAI → Anthropic → Grok → local server (once a model is set). Ollama is used
+  only when chosen explicitly.
+- **Daily email brief written by Sherlock** (opt-in): a "Connect your email"
+  wizard in Settings (Gmail app password, Outlook / Microsoft 365, Resend,
+  SendGrid or custom SMTP), a required test email before the brief can be
+  switched on, a daily time, an optional scan-first, and "Send a test brief
+  now". Falls back to a plain brief when no AI is connected.
+- **Daily case reports**: a new **Reports** tab on each case to schedule a daily
+  PDF/HTML report of newly collected items, generate one now, and open /
+  download / delete saved reports; the Daily brief page shows each case's latest
+  report, and the email can link or attach it.
+- Egress allow-list entries for xAI, the configured local server, the configured
+  SMTP host and the Resend / SendGrid APIs.
 
 ### Changed
+- The default `AI_PROVIDER` is now `auto` (was `anthropic`). Explicit choices keep
+  working; unknown values fall back to `auto`.
 - Documentation reorganized: the feature catalogue moved to `docs/FEATURES.md`,
   the project overview to `docs/OVERVIEW.md`, and the README rewritten around
   architecture and engineering trade-offs.
+
+### Fixed
+- The automatic-scan background thread never ran: `@asynccontextmanager` was
+  applied to the scan loop instead of the app lifespan. The scheduler (scans,
+  daily reports and the email brief) now runs as intended.
 
 ### Removed
 - `docs/INVESTIGATOR_PLAN.md`; its remaining items moved to `docs/ROADMAP.md`.

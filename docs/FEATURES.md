@@ -31,9 +31,12 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
 - **AI intelligence core** — a local prefilter trims noise before any token is
   spent; items are then scored (threat level), summarized, translated, flagged
   for possible disinformation, and tagged first-party vs. third-party. The
-  backend is pluggable (Google Gemini, OpenAI, Anthropic, or local Ollama) and
-  switchable live from Settings. Results are cached by content and capped per run by a budget
-  guard.
+  backend is pluggable (Google Gemini, OpenAI, Anthropic, xAI Grok, local
+  Ollama, or any local OpenAI-compatible server such as LM Studio, llama.cpp,
+  vLLM, Jan or LocalAI) and switchable live from Settings. The default,
+  **Automatic**, uses the first backend that is ready (Gemini, OpenAI, Anthropic,
+  Grok, then a local server with a model picked; Ollama only when chosen).
+  Results are cached by content and capped per run by a budget guard.
 - **Intelligence Requirements** — define the questions your investigation needs
   answered; the AI scores every collected item (0–100) for relevance to each
   requirement, and a dedicated Intel feed ranks items by how well they answer
@@ -45,6 +48,20 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   a **"+N new"** badge, **mark-all-read** clears a case's queue, and the feed
   supports **keyboard triage** (`j/k` move, `o` open, `b` bookmark, `r` read). A
   set-up checklist surfaces any configuration gaps with one-click fixes.
+- **Daily email brief by Sherlock** (opt-in) — once a day, at a time you pick,
+  Sherlock writes a concise analyst brief (headline, key developments per case,
+  what to watch) grounded only in the items collected since the last brief, and
+  emails it with source links and local links back into the app. Connect Gmail
+  (app password), Outlook / Microsoft 365, Resend, SendGrid or any SMTP server
+  from a step-by-step wizard; the brief unlocks only after a successful test
+  email. With no AI connected, a clean plain summary is sent instead.
+- **Daily case reports** — per case, switch on "Export a daily report" (PDF or
+  HTML) on the case's **Reports** tab. At the brief time, a report of the items
+  collected since the previous one is saved to
+  `DATA_DIR/reports/<case>/<YYYY-MM-DD>.pdf` (HTML if no PDF engine is
+  installed). The tab lists every saved report with open / download / delete;
+  the Daily brief page shows each case's newest one, and the email can link or
+  attach it.
 - **Case hub** — a Case is the single home for one subject. Each case has tabs:
   a **Live feed** driven by its tracking words (its "word capsule" — also searched
   across your sources on each scan), a **Pinned** dossier of items + researcher
@@ -131,10 +148,14 @@ Everything is optional:
 | *(capsule search terms)* | Keyless Google News + Reddit search | **free** |
 | `RSS_FEEDS` | RSS collection | **free** |
 | `NEWS_WINDOW_DAYS` | Time window for keyless Google News (default 7) | **free** |
-| `AI_PROVIDER` | Chooses the AI backend: `anthropic`, `gemini`, `openai`, `ollama`, or `off` | — |
+| `AI_PROVIDER` | Chooses the AI backend: `auto` (default), `gemini`, `openai`, `anthropic`, `grok`, `local_openai`, `ollama`, or `off` | — |
 | `GEMINI_API_KEY` | Gemini analysis, translation, threat scoring | free tier |
 | `ANTHROPIC_API_KEY` | Claude analysis, translation, threat scoring | paid |
 | `OPENAI_API_KEY` | ChatGPT analysis, translation, threat scoring | paid |
+| `XAI_API_KEY` + `GROK_MODEL` | Grok analysis via xAI's OpenAI-compatible API | paid |
+| `LOCAL_LLM_BASE_URL` + `LOCAL_LLM_MODEL` (+ optional `LOCAL_LLM_API_KEY`) | A local OpenAI-compatible server (LM Studio, llama.cpp, vLLM, Jan, LocalAI) | **free** |
+| `EMAIL_PROVIDER`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `DIGEST_TO` | Daily email brief over SMTP (Gmail / Outlook presets or any server) | — |
+| `RESEND_API_KEY` or `SENDGRID_API_KEY` | Daily email brief through an email API service | free tier |
 | `LIBRETRANSLATE_URL` | Keyless English-translation fallback when no AI is set | **free** |
 | `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX` | Google Custom Search (wider web) | free tier |
 | `SERPAPI_KEY` + `SERPAPI_QUERIES` | Richer Google News via SERPAPI | paid |

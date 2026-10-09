@@ -65,6 +65,18 @@
           <p class="text-slate-400">Get a key at <span class="mono">platform.openai.com</span> → set <span class="mono">OPENAI_API_KEY</span>, then pick "OpenAI (ChatGPT)" as the provider above.</p>
         </div>
         <div>
+          <h3 class="font-medium text-slate-200">Grok analysis (xAI)</h3>
+          <p class="text-slate-400">Get a key at <span class="mono">console.x.ai</span> → set <span class="mono">XAI_API_KEY</span>, then pick "xAI (Grok)" (or "Automatic") as the provider.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Local server (LM Studio, llama.cpp, vLLM, Jan, LocalAI)</h3>
+          <p class="text-slate-400">Already run AI models in one of these apps? Start its OpenAI-compatible server, pick "Local server" as the provider, then Test connection and save a model. Like Ollama, nothing leaves this computer.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-slate-200">Automatic (default)</h3>
+          <p class="text-slate-400">Uses the first AI that is ready: Gemini, OpenAI, Anthropic, Grok, then a local server with a model picked. Choose a provider explicitly to pin it.</p>
+        </div>
+        <div>
           <h3 class="font-medium text-slate-200">SERPAPI (news)</h3>
           <p class="text-slate-400">Register at <span class="mono">serpapi.com</span> → set <span class="mono">SERPAPI_KEY</span> and one or more <span class="mono">SERPAPI_QUERIES</span>.</p>
         </div>
@@ -165,5 +177,8 @@
     })();
     </script>
   </div>
+
+  {# ── Email connection + daily brief by Sherlock ─────────────────────────── #}
+  {% include "_email_settings.html" %}
 </section>
 {% endblock %}

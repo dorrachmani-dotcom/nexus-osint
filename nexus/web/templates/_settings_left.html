@@ -56,7 +56,9 @@
     <div class="flex justify-between"><span class="text-slate-400">Claude model</span><span class="mono">{{ claude_model }}</span></div>
     <div class="flex justify-between"><span class="text-slate-400">Gemini model</span><span class="mono">{{ gemini_model }}</span></div>
     <div class="flex justify-between"><span class="text-slate-400">OpenAI model</span><span class="mono">{{ openai_model }}</span></div>
+    <div class="flex justify-between"><span class="text-slate-400">Grok model</span><span class="mono">{{ grok_model }}</span></div>
     <div class="flex justify-between"><span class="text-slate-400">Local model (Ollama)</span><span class="mono">{{ ollama_model }}</span></div>
+    <div class="flex justify-between"><span class="text-slate-400">Local server model</span><span class="mono">{{ local_llm_model or '—' }}</span></div>
     <div class="flex justify-between"><span class="text-slate-400">Translation target</span><span class="mono">{{ translation_target_lang }}</span></div>
     <div class="flex justify-between"><span class="text-slate-400">Max items / run</span><span class="mono">{{ max_items }}</span></div>
     <div class="flex justify-between"><span class="text-slate-400">RSS feeds</span><span class="mono">{{ rss_feeds|length }}</span></div>

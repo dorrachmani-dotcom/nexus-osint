@@ -42,9 +42,10 @@ onboarding wizard greets you, and the **Guide** page explains every concept.
 **No.** Nexus works for free out of the box:
 
 - **Collection** — RSS, Google News, Reddit search, and GDELT need **no key**.
-- **AI analysis** — optional. Add a free Google **Gemini** key, a paid Anthropic/OpenAI
-  key, or run a **fully local** model with [Ollama](https://ollama.com) (nothing
-  leaves your machine). With no AI at all, items are still collected, stored and
+- **AI analysis** — optional. Add a free Google **Gemini** key, a paid
+  Anthropic / OpenAI / xAI (Grok) key, or run a **fully local** model with
+  [Ollama](https://ollama.com) or an app such as LM Studio (nothing leaves your
+  machine). The default provider, **Automatic**, uses whichever one is ready. With no AI at all, items are still collected, stored and
   searchable — you just don't get summaries, translations or scores.
 
 Keys are entered on the **Settings** page, saved only to a local `.env` file,
@@ -108,6 +109,88 @@ button; then just select "Local model (Ollama)" in Settings.)*
   `ollama pull <model>`), wait for it to finish, then **Check**.
 - A scan with the server off doesn't break anything — collection and search keep
   working, and analysis resumes automatically once Ollama is back.
+
+### Using Grok (xAI)
+
+1. Open <https://console.x.ai>, sign in, and add credits under **Billing**.
+2. Open **API Keys** → **Create API Key** and copy the key (it starts with `xai-`).
+3. In Nexus open **Settings**, paste it into **xAI (Grok) API key** and click
+   **Save keys**.
+4. In the AI-provider box choose **xAI (Grok)**, or leave **Automatic** (Grok is
+   used when no Gemini / OpenAI / Anthropic key is set).
+
+The default model is `grok-4.6`, xAI's current flagship (October 2026). To use
+another one, for example a cheaper model for high-volume scans, set
+`GROK_MODEL` in `.env` to any id listed at docs.x.ai.
+
+### Using a local server (LM Studio, llama.cpp, vLLM, Jan, LocalAI)
+
+If you already run models in one of these apps, Nexus can use it directly.
+Nothing leaves your computer.
+
+1. **Start the app's server.** In LM Studio: open the **Developer** tab, load a
+   model, and switch **Start server** on. It listens on
+   `http://localhost:1234/v1`. (llama.cpp: `llama-server -m model.gguf --port 8080`
+   → `http://localhost:8080/v1`. vLLM: `http://localhost:8000/v1` — note that
+   Nexus itself also uses port 8000, so start vLLM on another port.)
+2. In Nexus **Settings**, choose **Local server (LM Studio, llama.cpp, vLLM…)** as
+   the provider and click **Apply**.
+3. Check the **Server address**, then click **Test connection**. It lists the
+   models the server offers.
+4. Type or pick one of them in **Model** and click **Save**. When the test turns
+   green, scans are analysed by your local model.
+
+Only servers started with an API key (for example `vllm serve … --api-key`) need
+`LOCAL_LLM_API_KEY`; LM Studio, llama.cpp and Jan do not.
+
+### Getting a daily email brief from Sherlock
+
+Once a day Sherlock can email you a short brief: a headline, the key
+developments in each open case, and what to watch, citing the items by title
+with links. It uses only the items Nexus collected, and works without AI too (you
+then get a plain summary). This is optional and is the only feature that emails
+anything off your machine.
+
+1. Open **Settings** and scroll to **Daily email brief (by Sherlock)**.
+2. **Step 1:** choose how to send:
+   - **Gmail** — needs an *App Password*, never your normal password:
+     1. Turn on 2-Step Verification at <https://myaccount.google.com/security>
+        (app passwords require it).
+     2. Open <https://myaccount.google.com/apppasswords>, type a name such as
+        *Nexus brief*, and click **Create**.
+     3. Copy the 16-character password Google shows (spaces don't matter).
+   - **Outlook / Microsoft 365** — your account password, or an app password if
+     your account uses 2-step sign-in. Some organisations turn SMTP sign-in off;
+     if the test reports a sign-in error, use an email API service instead.
+   - **Resend** or **SendGrid** — create an API key with sending permission and
+     verify your sender address or domain with the service.
+   - **Custom SMTP** — any mail server: host, port (465 = SSL, 587 = STARTTLS),
+     username and password from your mail provider.
+3. **Step 2:** fill in the fields (your address, the app password or API key, and
+   who should receive the brief) and click **Save email settings**. Passwords and
+   keys go to `.env` only and are never shown again.
+4. **Step 3:** click **Send test email** and check your inbox (and spam folder).
+5. Once the test succeeds, tick **Email me the daily brief**, choose a time, and
+   optionally **Run a scan first** so the brief includes fresh items. Click
+   **Save**. Use **Send a test brief now** to see a real brief immediately.
+
+Changing any email setting turns the brief off until you send a new test email.
+The app must be running at the chosen time; if it was closed, the brief goes out
+the next time it is open after that time (at most once a day).
+
+### Daily case reports
+
+On any case, open the **Reports** tab (or **Export → Daily reports…**):
+
+- Tick **Export a daily report**, choose **PDF** or **HTML**, and choose whether
+  the daily email should **link to it**, **attach it**, or not mention it.
+- At the daily-brief time, a report of the case's items collected since the
+  previous report is saved to `data/reports/<case>/<YYYY-MM-DD>.pdf` (HTML if no
+  PDF engine is installed).
+- **Generate now** creates today's report immediately.
+- The tab lists every saved report with its date, item count, format and size,
+  with **Open**, **Download** and **Delete**. The **Brief** page shows each case's
+  newest report in a "Latest reports" strip.
 
 ---
 
@@ -336,10 +419,15 @@ In the Feed:
   every log line.
 - **Outbound traffic is observable.** The Security center's egress monitor shows
   exactly what the app talks to and flags anything unexpected.
-- **AI is optional and can be fully local.** Use Ollama and analysed content never
-  leaves the machine.
+- **AI is optional and can be fully local.** Use Ollama or a local server such as
+  LM Studio and analysed content never leaves the machine. Cloud providers
+  (Gemini, OpenAI, Anthropic, Grok) receive item text only once you add their key.
 - **Exports are deliberate.** Data only leaves your machine when *you* export a
   report or a transfer bundle — and bundles never contain secrets.
+- **The daily email brief is an explicit opt-in.** When you switch it on, the
+  brief (item titles, summaries and links) is sent to the mail service you
+  connected and to the recipients you listed — nothing else. Saved daily case
+  reports stay in your data folder and are served only on `127.0.0.1`.
 
 ---
 

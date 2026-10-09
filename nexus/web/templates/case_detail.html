@@ -49,6 +49,9 @@
       <a href="/cases/{{ case.id }}/report?scope=live&format=json"
          class="block px-2 py-1 rounded text-sm text-slate-300 hover:bg-slate-800">&#123;&#125; JSON (data)</a>
       <div class="my-1 border-t border-slate-800"></div>
+      <a href="/cases/{{ case.id }}?tab=reports"
+         class="block px-2 py-1 rounded text-sm text-amber-300 hover:bg-slate-800"
+         title="Schedule an automatic daily report and browse the saved ones">&#128197; Daily reports&hellip;</a>
       <a href="/cases/{{ case.id }}/obsidian"
          class="block px-2 py-1 rounded text-sm text-violet-300 hover:bg-slate-800"
          title="A Markdown vault with [[wikilinks]] — open in Obsidian to see the graph">&#128279; Obsidian vault (.zip)</a>
@@ -147,6 +150,10 @@
        class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px
        {% if tab == 'graph' %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}"
        title="Relationship graph of this case's tracked items">&#128376; Graph</a>
+    <a href="/cases/{{ case.id }}?tab=reports"
+       class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px
+       {% if tab == 'reports' %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}"
+       title="Automatic daily reports for this case, saved on this computer">&#128197; Reports</a>
   </div>
 
   {% if tab == 'feed' %}
@@ -175,6 +182,16 @@
          hx-trigger="load"
          hx-swap="innerHTML">
       <p class="text-xs text-slate-500 py-4">Building this case's relationship graph…</p>
+    </div>
+
+  {% elif tab == 'reports' %}
+    {# Daily reports: schedule toggle + format, Generate now, and this case's
+       saved report history (served only from the local reports folder). #}
+    <div id="case-reports"
+         hx-get="/cases/{{ case.id }}/reports"
+         hx-trigger="load"
+         hx-swap="outerHTML">
+      <p class="text-xs text-slate-500 py-4">Loading reports…</p>
     </div>
 
   {% else %}
