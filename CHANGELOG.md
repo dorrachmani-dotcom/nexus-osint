@@ -6,6 +6,13 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Code layout: `nexus/web/app.py` (about 4,800 lines) split into per-domain
+  FastAPI routers under `nexus/web/routers/` (app.py is now about 250 lines),
+  and `nexus/storage.py` turned into the `nexus/storage/` package with
+  re-exports. No behaviour change; a test pins the full route table and the
+  matching order of overlapping routes.
+
 ### Added
 - **Internet Archive (Wayback Machine) preservation**: archive an item's source
   from the item drawer (Save Page Now, anonymous or authenticated SPN2 with

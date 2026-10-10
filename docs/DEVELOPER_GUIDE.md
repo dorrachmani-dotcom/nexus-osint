@@ -74,7 +74,11 @@ nexus/
 ├── envstore.py          # safe .env read/write (EDITABLE_KEYS allow-list)
 ├── db.py                # SQLite schema, WAL, FTS5 triggers, migrations
 ├── models.py            # RawItem / Analysis / ProcessedItem dataclasses
-├── storage.py           # ALL DB read/write helpers (dedup, search, workspace)
+├── storage/             # ALL DB read/write helpers, one module per domain
+│   ├── __init__.py      #   re-exports everything: `from nexus.storage import …`
+│   ├── items.py, feed.py, analysis.py, entities.py, graph.py, cases.py,
+│   │   case_feed.py, lists.py, watchlists.py, subscriptions.py,
+│   │   requirements.py, custom_sources.py, archives.py, meta.py
 ├── collector.py         # scan orchestration: sources -> store -> analyze
 ├── casesetup.py         # auto-configure a new case's terms + questions
 ├── assistant.py         # Sherlock: grounded chat + constructive action tools
@@ -109,7 +113,11 @@ nexus/
 │   ├── source_planner.py#   AI auto-config for custom API sources
 │   └── ollama_admin.py  #   local model pull/status
 └── web/
-    ├── app.py           # FastAPI app: every route + lifespan + helpers
+    ├── app.py           # app factory: middleware, lifespan, mounts, include_router
+    ├── routers/         # one APIRouter per domain (feed, items, cases,
+    │                    #   case_reports, graph, entity, intel, settings, …)
+    ├── common.py        # TEMPLATES + filters and shared route helpers
+    ├── settings_context.py # context builder for the Settings page
     ├── security.py      # CSRF/host hardening + security headers
     └── templates/       # Jinja templates (the whole UI)
 
@@ -156,7 +164,7 @@ A scan is the heart of the system (`Collector.scan()` in `collector.py`):
 5. **Score requirements** — each item is scored 0–100 against each enabled PIR;
    scores are cached per `(item, requirement)`.
 
-The web layer reads the resulting rows through `storage.py` helpers and renders
+The web layer reads the resulting rows through `nexus.storage` helpers and renders
 them. `enrich_feed_rows()` is the batched enrichment pass that adds derived
 presentation fields (typed entities, related sources, read/bookmark flags, source
 reliability, relative time, best requirement match) without N+1 queries.
@@ -183,7 +191,9 @@ SQLite, WAL mode, schema in `db.py`. Key tables:
 - `subscriptions` — user-chosen collection targets (Topics).
 - `entity_aliases`, `evidence`, `meta` (key/value runtime settings).
 
-All reads/writes go through `storage.py` — don't scatter SQL across the codebase.
+All reads/writes go through the `nexus/storage/` package — put a new query in
+the module for its domain and re-export it from `nexus/storage/__init__.py`.
+Don't scatter SQL across the codebase.
 When you change the schema, add an idempotent migration in `db.py` (the app must
 upgrade an existing database in place).
 
@@ -191,8 +201,13 @@ upgrade an existing database in place).
 
 ## 7. The web layer (FastAPI + htmx)
 
-`nexus/web/app.py` holds every route plus shared helpers (`_paged_feed`,
-`_render_card`, `_feed_partial_response`, filters). Patterns to follow:
+Routes live in `nexus/web/routers/<domain>.py`, each exposing an `APIRouter`
+that `nexus/web/app.py` includes. Shared helpers (`_paged_feed`,
+`_render_card`, `_feed_partial_response`, template filters) live in
+`nexus/web/common.py`. **To add a route**, put it in the router for its
+domain; registration order matters where two paths can match the same URL
+(e.g. `/cases/new` before `/cases/{case_id}`), and `tests/test_route_order.py`
+guards the route table. Patterns to follow:
 
 - **Partial swaps.** Most mutations return a small HTML fragment that htmx swaps
   in. A single feed card re-renders via `_render_card(request, conn, item_id,
@@ -352,7 +367,7 @@ Notes:
   favours short, purposeful comments explaining *why*, not *what*.
 - **Type hints** on public functions; `from __future__ import annotations` at the
   top of modules.
-- **All SQL in `storage.py`** (or the relevant data module), never inline in
+- **All SQL in the `nexus/storage/` package**, never inline in
   routes. Keep `search_items` and `count_matching_items` filter logic in sync
   (`_item_filter_clauses` is the shared source of truth).
 - **English only** in all shipped strings, comments, templates and docs.
