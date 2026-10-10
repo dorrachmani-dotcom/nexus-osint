@@ -6,7 +6,7 @@
   &#9203; scanning&hellip;{% if state.elapsed %} ({{ state.elapsed }}s){% endif %}
 </span>
 {% elif state.status == 'done' %}
-<span class="mono text-xs text-emerald-400">&#10003; Scan complete — {{ state.new_items }} new</span>
+<span class="mono text-xs text-emerald-400">&#10003; Scan complete — {{ state.new_items }} new{% if state.catchup_new %} (the start-up catch-up scan had just added {{ state.catchup_new }}){% endif %}</span>
 {# Refresh the feed once so the new items appear. #}
 <span hx-get="/feed" hx-trigger="load delay:200ms" hx-target="#feed" hx-swap="outerHTML"></span>
 {% elif state.status == 'error' %}
