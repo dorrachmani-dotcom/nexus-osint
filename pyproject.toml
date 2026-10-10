@@ -90,7 +90,7 @@ extend-immutable-calls = [
 # from column names in fixed in-code tuples; every value is bound as a
 # parameter (audited when this rule was enabled). Elsewhere S608 stays on and
 # each dynamic query carries an inline, justified noqa.
-"nexus/storage.py" = ["S608"]
+"nexus/storage/**" = ["S608"]
 "tests/**" = [
     "S101",  # assert is how pytest works
     "S104",  # bind-all strings are test inputs for the loopback guard

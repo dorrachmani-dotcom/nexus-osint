@@ -227,7 +227,7 @@ One SQLite database (WAL mode); schema in `nexus/db.py`. Highlights:
 - `watchlists` / `watchlist_hits`; `subscriptions` (collection targets);
   `entity_aliases`; `evidence`; `meta` (runtime settings).
 
-All database access is centralized in `nexus/storage.py`.
+All database access is centralized in the `nexus/storage/` package.
 
 ---
 
@@ -281,9 +281,10 @@ The codebase is built so adding capability is an *extension*, not a rewrite. The
 
 ```
 nexus/            # the application package
-├── web/app.py    #   FastAPI app: every route
+├── web/app.py    #   FastAPI app factory (middleware, lifespan, routers)
+├── web/routers/  #   one APIRouter per domain (feed, cases, graph, settings, …)
 ├── web/templates #   the whole UI (Jinja + htmx)
-├── storage.py    #   all DB access (the single source of truth for SQL)
+├── storage/      #   all DB access, one module per domain (single source of SQL)
 ├── db.py         #   schema, WAL, FTS5, migrations
 ├── collector.py  #   the scan pipeline
 ├── sources/      #   collection sources (rss, news, reddit, custom, …)
