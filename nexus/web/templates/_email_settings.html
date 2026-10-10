@@ -64,8 +64,9 @@
   {# --- Step 1: choose how to send --- #}
   <div class="space-y-2">
     <p class="text-xs text-slate-300"><span class="font-medium text-slate-200">Step 1.</span> Choose how to send email:</p>
-    <div class="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
+    <div class="grid gap-2 sm:grid-cols-3">
       {% set blurbs = {
+        'gmail_api': 'Approve send-only access in Google. No password stored.',
         'gmail': 'Your Gmail account with an App Password.',
         'outlook': 'Outlook.com or Microsoft 365 over SMTP.',
         'resend': 'Email API service — paste an API key.',
@@ -91,8 +92,24 @@
     <p class="text-slate-300"><span class="font-medium text-slate-200">Step 2.</span>
       Connection details for <span class="font-medium">{{ email_label }}</span>.
       Passwords and keys are saved to <span class="mono">.env</span> only and never shown again.</p>
+    {% if email_provider == 'gmail_api' %}
+    <div class="rounded border border-slate-800 bg-slate-950/40 p-3 space-y-2 text-slate-400">
+      <p class="text-slate-300 font-medium">One-time setup in Google Cloud (about 5 minutes)</p>
+      <ol class="ml-4 list-decimal space-y-1">
+        <li>Open <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">console.cloud.google.com</a> and create a project (any name, e.g. "Nexus brief").</li>
+        <li>Enable the <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">Gmail API</a> for that project.</li>
+        <li>Open <span class="text-slate-300">Google Auth Platform &rarr; Branding</span>, fill in the app name and your email. Under <span class="text-slate-300">Audience</span> choose <span class="text-slate-300">External</span> and add yourself as a test user.</li>
+        <li>Under <span class="text-slate-300">Clients</span>, create an OAuth client of type <span class="text-slate-300">Desktop app</span>. Copy its <span class="text-slate-300">Client ID</span> and <span class="text-slate-300">Client secret</span> into the fields below and save.</li>
+        <li>Click <span class="text-slate-300">Connect Gmail</span> and approve <span class="text-slate-300">"Send email on your behalf"</span>. Nexus can only send; it cannot read your mail.</li>
+        <li><span class="text-amber-300">Stay connected:</span> while the project is in <span class="text-slate-300">Testing</span>, Google expires the permission after 7 days. Under <span class="text-slate-300">Audience</span> click <span class="text-slate-300">Publish app</span>; Google then shows an "unverified app" notice on the consent screen (normal for an app you set up for yourself) and the connection lasts.</li>
+      </ol>
+    </div>
+    {% endif %}
     <div class="grid gap-3 sm:grid-cols-2">
-      {% if email_provider == 'gmail' %}
+      {% if email_provider == 'gmail_api' %}
+        {{ plain_input('GOOGLE_OAUTH_CLIENT_ID', 'OAuth client ID', google_client_id, '1234567890-abc.apps.googleusercontent.com') }}
+        {{ secret_input('GOOGLE_OAUTH_CLIENT_SECRET', 'OAuth client secret', 'paste the client secret…') }}
+      {% elif email_provider == 'gmail' %}
         {{ plain_input('SMTP_USERNAME', 'Your Gmail address', smtp_username, 'analyst@example.com', 'email') }}
         {{ secret_input('SMTP_PASSWORD', 'App password (16 characters)', 'paste the app password…') }}
       {% elif email_provider == 'outlook' %}
@@ -125,6 +142,24 @@
     {% endif %}
     <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-4 py-1.5">Save email settings</button>
   </form>
+
+  {% if email_provider == 'gmail_api' %}
+  <div class="flex flex-wrap items-center gap-3 text-xs">
+    {% if google_connected %}
+    <span class="px-2 py-0.5 rounded mono bg-emerald-950/60 text-emerald-300 border border-emerald-800">&#10003; connected{% if google_email %} as {{ google_email }}{% endif %}</span>
+    <a href="/settings/email/google/connect" class="text-sky-400 hover:text-sky-300">Reconnect</a>
+    <button hx-post="/settings/email/google/disconnect" hx-target="#email-settings" hx-swap="outerHTML"
+            hx-confirm="Disconnect Gmail? The permission is revoked at Google and removed from this computer."
+            class="rounded border border-slate-700 hover:border-rose-500 hover:text-rose-300 text-slate-300 px-3 py-1">Disconnect</button>
+    {% elif google_client_id and secret_status.get('GOOGLE_OAUTH_CLIENT_SECRET') %}
+    <a href="/settings/email/google/connect"
+       class="rounded bg-sky-600 hover:bg-sky-500 text-white font-medium px-4 py-1.5">Connect Gmail</a>
+    <span class="text-slate-500">Opens Google's consent screen; you come back here when done.</span>
+    {% else %}
+    <span class="text-slate-500">Save the client ID and secret first, then “Connect Gmail” appears here.</span>
+    {% endif %}
+  </div>
+  {% endif %}
 
   {# --- Step 3: test --- #}
   <div class="space-y-2 text-xs">

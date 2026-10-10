@@ -182,3 +182,83 @@ def settings_digest_test(request: Request) -> HTMLResponse:
         )
     ok, message = build_and_send_digest(settings, test=True)
     return _render_email(request, digest_ok=ok, digest_msg=("Test brief sent. " if ok else "") + message)
+
+
+# ------------------------------------------------- Connect Gmail (OAuth, send-only)
+
+
+def _google_redirect_uri(request: Request) -> str:
+    # Google Desktop clients accept any loopback port, so the callback is simply
+    # this local server's own address.
+    return str(request.base_url).rstrip("/") + "/settings/email/google/callback"
+
+
+@router.get("/settings/email/google/connect")
+def settings_email_google_connect(request: Request):
+    """Send the operator to Google's consent screen (send-only permission)."""
+    from fastapi.responses import RedirectResponse
+
+    from nexus import google_oauth
+
+    settings = get_settings()
+    redirect_uri = _google_redirect_uri(request)
+    if not (settings.google_oauth_client_id and settings.google_oauth_client_secret):
+        return _render_email(request, email_ok=False, email_msg=(
+            "Save your Google OAuth client ID and secret first (Step 2), then click “Connect Gmail”."))
+    if not google_oauth.is_loopback_redirect(redirect_uri):
+        return _render_email(request, email_ok=False, email_msg=(
+            "Open Nexus-OSINT at http://127.0.0.1:8000 to connect Gmail."))
+    with get_connection() as conn:
+        set_meta(conn, "email_provider", "gmail_api")
+    return RedirectResponse(
+        google_oauth.start(settings.google_oauth_client_id, redirect_uri), status_code=303
+    )
+
+
+@router.get("/settings/email/google/callback")
+def settings_email_google_callback(request: Request, code: str = "", state: str = "",
+                                   error: str = ""):
+    """Google sends the operator back here after the consent screen."""
+    from fastapi.responses import RedirectResponse
+
+    from nexus import google_oauth
+
+    def back(msg: str, ok: bool) -> RedirectResponse:
+        with get_connection() as conn:
+            set_meta(conn, "email_flash", ("1|" if ok else "0|") + msg[:300])
+        return RedirectResponse("/settings#email-settings", status_code=303)
+
+    if error:
+        return back("Gmail was not connected (Google said: " + error[:60] + ").", False)
+    settings = get_settings()
+    result = google_oauth.finish(
+        settings.google_oauth_client_id, settings.google_oauth_client_secret or "", state, code
+    )
+    if not result.ok:
+        return back(result.message, False)
+    update_env({
+        "GOOGLE_OAUTH_REFRESH_TOKEN": result.refresh_token,
+        "GOOGLE_OAUTH_EMAIL": result.email,
+    })
+    reload_settings()
+    with get_connection() as conn:
+        set_meta(conn, "email_provider", "gmail_api")
+        clear_email_verified(conn)
+    who = f" as {result.email}" if result.email else ""
+    return back(f"Gmail connected{who}. Now press “Send test email”.", True)
+
+
+@router.post("/settings/email/google/disconnect", response_class=HTMLResponse)
+def settings_email_google_disconnect(request: Request) -> HTMLResponse:
+    """Revoke the permission at Google (best effort) and forget it locally."""
+    from nexus import google_oauth
+
+    settings = get_settings()
+    if settings.google_oauth_refresh_token:
+        google_oauth.revoke(settings.google_oauth_refresh_token)
+    update_env({"GOOGLE_OAUTH_REFRESH_TOKEN": "", "GOOGLE_OAUTH_EMAIL": ""})
+    reload_settings()
+    with get_connection() as conn:
+        clear_email_verified(conn)
+    return _render_email(request, email_ok=True, email_msg=(
+        "Gmail disconnected. The permission was revoked and removed from this computer."))

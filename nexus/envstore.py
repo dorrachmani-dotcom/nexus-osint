@@ -58,6 +58,12 @@ EDITABLE_KEYS: frozenset[str] = frozenset(
         "DIGEST_TO",
         "RESEND_API_KEY",
         "SENDGRID_API_KEY",
+        # "Connect Gmail" (OAuth). The client secret and refresh token are
+        # secrets; the client ID and connected address are shown back.
+        "GOOGLE_OAUTH_CLIENT_ID",
+        "GOOGLE_OAUTH_CLIENT_SECRET",
+        "GOOGLE_OAUTH_REFRESH_TOKEN",
+        "GOOGLE_OAUTH_EMAIL",
         # The local OpenAI-compatible server address (not a secret; shown back).
         "LOCAL_LLM_BASE_URL",
         # Optional Internet Archive keys (Save Page Now 2). Secrets.

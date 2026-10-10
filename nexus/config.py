@@ -143,7 +143,7 @@ class Settings(BaseSettings):
     # Off unless the operator connects an email account in Settings. Every
     # secret (SMTP password / email-API key) lives in .env only. The provider
     # can also be picked from the dashboard (DB meta "email_provider"):
-    #   gmail | outlook | smtp | resend | sendgrid
+    #   gmail_api | gmail | outlook | smtp | resend | sendgrid
     email_provider: str = Field(default="")
     smtp_host: str = Field(default="")
     # A string on purpose: an empty "SMTP_PORT=" line (what the key editor
@@ -156,6 +156,13 @@ class Settings(BaseSettings):
     digest_to: str = Field(default="")
     resend_api_key: str | None = Field(default=None)
     sendgrid_api_key: str | None = Field(default=None)
+    # "Connect Gmail" (OAuth, send-only, no password). The operator's own
+    # Desktop OAuth client from Google Cloud; the refresh token is written by
+    # the connect flow. All in .env only; the address is shown back.
+    google_oauth_client_id: str = Field(default="")
+    google_oauth_client_secret: str | None = Field(default=None)
+    google_oauth_refresh_token: str | None = Field(default=None)
+    google_oauth_email: str = Field(default="")
 
     # --- Internet Archive (Wayback Machine) ---
     # Optional S3-style keys from archive.org/account/s3.php. With both set,

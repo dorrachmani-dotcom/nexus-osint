@@ -185,6 +185,12 @@ SECRET_FIELDS: list[dict] = [
          "Outlook / Microsoft 365: use your account password, or an app password if your account has 2-step sign-in.",
          "Other SMTP servers: use the password your mail provider gives for SMTP sign-in.",
      ]},
+    {"key": "GOOGLE_OAUTH_CLIENT_SECRET", "label": "Google OAuth client secret", "group": "email",
+     "hint": "From your own Google Cloud OAuth client (type: Desktop app).",
+     "url": "https://console.cloud.google.com/apis/credentials",
+     "steps": []},
+    {"key": "GOOGLE_OAUTH_REFRESH_TOKEN", "label": "Gmail connection", "group": "email",
+     "hint": "Written by “Connect Gmail”; never typed or shown.", "steps": []},
     {"key": "RESEND_API_KEY", "label": "Resend API key", "group": "email",
      "hint": "Sends the brief through resend.com (free tier available).",
      "url": "https://resend.com/api-keys",
@@ -250,10 +256,14 @@ def _settings_context(settings) -> dict:
 
 
 # Plain (non-secret) email fields the wizard writes and shows back.
-_EMAIL_PLAIN_FIELDS = ("SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_FROM", "DIGEST_TO")
+_EMAIL_PLAIN_FIELDS = (
+    "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_FROM", "DIGEST_TO", "GOOGLE_OAUTH_CLIENT_ID",
+)
 
 
-_EMAIL_SECRET_FIELDS = ("SMTP_PASSWORD", "RESEND_API_KEY", "SENDGRID_API_KEY")
+_EMAIL_SECRET_FIELDS = (
+    "SMTP_PASSWORD", "RESEND_API_KEY", "SENDGRID_API_KEY", "GOOGLE_OAUTH_CLIENT_SECRET",
+)
 
 
 _MAX_RECIPIENTS = 10
@@ -286,6 +296,9 @@ def _email_context(settings, **extra) -> dict:
         "smtp_username": settings.smtp_username or "",
         "smtp_from": settings.smtp_from or "",
         "digest_to": settings.digest_to or "",
+        "google_client_id": settings.google_oauth_client_id or "",
+        "google_connected": bool(settings.google_oauth_refresh_token),
+        "google_email": settings.google_oauth_email or "",
         "digest_enabled": digest_enabled,
         "digest_time": digest_time,
         "digest_scan_first": scan_first,

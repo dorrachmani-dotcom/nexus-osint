@@ -67,9 +67,17 @@ def settings_page(request: Request) -> HTMLResponse:
     The provider *choice* (not a secret) is stored in the DB meta table.
     """
     settings = get_settings()
+    # One-time result of the "Connect Gmail" round trip, kept server-side (DB
+    # meta) rather than in the URL so a crafted link cannot inject a message.
+    with get_connection() as conn:
+        flash = get_meta(conn, "email_flash") or ""
+        if flash:
+            set_meta(conn, "email_flash", None)
+    ok, _, msg = flash.partition("|")
     return TEMPLATES.TemplateResponse(
         request, "settings.html",
-        {**_settings_context(settings), **_email_context(settings),
+        {**_settings_context(settings),
+         **_email_context(settings, **({"email_msg": msg, "email_ok": ok == "1"} if msg else {})),
          **_archive_settings_page_ctx(settings)},
     )
 
