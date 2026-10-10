@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-10
+
+First tagged release.
+
 ### Added
 - **Connect Gmail** for the daily brief: OAuth 2.0 with PKCE and the
   `gmail.send` scope only (no password, cannot read mail), using the
@@ -47,40 +51,6 @@ to [Semantic Versioning](https://semver.org/).
   report, and the email can link or attach it.
 - Egress allow-list entries for xAI, the configured local server, the configured
   SMTP host and the Resend / SendGrid APIs.
-
-### Changed
-- Code layout: `nexus/web/app.py` (about 4,800 lines) split into per-domain
-  FastAPI routers under `nexus/web/routers/` (app.py is now about 250 lines),
-  and `nexus/storage.py` turned into the `nexus/storage/` package with
-  re-exports. No behaviour change; a test pins the full route table and the
-  matching order of overlapping routes.
-- The default `AI_PROVIDER` is now `auto` (was `anthropic`). Explicit choices keep
-  working; unknown values fall back to `auto`.
-- Documentation reorganized: the feature catalogue moved to `docs/FEATURES.md`,
-  the project overview to `docs/OVERVIEW.md`, and the README rewritten around
-  architecture and engineering trade-offs.
-- **Code-quality gates**: `pyproject.toml` now holds project metadata and the
-  ruff, mypy and pytest configuration. CI gains `lint` (ruff) and `types` (mypy)
-  jobs, a `.pre-commit-config.yaml` provides local hooks, and Dependabot checks
-  pip, npm and GitHub Actions weekly (Tailwind major versions are ignored: v4 is
-  a different toolchain). The codebase was brought to zero ruff and mypy
-  findings with no behaviour change: import order, `datetime.UTC`, silent
-  `except: pass` blocks now log at debug level, a mutable default argument, an
-  unresolved `markupsafe` annotation and an unreferenced background task.
-
-### Fixed
-- The automatic-scan background thread never ran: `@asynccontextmanager` was
-  applied to the scan loop instead of the app lifespan. The scheduler (scans,
-  daily reports and the email brief) now runs as intended.
-
-### Removed
-- `docs/INVESTIGATOR_PLAN.md`; its remaining items moved to `docs/ROADMAP.md`.
-
-## [1.0.0]
-
-First tagged release.
-
-### Added
 - **Collection**: RSS, keyless Google News and Reddit search, GDELT; optional
   Twitter/X, Telegram, SERPAPI and Google Custom Search; user-defined JSON API
   sources with an AI source planner and Auto-Adapt self-healing; wrappers for
@@ -107,13 +77,39 @@ First tagged release.
 - **Packaging and quality**: Docker image, Windows installer (PyInstaller + Inno
   Setup), per-OS launcher scripts, pytest suite and GitHub Actions CI.
 
+### Changed
+- Code layout: `nexus/web/app.py` (about 4,800 lines) split into per-domain
+  FastAPI routers under `nexus/web/routers/` (app.py is now about 250 lines),
+  and `nexus/storage.py` turned into the `nexus/storage/` package with
+  re-exports. No behaviour change; a test pins the full route table and the
+  matching order of overlapping routes.
+- The default `AI_PROVIDER` is now `auto` (was `anthropic`). Explicit choices keep
+  working; unknown values fall back to `auto`.
+- Documentation reorganized: the feature catalogue moved to `docs/FEATURES.md`,
+  the project overview to `docs/OVERVIEW.md`, and the README rewritten around
+  architecture and engineering trade-offs.
+- **Code-quality gates**: `pyproject.toml` now holds project metadata and the
+  ruff, mypy and pytest configuration. CI gains `lint` (ruff) and `types` (mypy)
+  jobs, a `.pre-commit-config.yaml` provides local hooks, and Dependabot checks
+  pip, npm and GitHub Actions weekly (Tailwind major versions are ignored: v4 is
+  a different toolchain). The codebase was brought to zero ruff and mypy
+  findings with no behaviour change: import order, `datetime.UTC`, silent
+  `except: pass` blocks now log at debug level, a mutable default argument, an
+  unresolved `markupsafe` annotation and an unreferenced background task.
+
+### Fixed
+- The automatic-scan background thread never ran: `@asynccontextmanager` was
+  applied to the scan loop instead of the app lifespan. The scheduler (scans,
+  daily reports and the email brief) now runs as intended.
+- Dark-theme text contrast raised to meet WCAG AA; dialog semantics and focus
+  return added to the item drawer.
+
+### Removed
+- `docs/INVESTIGATOR_PLAN.md`; its remaining items moved to `docs/ROADMAP.md`.
+
 ### Security
 - Inline script embedding of collected data uses Jinja `|tojson` to prevent
   `</script>` breakout.
-
-### Fixed
-- Dark-theme text contrast raised to meet WCAG AA; dialog semantics and focus
-  return added to the item drawer.
 
 [Unreleased]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/dorrachmani-dotcom/nexus-osint/releases/tag/v1.0.0
