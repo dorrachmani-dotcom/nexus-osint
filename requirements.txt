@@ -29,7 +29,7 @@ openai==1.59.6              # OpenAI (ChatGPT / GPT models)
 
 # --- Data sources (API-only for v1) ---
 feedparser==6.0.12          # RSS (always-on backbone)
-praw==7.8.1                 # Reddit API
+praw==8.0.3                 # Reddit API
 httpx==0.28.1               # SERPAPI / TelemetryApp / Twitter / Ollama REST calls
 # Stealth/scraping deps (telethon, twscrape, duckduckgo-search) deferred to a
 # future release; v1 is API-only.
