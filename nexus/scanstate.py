@@ -22,6 +22,7 @@ _state: dict = {
     "started": 0.0,
     "finished": 0.0,
     "new_items": 0,
+    "catchup_new": 0,  # added by the start-up gap-fill this scan waited for
     "error": "",
 }
 
@@ -44,7 +45,7 @@ def start(collector) -> dict:
             return state()
         _state.update({
             "status": "running", "started": time.time(),
-            "finished": 0.0, "new_items": 0, "error": "",
+            "finished": 0.0, "new_items": 0, "catchup_new": 0, "error": "",
         })
     threading.Thread(target=_run, args=(collector,), daemon=True, name="manual-scan").start()
     return state()
@@ -52,6 +53,7 @@ def start(collector) -> dict:
 
 def _run(collector) -> None:
     new = 0
+    requested = time.time()
     try:
         stats = collector.scan()
         try:
@@ -59,7 +61,10 @@ def _run(collector) -> None:
         except (TypeError, ValueError):
             new = 0
         with _lock:
-            _state.update({"status": "done", "finished": time.time(), "new_items": new})
+            boot = getattr(collector, "last_boot_sync", None) or {}
+            catchup = int(boot.get("new") or 0) if float(boot.get("finished") or 0) >= requested else 0
+            _state.update({"status": "done", "finished": time.time(), "new_items": new,
+                           "catchup_new": catchup})
     except Exception:
         logger.exception("Background scan failed")
         with _lock:

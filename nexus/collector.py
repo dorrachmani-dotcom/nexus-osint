@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from datetime import UTC, datetime
 
 from nexus.analysis.claude_core import analyze_pending
@@ -61,6 +62,9 @@ class Collector:
         ]
         # Serialize scans so Boot Sync and a manual scan never collide.
         self._lock = threading.Lock()
+        # Result of the most recent start-up gap-fill, so a manual scan that had
+        # to wait behind it can tell the user where the new items came from.
+        self.last_boot_sync: dict = {"new": 0, "finished": 0.0}
 
     def available_sources(self) -> list[Source]:
         # Built-in sources plus any user-defined custom API sources. The latter
@@ -249,4 +253,10 @@ class Collector:
     def boot_sync(self) -> dict:
         """Silent gap-fill at startup. Same path as a manual scan for now."""
         logger.info("Boot sync starting…")
-        return self.scan()
+        stats = self.scan()
+        try:
+            new = int((stats or {}).get("_update", {}).get("new") or 0)
+        except (TypeError, ValueError):
+            new = 0
+        self.last_boot_sync = {"new": new, "finished": time.time()}
+        return stats
