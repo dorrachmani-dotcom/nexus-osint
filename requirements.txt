@@ -52,4 +52,4 @@ networkx==3.4.2
 pyvis==0.3.2
 
 # --- Dev / tests ---
-pytest==9.0.3               # 9.0.3 fixes CVE-2025-71176 (dev-only)
+pytest==9.1.1               # 9.0.3 fixes CVE-2025-71176 (dev-only)
