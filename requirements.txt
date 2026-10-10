@@ -12,7 +12,7 @@ pydantic==2.13.5
 pydantic-settings==2.15.0
 
 # --- Intelligence core ---
-anthropic==0.42.0
+anthropic==1.11.0
 # Optional alternative analysis backends. Guarded imports: if either is absent
 # that provider is simply unavailable (graceful degradation).
 google-genai>=1.70.0,<2     # Google Gemini (modern genai.Client API); tested on 1.70.x
