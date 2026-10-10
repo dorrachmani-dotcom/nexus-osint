@@ -3,7 +3,7 @@
 # CVEs). fastapi 0.136.x pulls a patched starlette (>=1.0); jinja2 3.1.6 fixes
 # CVE-2025-27516; python-multipart 0.0.31 fixes the 2026 multipart DoS CVEs.
 fastapi==0.142.2
-uvicorn[standard]==0.48.0
+uvicorn[standard]==0.54.0
 jinja2==3.1.6
 python-multipart==0.0.31
 
