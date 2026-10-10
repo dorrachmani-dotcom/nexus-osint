@@ -6,14 +6,11 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Changed
-- Code layout: `nexus/web/app.py` (about 4,800 lines) split into per-domain
-  FastAPI routers under `nexus/web/routers/` (app.py is now about 250 lines),
-  and `nexus/storage.py` turned into the `nexus/storage/` package with
-  re-exports. No behaviour change; a test pins the full route table and the
-  matching order of overlapping routes.
-
 ### Added
+- **Connect Gmail** for the daily brief: OAuth 2.0 with PKCE and the
+  `gmail.send` scope only (no password, cannot read mail), using the
+  operator's own Desktop OAuth client; refresh token kept in `.env`;
+  Disconnect revokes it at Google.
 - **Internet Archive (Wayback Machine) preservation**: archive an item's source
   from the item drawer (Save Page Now, anonymous or authenticated SPN2 with
   optional `ARCHIVE_ORG_ACCESS_KEY` / `ARCHIVE_ORG_SECRET_KEY`), or find its
@@ -52,6 +49,11 @@ to [Semantic Versioning](https://semver.org/).
   SMTP host and the Resend / SendGrid APIs.
 
 ### Changed
+- Code layout: `nexus/web/app.py` (about 4,800 lines) split into per-domain
+  FastAPI routers under `nexus/web/routers/` (app.py is now about 250 lines),
+  and `nexus/storage.py` turned into the `nexus/storage/` package with
+  re-exports. No behaviour change; a test pins the full route table and the
+  matching order of overlapping routes.
 - The default `AI_PROVIDER` is now `auto` (was `anthropic`). Explicit choices keep
   working; unknown values fall back to `auto`.
 - Documentation reorganized: the feature catalogue moved to `docs/FEATURES.md`,

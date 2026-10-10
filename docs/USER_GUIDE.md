@@ -153,7 +153,24 @@ anything off your machine.
 
 1. Open **Settings** and scroll to **Daily email brief (by Sherlock)**.
 2. **Step 1:** choose how to send:
-   - **Gmail** — needs an *App Password*, never your normal password:
+   - **Gmail (connect, no password)** — recommended. You approve *send-only*
+     access on Google's own screen; Nexus never sees your password and cannot
+     read your mail. One-time setup (about 5 minutes):
+     1. At <https://console.cloud.google.com> create a project and enable the
+        **Gmail API**.
+     2. In **Google Auth Platform**, fill in **Branding**, set **Audience** to
+        *External* and add yourself as a test user.
+     3. Under **Clients**, create an OAuth client of type **Desktop app** and
+        paste its client ID and secret in Step 2, then **Save**.
+     4. Click **Connect Gmail** and approve *Send email on your behalf*.
+     5. While the project is in *Testing*, Google expires the permission after
+        7 days. Click **Publish app** under **Audience** to keep it; Google then
+        shows an "unverified app" notice, which is expected for an app you set
+        up for yourself.
+     **Disconnect** revokes the permission at Google and deletes it locally;
+     you can also revoke it any time at <https://myaccount.google.com/permissions>.
+   - **Gmail (App Password)** — the alternative without Google Cloud; needs an
+     *App Password*, never your normal password:
      1. Turn on 2-Step Verification at <https://myaccount.google.com/security>
         (app passwords require it).
      2. Open <https://myaccount.google.com/apppasswords>, type a name such as

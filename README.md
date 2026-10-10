@@ -42,8 +42,9 @@ one SQLite file you own, and every outbound connection can be audited.
   one that is ready): summary, translation, threat level, entity extraction, and
   0-100 relevance scores against your standing questions.
 - **Briefs you by email** (opt-in): once a day Sherlock writes a short analyst
-  brief of what is new in your open cases and sends it through Gmail, Outlook,
-  Resend, SendGrid or any SMTP server; per-case daily reports are saved locally
+  brief of what is new in your open cases and sends it through Gmail (send-only
+  OAuth with PKCE, no password stored), Outlook, Resend, SendGrid or any SMTP
+  server; per-case daily reports are saved locally
   as PDF/HTML and listed on each case's Reports tab.
 - **Organizes** work into cases with tracking terms, pinned items, notes,
   sub-cases, a daily brief, watchlists and a "Focus" view of the few items that

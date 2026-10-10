@@ -40,6 +40,7 @@ API_TIMEOUT = 20.0
 MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
 
 PROVIDERS: dict[str, dict] = {
+    "gmail_api": {"label": "Gmail (connect, no password)", "kind": "gmail_api"},
     "gmail": {"label": "Gmail", "kind": "smtp", "host": "smtp.gmail.com", "port": 587},
     "outlook": {
         "label": "Outlook / Microsoft 365", "kind": "smtp",
@@ -59,6 +60,8 @@ EMAIL_ENV_KEYS: frozenset[str] = frozenset(
     {
         "SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_FROM",
         "DIGEST_TO", "RESEND_API_KEY", "SENDGRID_API_KEY",
+        "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET",
+        "GOOGLE_OAUTH_REFRESH_TOKEN", "GOOGLE_OAUTH_EMAIL",
     }
 )
 
@@ -82,7 +85,10 @@ class EmailConfig:
 
     provider: str = ""
     label: str = ""
-    kind: str = ""  # "smtp" | "api" | ""
+    kind: str = ""  # "smtp" | "api" | "gmail_api" | ""
+    oauth_client_id: str = ""
+    oauth_client_secret: str = field(default="", repr=False)
+    oauth_refresh_token: str = field(default="", repr=False)
     host: str = ""
     port: int = 587
     username: str = ""
@@ -98,6 +104,16 @@ class EmailConfig:
         if not self.provider:
             return ["an email provider"]
         need: list[str] = []
+        if self.kind == "gmail_api":
+            if not self.oauth_client_id:
+                need.append("Google OAuth client ID")
+            if not self.oauth_client_secret:
+                need.append("Google OAuth client secret")
+            if not self.oauth_refresh_token:
+                need.append("a connected Gmail account (click “Connect Gmail”)")
+            if not self.recipients:
+                need.append("at least one recipient (DIGEST_TO)")
+            return need
         if self.kind == "smtp":
             if not self.host:
                 need.append("SMTP server (SMTP_HOST)")
@@ -133,11 +149,14 @@ class EmailConfig:
             self.provider, self.host, str(self.port), self.username.lower(),
             self.sender.lower(), ",".join(r.lower() for r in self.recipients),
             "pw" if self.password else "", "key" if self.api_key else "",
+            self.oauth_client_id, "tok" if self.oauth_refresh_token else "",
         ]
         return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()[:32]
 
 
 def _infer_provider(settings) -> str:
+    if getattr(settings, "google_oauth_refresh_token", None):
+        return "gmail_api"
     if (getattr(settings, "smtp_host", "") or "").strip():
         host = settings.smtp_host.strip().lower()
         if host == "smtp.gmail.com":
@@ -189,6 +208,12 @@ def resolve_email_config(settings) -> EmailConfig:
         provider=provider, label=spec["label"], kind=spec["kind"],
         username=username, sender=sender, recipients=recipients,
     )
+    if spec["kind"] == "gmail_api":
+        cfg.oauth_client_id = (getattr(settings, "google_oauth_client_id", "") or "").strip()
+        cfg.oauth_client_secret = (getattr(settings, "google_oauth_client_secret", None) or "").strip()
+        cfg.oauth_refresh_token = (getattr(settings, "google_oauth_refresh_token", None) or "").strip()
+        cfg.sender = (getattr(settings, "google_oauth_email", "") or "").strip()
+        return cfg
     if spec["kind"] == "smtp":
         if provider == "smtp":
             cfg.host = (getattr(settings, "smtp_host", "") or "").strip()
@@ -386,6 +411,17 @@ def _send_api(
     return SendResult(True, f"Sent via {cfg.label} to {len(cfg.recipients)} recipient(s).")
 
 
+def _send_gmail_api(cfg: EmailConfig, msg: EmailMessage) -> SendResult:
+    from nexus import google_oauth
+
+    ok, message = google_oauth.send_raw(
+        cfg.oauth_client_id, cfg.oauth_client_secret, cfg.oauth_refresh_token, msg.as_bytes()
+    )
+    if ok:
+        return SendResult(True, f"Sent via Gmail to {len(cfg.recipients)} recipient(s).")
+    return SendResult(False, message)
+
+
 def send_email(
     settings_or_cfg,
     subject: str,
@@ -415,7 +451,9 @@ def send_email(
                 continue
             kept.append(att)
             total += size
-        if cfg.kind == "smtp":
+        if cfg.kind == "gmail_api":
+            result = _send_gmail_api(cfg, _build_message(cfg, subject, text, html, kept))
+        elif cfg.kind == "smtp":
             result = _send_smtp(cfg, _build_message(cfg, subject, text, html, kept))
         else:
             result = _send_api(cfg, subject, text, html, kept)
