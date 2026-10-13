@@ -139,6 +139,25 @@ def _launch_chromium(pw):
     ) from last_exc
 
 
+def _guard_request(route) -> None:
+    """Playwright route handler: let only public http(s) hosts (and inline
+    data/blob URLs) through; abort everything else."""
+    from urllib.parse import urlsplit
+
+    from nexus.netguard import is_public_host
+
+    target = route.request.url
+    parts = urlsplit(target)
+    if parts.scheme in ("data", "blob"):
+        route.continue_()
+        return
+    if parts.scheme in ("http", "https") and parts.hostname and is_public_host(parts.hostname):
+        route.continue_()
+        return
+    logger.warning("Evidence capture blocked a request to a non-public address")
+    route.abort()
+
+
 def capture_evidence(item_id: int, url: str | None, settings: Settings | None = None) -> dict:
     """Screenshot `url`, store + hash it, and link it to `item_id`.
 
@@ -149,6 +168,7 @@ def capture_evidence(item_id: int, url: str | None, settings: Settings | None = 
     settings = settings or get_settings()
     if not url:
         return {"ok": False, "error": "item has no source URL to capture"}
+    url = str(url)
 
     safe, reason = _is_safe_capture_url(url)
     if not safe:
@@ -186,6 +206,10 @@ def capture_evidence(item_id: int, url: str | None, settings: Settings | None = 
                 # A navigation timeout is NOT fatal: many sites keep loading
                 # trackers forever, but the article is already on screen — so we
                 # press on and screenshot whatever rendered.
+                # SSRF guard for the WHOLE page, not just the first URL: a hostile
+                # page (or a redirect) must not make this browser load a loopback
+                # or private-network address and capture it in the screenshot.
+                page.route("**/*", _guard_request)
                 try:
                     page.goto(url, timeout=_NAV_TIMEOUT_MS, wait_until="domcontentloaded")
                 except Exception as nav_exc:

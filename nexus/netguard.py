@@ -21,7 +21,12 @@ from __future__ import annotations
 
 import ipaddress
 import socket
-from urllib.parse import urlsplit
+from functools import lru_cache
+from urllib.parse import urljoin, urlsplit
+
+import httpx
+
+_MAX_REDIRECTS = 5
 
 
 def safe_http_url(url: str) -> tuple[bool, str]:
@@ -81,3 +86,34 @@ def safe_http_url(url: str) -> tuple[bool, str]:
         return True, ""
     except Exception as exc:  # fail closed on anything unexpected
         return False, f"URL safety check failed: {exc}"
+
+
+def safe_get(url: str, *, timeout: float = 20.0, headers: dict | None = None,
+             max_redirects: int = _MAX_REDIRECTS) -> httpx.Response:
+    """GET an untrusted URL, re-checking EVERY redirect hop with the SSRF guard.
+
+    ``follow_redirects=True`` would let a public URL bounce the request to
+    ``http://127.0.0.1/...`` or a private LAN host after the first check passed.
+    Here redirects are followed by hand and each new target must pass
+    ``safe_http_url`` too. Raises ``ValueError`` when a hop is refused and the
+    usual httpx errors on network failure.
+    """
+    current = url
+    with httpx.Client(timeout=timeout, follow_redirects=False) as client:
+        for _ in range(max_redirects + 1):
+            ok, reason = safe_http_url(current)
+            if not ok:
+                raise ValueError(reason)
+            resp = client.get(current, headers=headers)
+            if resp.is_redirect and resp.headers.get("location"):
+                current = urljoin(str(resp.url), resp.headers["location"])
+                continue
+            return resp
+    raise ValueError("too many redirects")
+
+
+@lru_cache(maxsize=512)
+def is_public_host(host: str) -> bool:
+    """Cached host-level verdict for request interception (e.g. the evidence
+    browser), where every sub-resource of a page needs a quick check."""
+    return safe_http_url(f"http://{host}/")[0]

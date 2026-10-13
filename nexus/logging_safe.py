@@ -66,8 +66,6 @@ class SecretRedactingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             secrets = _secret_values()
-            if not secrets:
-                return True
 
             def scrub(text: str) -> str:
                 for secret in secrets:
@@ -76,8 +74,10 @@ class SecretRedactingFilter(logging.Filter):
                 return text
 
             # 1) The message itself (folding args in so they're scrubbed too).
+            # Line breaks are escaped so collected text (feed titles, URLs) can
+            # never forge extra log lines. Tracebacks below keep their newlines.
             message = record.getMessage()
-            redacted = scrub(message)
+            redacted = scrub(message).replace("\r", "\\r").replace("\n", "\\n")
             if redacted != message:
                 record.msg = redacted
                 record.args = ()

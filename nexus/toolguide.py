@@ -150,7 +150,9 @@ def detect_identifier_type(value: str) -> str | None:
 
     Order matters: the most specific shapes win. A bare token (no @, no dot, no
     URL scheme) is treated as a username only by the caller's discretion."""
-    v = (value or "").strip()
+    # Identifiers are short; bounding the input keeps every pattern below linear
+    # even on hostile text (no polynomial backtracking on very long strings).
+    v = (value or "").strip()[:320]
     if not v:
         return None
     if _RE_URL.match(v):

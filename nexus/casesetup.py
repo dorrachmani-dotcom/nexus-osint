@@ -45,7 +45,8 @@ def _split_name(name: str) -> list[str]:
         seen.add(key)
         out.append(term)
 
-    for part in _SPLIT.split(name):
+    # Case names are short; the cap keeps the split regex linear on hostile input.
+    for part in _SPLIT.split(name[:200]):
         _add(part)
     # Also keep the full name as a phrase when it's short and not already covered.
     if len(name) <= 40 and len(out) != 1:
