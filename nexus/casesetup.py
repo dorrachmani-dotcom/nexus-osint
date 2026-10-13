@@ -17,14 +17,15 @@ import re
 
 logger = logging.getLogger("nexus.casesetup")
 
-# Split a case name into search-worthy parts on common separators.
-_SPLIT = re.compile(r"\s*(?:&|\+|,|/|\||\band\b|\bvs\.?\b|–|—|-)\s*", re.IGNORECASE)  # noqa: RUF001 (dashes are intentional separators)
+# Split a case name into search-worthy parts on common separators. No
+# surrounding \s* in the pattern (that made it polynomial); _add() strips parts.
+_SPLIT = re.compile(r"&|\+|,|/|\||\band\b|\bvs\.?\b|–|—|-", re.IGNORECASE)  # noqa: RUF001 (dashes are intentional separators)
 _STOP = {"the", "a", "an", "of", "on", "in", "for", "and", "case", "investigation", "watch"}
 
 
 def _split_name(name: str) -> list[str]:
     """Meaningful tracking words from a case name. Keeps the parts (e.g.
-    'Messi & World Cup' -> ['Messi', 'World Cup']) and the whole name if short."""
+    'Acme & Globex' -> ['Acme', 'Globex']) and the whole name if short."""
     name = (name or "").strip()
     if not name:
         return []

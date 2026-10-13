@@ -20,8 +20,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-
-import httpx
+from html.parser import HTMLParser
 
 from nexus.analysis.providers import get_provider
 from nexus.config import Settings, get_settings
@@ -74,23 +73,53 @@ the API key itself anywhere in the output."""
 
 def _fetch_docs(url: str) -> str:
     """Fetch documentation text from a URL, guarded against SSRF. Best-effort."""
+    from nexus.netguard import safe_get
+
     safe, reason = _is_safe_capture_url(url)
     if not safe:
         logger.warning("Refusing to fetch docs URL: %s", reason)
         return ""
     try:
-        resp = httpx.get(url, timeout=20.0, follow_redirects=True)
+        # Every redirect hop is re-checked, so a public URL cannot bounce the
+        # request to a loopback or private-network address.
+        resp = safe_get(url, timeout=20.0)
         resp.raise_for_status()
         text = resp.text or ""
     except Exception as exc:
-        logger.warning("Could not fetch docs URL %s: %s", url, exc)
+        logger.warning("Could not fetch docs URL (%s)", type(exc).__name__)
         return ""
-    # Strip tags crudely so the model sees mostly text, not markup.
-    text = re.sub(r"<script\b.*?</script>", " ", text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"<style\b.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text[:_DOCS_MAX_CHARS]
+    return _html_to_text(text)[:_DOCS_MAX_CHARS]
+
+
+class _TextExtractor(HTMLParser):
+    """Collects visible text, skipping <script> and <style> content entirely."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._skip = 0
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag in ("script", "style"):
+            self._skip += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("script", "style") and self._skip:
+            self._skip -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip:
+            self.parts.append(data)
+
+
+def _html_to_text(html: str) -> str:
+    parser = _TextExtractor()
+    try:
+        parser.feed(html)
+        parser.close()
+    except Exception:  # malformed markup: keep whatever text was collected
+        logger.debug("HTML to text conversion stopped early", exc_info=True)
+    return " ".join(" ".join(parser.parts).split())
 
 
 def _coerce_config(data: dict) -> dict:
