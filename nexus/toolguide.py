@@ -139,7 +139,9 @@ _PIVOT_TOOLS: dict[str, list[str]] = {
 }
 
 _RE_URL = re.compile(r"^https?://", re.IGNORECASE)
-_RE_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# Dot-separated labels that cannot contain a dot, so the engine never has two
+# ways to match the same characters (linear time, no backtracking blow-up).
+_RE_EMAIL = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 _RE_DOMAIN = re.compile(r"^(?!-)[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63})+$")
 _RE_PHONE = re.compile(r"^\+?[0-9][0-9\s().\-]{6,}$")
 _RE_HANDLE = re.compile(r"^@?[A-Za-z0-9_.]{2,40}$")
