@@ -6,6 +6,15 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Default AI models favour cost, since every analysed item is one call:
+  Claude `claude-haiku-4-5`, Gemini `gemini-3.5-flash-lite`, OpenAI
+  `gpt-5.4-nano`, Grok `grok-4.3`. Any model can still be set per provider.
+
+### Added
+- Gmail setup: upload the OAuth client file from Google ("Download JSON")
+  instead of copying the client ID and secret by hand.
+
 ## [1.0.0] - 2026-10-10
 
 First tagged release.

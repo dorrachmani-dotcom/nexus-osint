@@ -435,7 +435,7 @@ def get_provider(settings: Settings) -> LLMProvider | None:
         if provider == "grok":
             return OpenAICompatibleProvider(
                 settings.xai_base_url or "https://api.x.ai/v1",
-                settings.grok_model or "grok-4.6",
+                settings.grok_model or "grok-4.3",
                 settings.xai_api_key,
                 name="grok", timeout=60.0,
             )

@@ -119,9 +119,9 @@ button; then just select "Local model (Ollama)" in Settings.)*
 4. In the AI-provider box choose **xAI (Grok)**, or leave **Automatic** (Grok is
    used when no Gemini / OpenAI / Anthropic key is set).
 
-The default model is `grok-4.6`, xAI's current flagship (October 2026). To use
-another one, for example a cheaper model for high-volume scans, set
-`GROK_MODEL` in `.env` to any id listed at docs.x.ai.
+The default model is `grok-4.3`, chosen for cost because every analysed item
+is one call. For higher quality set `GROK_MODEL=grok-4.6` (the flagship) or any
+other id listed at docs.x.ai.
 
 ### Using a local server (LM Studio, llama.cpp, vLLM, Jan, LocalAI)
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 
 from nexus.config import get_settings
@@ -191,6 +191,50 @@ def _google_redirect_uri(request: Request) -> str:
     # Google Desktop clients accept any loopback port, so the callback is simply
     # this local server's own address.
     return str(request.base_url).rstrip("/") + "/settings/email/google/callback"
+
+
+_CLIENT_JSON_MAX = 16 * 1024
+
+
+@router.post("/settings/email/google/client-json", response_class=HTMLResponse)
+async def settings_email_google_client_json(
+    request: Request, client_json: UploadFile = File(...)
+) -> HTMLResponse:
+    """Read the OAuth client file Google offers as "Download JSON".
+
+    The operator picks the file; only ``client_id`` and ``client_secret`` are
+    taken from it and written to .env (never the database, never shown back).
+    The upload itself is not stored.
+    """
+    import json
+
+    raw = await client_json.read(_CLIENT_JSON_MAX + 1)
+    bad = "That file doesn't look like a Google OAuth client file (Download JSON on a Desktop client)."
+    if len(raw) > _CLIENT_JSON_MAX:
+        return _render_email(request, email_ok=False, email_msg=bad)
+    try:
+        data = json.loads(raw.decode("utf-8-sig"))
+    except (UnicodeDecodeError, ValueError):
+        return _render_email(request, email_ok=False, email_msg=bad)
+    block = data.get("installed") if isinstance(data, dict) else None
+    if not isinstance(block, dict):
+        if isinstance(data, dict) and isinstance(data.get("web"), dict):
+            return _render_email(request, email_ok=False, email_msg=(
+                "This is a “Web application” client. Create a client of type “Desktop app” instead."))
+        return _render_email(request, email_ok=False, email_msg=bad)
+    client_id = str(block.get("client_id") or "").strip()
+    client_secret = str(block.get("client_secret") or "").strip()
+    if (not re.fullmatch(r"[A-Za-z0-9\-]{5,120}\.apps\.googleusercontent\.com", client_id)
+            or not re.fullmatch(r"[A-Za-z0-9_\-]{10,200}", client_secret)):
+        return _render_email(request, email_ok=False, email_msg=bad)
+
+    update_env({"GOOGLE_OAUTH_CLIENT_ID": client_id, "GOOGLE_OAUTH_CLIENT_SECRET": client_secret})
+    reload_settings()
+    with get_connection() as conn:
+        set_meta(conn, "email_provider", "gmail_api")
+        clear_email_verified(conn)
+    return _render_email(request, email_ok=True, email_msg=(
+        "Client file accepted. Add your address under “Send the brief to”, save, then click “Connect Gmail”."))
 
 
 @router.get("/settings/email/google/connect")
