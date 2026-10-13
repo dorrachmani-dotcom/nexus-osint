@@ -42,13 +42,13 @@ class Settings(BaseSettings):
     # Settings.AUTO_ORDER — so pasting any one key is enough to switch AI on.
     ai_provider: str = Field(default="auto")
     anthropic_api_key: str | None = Field(default=None)
-    claude_model: str = Field(default="claude-opus-4-7")
+    claude_model: str = Field(default="claude-haiku-4-5")
     # Google Gemini as an alternative backend (key stays in .env, OpSec).
     gemini_api_key: str | None = Field(default=None)
-    gemini_model: str = Field(default="gemini-3.5-flash")
+    gemini_model: str = Field(default="gemini-3.5-flash-lite")
     # OpenAI (ChatGPT) as an alternative backend (key stays in .env, OpSec).
     openai_api_key: str | None = Field(default=None)
-    openai_model: str = Field(default="gpt-4o-mini")
+    openai_model: str = Field(default="gpt-5.4-nano")
     # Local model via Ollama — runs entirely on this machine, so NO content ever
     # leaves it (the privacy-first choice for orgs that can't use cloud APIs).
     # No API key: it talks to a local Ollama server. Pick model + host below.
@@ -58,10 +58,10 @@ class Settings(BaseSettings):
     # offline, no key.
     ollama_model: str = Field(default="gemma4:e4b")
     # xAI (Grok) — an OpenAI-compatible cloud API (key stays in .env, OpSec).
-    # Default is xAI's current flagship (Oct 2026). Any id listed at
-    # docs.x.ai works; pick a cheaper one for high-volume scans.
+    # Default favours cost: every analysed item is one call. Any id listed at
+    # docs.x.ai works (e.g. grok-4.6, the flagship, for higher quality).
     xai_api_key: str | None = Field(default=None)
-    grok_model: str = Field(default="grok-4.6")
+    grok_model: str = Field(default="grok-4.3")
     xai_base_url: str = Field(default="https://api.x.ai/v1")
     # A local OpenAI-compatible server (LM Studio, llama.cpp server, vLLM, Jan,
     # LocalAI). Runs on this machine, so content never leaves it. The model name

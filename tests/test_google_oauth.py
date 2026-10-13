@@ -165,3 +165,36 @@ def test_callback_error_is_reported(web):
     r = client.get("/settings/email/google/callback?error=access_denied", follow_redirects=False)
     assert r.status_code == 303
     assert "access_denied" in client.get("/settings").text
+
+
+def _upload(client, payload: bytes):
+    return client.post("/settings/email/google/client-json",
+                       files={"client_json": ("client_secret.json", payload, "application/json")})
+
+
+def test_client_json_upload_fills_env(web):
+    import json as _json
+
+    client, env = web
+    fake = {"installed": {"client_id": "123-abc.apps.googleusercontent.com",
+                          "client_secret": "GOCSPX-fake-secret-for-tests",
+                          "redirect_uris": ["http://localhost"]}}
+    r = _upload(client, _json.dumps(fake).encode())
+    assert "Client file accepted" in r.text
+    text = env.read_text(encoding="utf-8")
+    assert "GOOGLE_OAUTH_CLIENT_ID=123-abc.apps.googleusercontent.com" in text
+    assert "GOOGLE_OAUTH_CLIENT_SECRET=" in text
+    assert "GOCSPX-fake-secret-for-tests" not in r.text  # never rendered back
+    assert "Connect Gmail" in client.get("/settings").text
+
+
+def test_client_json_upload_rejects_bad_files(web):
+    import json as _json
+
+    client, env = web
+    assert "doesn't look like" in _upload(client, b"not json").text.replace("&#39;", "'")
+    web_client = {"web": {"client_id": "1-a.apps.googleusercontent.com", "client_secret": "x" * 20}}
+    assert "Desktop app" in _upload(client, _json.dumps(web_client).encode()).text
+    big = b"{" + b" " * 20_000 + b"}"
+    assert "doesn't look like" in _upload(client, big).text.replace("&#39;", "'")
+    assert "GOOGLE_OAUTH_CLIENT_SECRET" not in env.read_text(encoding="utf-8")

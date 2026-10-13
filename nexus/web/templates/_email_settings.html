@@ -99,7 +99,7 @@
         <li>Open <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">console.cloud.google.com</a> and create a project (any name, e.g. "Nexus brief").</li>
         <li>Enable the <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">Gmail API</a> for that project.</li>
         <li>Open <span class="text-slate-300">Google Auth Platform &rarr; Branding</span>, fill in the app name and your email. Under <span class="text-slate-300">Audience</span> choose <span class="text-slate-300">External</span> and add yourself as a test user.</li>
-        <li>Under <span class="text-slate-300">Clients</span>, create an OAuth client of type <span class="text-slate-300">Desktop app</span>. Copy its <span class="text-slate-300">Client ID</span> and <span class="text-slate-300">Client secret</span> into the fields below and save.</li>
+        <li>Under <span class="text-slate-300">Clients</span>, create an OAuth client of type <span class="text-slate-300">Desktop app</span>. Click <span class="text-slate-300">Download JSON</span> and upload that file below (or copy its <span class="text-slate-300">Client ID</span> and <span class="text-slate-300">Client secret</span> into the fields and save).</li>
         <li>Click <span class="text-slate-300">Connect Gmail</span> and approve <span class="text-slate-300">"Send email on your behalf"</span>. Nexus can only send; it cannot read your mail.</li>
         <li><span class="text-amber-300">Stay connected:</span> while the project is in <span class="text-slate-300">Testing</span>, Google expires the permission after 7 days. Under <span class="text-slate-300">Audience</span> click <span class="text-slate-300">Publish app</span>; Google then shows an "unverified app" notice on the consent screen (normal for an app you set up for yourself) and the connection lasts.</li>
       </ol>
@@ -142,6 +142,23 @@
     {% endif %}
     <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-4 py-1.5">Save email settings</button>
   </form>
+
+  {% if email_provider == 'gmail_api' and not google_connected %}
+  <form hx-post="/settings/email/google/client-json" hx-encoding="multipart/form-data"
+        hx-target="#email-settings" hx-swap="outerHTML"
+        class="rounded border border-sky-900/60 bg-sky-950/20 p-3 space-y-2 text-xs">
+    <p class="text-slate-300"><span class="font-medium text-sky-300">Easiest:</span>
+      in Google Cloud, open your Desktop client and click <span class="text-slate-300">Download JSON</span>,
+      then pick that file here. Nexus reads the client ID and secret from it, so there is nothing to copy.</p>
+    <div class="flex flex-wrap items-center gap-2">
+      <input type="file" name="client_json" accept=".json,application/json" required
+             aria-label="Google OAuth client JSON file"
+             class="text-slate-300 file:mr-2 file:rounded file:border-0 file:bg-slate-800 file:px-3 file:py-1 file:text-slate-200" />
+      <button class="rounded bg-sky-600 hover:bg-sky-500 text-white font-medium px-3 py-1">Use this file</button>
+    </div>
+    <p class="text-slate-500">The file is read once and not kept; the values go to <span class="mono">.env</span> only.</p>
+  </form>
+  {% endif %}
 
   {% if email_provider == 'gmail_api' %}
   <div class="flex flex-wrap items-center gap-3 text-xs">

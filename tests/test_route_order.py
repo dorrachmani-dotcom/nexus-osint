@@ -162,6 +162,7 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
     ('POST', '/settings/email/provider'),
     ('POST', '/settings/email'),
     ('POST', '/settings/email/test'),
+    ('POST', '/settings/email/google/client-json'),
     ('GET', '/settings/email/google/connect'),
     ('GET', '/settings/email/google/callback'),
     ('POST', '/settings/email/google/disconnect'),
