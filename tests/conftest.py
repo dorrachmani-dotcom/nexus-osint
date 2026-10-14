@@ -10,6 +10,33 @@ from __future__ import annotations
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _isolate_env_file(tmp_path, monkeypatch):
+    """Every test reads and writes an EMPTY temp .env, never the developer's.
+
+    Without this, a test run on a machine with a real .env (API keys, a
+    connected Gmail account) would use those credentials, e.g. actually send
+    an email. CI has no .env, so only a local run would notice.
+    """
+    from nexus.config import Settings, get_settings
+
+    env = tmp_path / "isolated.env"
+    env.write_text("", encoding="utf-8")
+    monkeypatch.setitem(Settings.model_config, "env_file", str(env))
+    monkeypatch.setattr("nexus.envstore._env_path", lambda: env)
+    for var in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+                "XAI_API_KEY", "SERPAPI_KEY", "GOOGLE_OAUTH_REFRESH_TOKEN", "SMTP_PASSWORD",
+                "RESEND_API_KEY", "SENDGRID_API_KEY", "DIGEST_TO", "AI_PROVIDER"):
+        monkeypatch.delenv(var, raising=False)
+    # Same for data: a test that forgets temp_db gets an empty tmp database,
+    # never the developer's real data/nexus.db.
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "isolated.db"))
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def temp_db(tmp_path, monkeypatch):
     """Initialise a fresh SQLite schema in a tmp dir and yield get_connection.
