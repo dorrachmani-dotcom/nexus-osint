@@ -143,7 +143,14 @@
     <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-4 py-1.5">Save email settings</button>
   </form>
 
-  {% if email_provider == 'gmail_api' and not google_connected %}
+  {% set google_client_ready = google_client_id and secret_status.get('GOOGLE_OAUTH_CLIENT_SECRET') %}
+  {% if email_provider == 'gmail_api' and not google_connected and google_client_ready %}
+  <div class="rounded border border-emerald-900/60 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-300">
+    &#10003; Google client loaded. Next: type your address under “Send the brief to”, click
+    <span class="font-medium">Save email settings</span>, then <span class="font-medium">Connect Gmail</span>.
+  </div>
+  {% endif %}
+  {% if email_provider == 'gmail_api' and not google_connected and not google_client_ready %}
   <form hx-post="/settings/email/google/client-json" hx-encoding="multipart/form-data"
         hx-target="#email-settings" hx-swap="outerHTML"
         class="rounded border border-sky-900/60 bg-sky-950/20 p-3 space-y-2 text-xs">
