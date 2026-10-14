@@ -350,6 +350,8 @@ AVAILABLE ACTION OBJECTS
    {"tool": "add_case_question", "case": "<case title or \\"last\\">", "question": "<the question>"}
 13. Create a sub-case under a case (one level deep):
    {"tool": "create_subcase", "parent": "<case title or \\"last\\">", "name": "<sub-case title>"}
+14. Email the analyst a daily brief (written by you) of what is new in their open cases:
+   {"tool": "schedule_daily_brief", "time": "<HH:MM, 24h, optional, default 08:00>", "scan_first": true}
 
 ACTION GUIDELINES
 - For a request like "open a case on X and fill it and make me a PDF", emit, in order:
@@ -367,6 +369,11 @@ ACTION GUIDELINES
   "open a sub-case for X" / "break this into a part about X" -> create_subcase. When the
   analyst sets up a brand-new subject, prefer: create_case -> add_case_term (the words) ->
   optionally add_case_question, so the case immediately has a live feed.
+- "send me / email me a daily summary", "brief me every morning" -> schedule_daily_brief
+  (it only works once the analyst has connected and tested their email in Settings;
+  if it reports that, tell them so). For "open a case on X and email me daily",
+  emit: create_case -> add_case_term -> add_case_question (2-3 sharp questions) ->
+  schedule_daily_brief.
 - In "reply", briefly tell the analyst, in plain language, what you did
   (e.g. "I created the case 'Neymar & World Cup', added the matching items from the
   feed, and generated a PDF you can open from the link below.").
@@ -449,6 +456,8 @@ _ALLOWED_TOOLS = {
     "add_note", "capture_evidence",
     # Case-hub tools: a case owns its tracking words, questions and sub-cases.
     "add_case_term", "add_case_question", "create_subcase",
+    # Turns on the daily email brief (only after the email passed a test send).
+    "schedule_daily_brief",
 }
 _MAX_ACTIONS = 6          # hard cap on actions per turn (defensive)
 _MAX_ADD_ITEMS = 200      # hard cap on items pinned into a case in one action
@@ -826,6 +835,35 @@ def _do_add_case_question(conn: sqlite3.Connection, ctx: dict, spec: dict) -> di
         "type": "requirement",
         "label": f"Added the question to the case: “{q[:80]}”.",
         "url": f"/cases/{cid}?tab=questions",
+    }
+
+
+def _do_schedule_daily_brief(conn: sqlite3.Connection, spec: dict,
+                             settings: Settings) -> dict:
+    """Switch on the daily email brief. Same rule as the Settings page: only once
+    the email connection passed a test send, so Sherlock can never start mailing
+    an unverified address."""
+    from nexus.digest import parse_digest_time
+    from nexus.mailer import is_verified, resolve_email_config
+    from nexus.storage import set_meta
+
+    if not is_verified(conn, resolve_email_config(settings)):
+        return {
+            "type": "error",
+            "label": "Connect your email in Settings and send a test email first; then I can schedule the daily brief.",
+            "url": "/settings#email-settings",
+        }
+    h, m = parse_digest_time(str(spec.get("time") or "08:00"))
+    scan_first = spec.get("scan_first", True) not in (False, "false", "0", 0)
+    set_meta(conn, "digest_enabled", "1")
+    set_meta(conn, "digest_time", f"{h:02d}:{m:02d}")
+    set_meta(conn, "digest_scan_first", "1" if scan_first else "0")
+    conn.commit()
+    return {
+        "type": "schedule",
+        "label": f"Daily brief scheduled: I'll email you a summary every day at {h:02d}:{m:02d}"
+                 + (" after a fresh scan." if scan_first else "."),
+        "url": "/settings#email-settings",
     }
 
 
@@ -1323,6 +1361,19 @@ def act(
             logger.exception("Sherlock: deep research phase failed")
 
     current = _describe_current(conn, page)
+    # Let Sherlock know whether the daily email brief can be scheduled, so its
+    # reply neither hedges needlessly nor promises an email that cannot be sent.
+    try:
+        from nexus.mailer import is_verified, resolve_email_config
+
+        email_ready = is_verified(conn, resolve_email_config(settings))
+    except Exception:
+        logger.debug("Could not read the email status for Sherlock", exc_info=True)
+        email_ready = False
+    email_line = ("Email for the daily brief: connected and tested (schedule_daily_brief will work)."
+                  if email_ready else
+                  "Email for the daily brief: NOT set up yet (schedule_daily_brief will ask the "
+                  "analyst to connect it in Settings).")
 
     system_prompt = f"{PROJECT_GUIDE}\n\n{_BEHAVIOUR}\n\n{_ACTIONS_GUIDE}\n\n{_tools_reference()}"
     if cite:
@@ -1333,6 +1384,7 @@ def act(
         f"{data_ctx}\n\n"
         + (f"CURRENT CONTEXT (what the analyst is looking at right now):\n{current}\n\n"
            if current else "")
+        + f"APP STATUS:\n{email_line}\n\n"
         + (f"{history_block}\n\n" if history_block else "")
         + f"Analyst's request: {question}\n\n"
         "Respond ONLY with the single JSON object described in your instructions."
@@ -1415,6 +1467,8 @@ def act(
                     results.append(_do_add_case_question(conn, ctx, spec))
                 elif tool == "create_subcase":
                     results.append(_do_create_subcase(conn, ctx, spec))
+                elif tool == "schedule_daily_brief":
+                    results.append(_do_schedule_daily_brief(conn, spec, settings))
             except Exception:
                 logger.exception("Sherlock: action '%s' failed", tool)
                 results.append({"type": "error",

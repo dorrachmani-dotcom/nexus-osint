@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Sherlock can schedule the daily email brief ("open a case on X and email me a
+  summary every day"); allowed only once the email connection passed a test.
+
 ### Changed
 - Sherlock answers small talk (greetings, thanks, "who are you") locally with no
   model call, and refuses prompt-injection / jailbreak attempts and "who built
