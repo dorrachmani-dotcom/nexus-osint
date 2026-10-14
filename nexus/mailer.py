@@ -213,6 +213,9 @@ def resolve_email_config(settings) -> EmailConfig:
         cfg.oauth_client_secret = (getattr(settings, "google_oauth_client_secret", None) or "").strip()
         cfg.oauth_refresh_token = (getattr(settings, "google_oauth_refresh_token", None) or "").strip()
         cfg.sender = (getattr(settings, "google_oauth_email", "") or "").strip()
+        # No recipient set yet: send the brief to the connected account itself.
+        if not cfg.recipients and valid_address(cfg.sender):
+            cfg.recipients = [cfg.sender]
         return cfg
     if spec["kind"] == "smtp":
         if provider == "smtp":

@@ -269,3 +269,19 @@ def test_egress_allows_configured_email_host(monkeypatch):
         assert egress._configured_allow().get("api.sendgrid.com") == "Email (your SendGrid API)"
     finally:
         egress._allow_cache = None
+
+
+def test_gmail_api_defaults_recipient_to_connected_account():
+    from types import SimpleNamespace
+
+    from nexus.mailer import resolve_email_config
+
+    s = SimpleNamespace(
+        email_provider="gmail_api", google_oauth_client_id="c.apps.googleusercontent.com",
+        google_oauth_client_secret="s", google_oauth_refresh_token="t",
+        google_oauth_email="analyst@example.com", digest_to="",
+        smtp_username="", smtp_password=None, smtp_from="", smtp_host="", smtp_port="587",
+        resend_api_key=None, sendgrid_api_key=None,
+    )
+    cfg = resolve_email_config(s)
+    assert cfg.recipients == ["analyst@example.com"] and cfg.ready
