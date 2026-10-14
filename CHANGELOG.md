@@ -7,6 +7,9 @@ to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- Sherlock answers small talk (greetings, thanks, "who are you") locally with no
+  model call, and refuses prompt-injection / jailbreak attempts and "who built
+  you" questions before anything reaches the model.
 - Default AI models favour cost, since every analysed item is one call:
   Claude `claude-haiku-4-5`, Gemini `gemini-3.5-flash-lite`, OpenAI
   `gpt-5.4-nano`, Grok `grok-4.3`. Any model can still be set per provider.

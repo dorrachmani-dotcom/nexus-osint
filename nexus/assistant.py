@@ -30,6 +30,7 @@ import logging
 import sqlite3
 import urllib.parse
 
+from nexus.assistant_local import local_reply
 from nexus.config import Settings, get_settings
 from nexus.storage import (
     add_bookmark,
@@ -610,6 +611,10 @@ def answer(
     if not question:
         return {"ok": False, "answer": "", "provider": "off",
                 "error": "Please type a question."}
+
+    local = local_reply(question)
+    if local is not None:
+        return {"ok": True, "answer": local[1], "provider": "local", "error": ""}
 
     provider_name = settings.active_provider()
     if provider_name == "off":
@@ -1268,6 +1273,12 @@ def act(
     if not question:
         return {"ok": False, "answer": "", "provider": "off", "actions": [],
                 "error": "Please type a question."}
+
+    # Small talk and manipulation attempts never reach the model (no API cost).
+    local = local_reply(question)
+    if local is not None:
+        return {"ok": True, "answer": local[1], "provider": "local", "actions": [],
+                "error": ""}
 
     provider_name = settings.active_provider()
     if provider_name == "off":

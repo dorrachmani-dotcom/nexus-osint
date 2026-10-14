@@ -93,7 +93,7 @@ def test_project_guide_has_no_authorship_or_identity():
 
 def test_answer_off_provider_is_graceful(temp_db):
     with temp_db() as conn:
-        res = answer("hello", conn=conn, settings=_FakeSettings("off"))
+        res = answer("what is new in the feed?", conn=conn, settings=_FakeSettings("off"))
     assert res["ok"] is False
     assert res["provider"] == "off"
     assert "Settings" in res["error"]  # points the user at how to fix it
@@ -148,7 +148,7 @@ def test_answer_handles_provider_exception(temp_db, monkeypatch):
         "nexus.analysis.providers.get_provider", lambda settings: _Boom()
     )
     with temp_db() as conn:
-        res = answer("hi", conn=conn, settings=_FakeSettings("ollama"))
+        res = answer("what is new in the feed?", conn=conn, settings=_FakeSettings("ollama"))
     assert res["ok"] is False
     assert res["answer"] == ""
     assert res["error"]  # a friendly message, not a traceback
@@ -159,7 +159,7 @@ def test_answer_provider_unavailable(temp_db, monkeypatch):
         "nexus.analysis.providers.get_provider", lambda settings: None
     )
     with temp_db() as conn:
-        res = answer("hi", conn=conn, settings=_FakeSettings("anthropic"))
+        res = answer("what is new in the feed?", conn=conn, settings=_FakeSettings("anthropic"))
     assert res["ok"] is False
     assert "could not be started" in res["error"]
 
@@ -223,7 +223,7 @@ def test_normal_mode_skips_the_research_loop(temp_db, monkeypatch):
     fake = _FakeDeepProvider(['{"reply":"quick","actions":[]}'])
     monkeypatch.setattr("nexus.analysis.providers.get_provider", lambda settings: fake)
     with temp_db() as conn:
-        res = A.act("hi", conn=conn, settings=_FakeSettings("gemini"))
+        res = A.act("what is new in the feed?", conn=conn, settings=_FakeSettings("gemini"))
     assert res["ok"] is True and fake.calls == 1
 
 
@@ -369,7 +369,7 @@ def test_act_open_page_protocol_reaches_model(temp_db, monkeypatch):
     fake = _FakePlanProvider({"reply": "ok", "actions": []})
     monkeypatch.setattr("nexus.analysis.providers.get_provider", lambda settings: fake)
     with temp_db() as conn:
-        act("hello", conn=conn, settings=_FakeSettings("gemini"))
+        act("what is new in the feed?", conn=conn, settings=_FakeSettings("gemini"))
     # The open_page action + the proactive-guidance instructions reach the model.
     assert "open_page" in fake.system_prompt
     assert "GUIDING THE ANALYST TO A PAGE" in fake.system_prompt
@@ -571,7 +571,7 @@ def test_expanded_actions_protocol_reaches_model(temp_db, monkeypatch):
     fake = _FakePlanProvider({"reply": "ok", "actions": []})
     monkeypatch.setattr("nexus.analysis.providers.get_provider", lambda settings: fake)
     with temp_db() as conn:
-        act("hi", conn=conn, settings=_FakeSettings("gemini"))
+        act("what is new in the feed?", conn=conn, settings=_FakeSettings("gemini"))
     sp = fake.system_prompt
     for tool in ("run_scan", "search_feed", "add_watchlist", "add_requirement",
                  "add_note", "capture_evidence"):
@@ -633,6 +633,6 @@ def test_act_without_page_has_no_context_block(temp_db, monkeypatch):
     fake = _CaptureProvider({"reply": "ok", "actions": []})
     monkeypatch.setattr("nexus.analysis.providers.get_provider", lambda settings: fake)
     with temp_db() as conn:
-        act("hello", conn=conn, settings=_FakeSettings("gemini"))
+        act("what is new in the feed?", conn=conn, settings=_FakeSettings("gemini"))
     # No page and no active case -> the optional context block is omitted.
     assert "CURRENT CONTEXT" not in fake.user_prompt
