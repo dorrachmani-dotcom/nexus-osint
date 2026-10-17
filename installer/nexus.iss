@@ -14,7 +14,7 @@
 ; is created later under %LOCALAPPDATA%\Nexus by the app itself, never here.
 
 #define AppName "Nexus"
-#define AppVersion "1.0.0"
+#define AppVersion "1.1.0"
 #define AppPublisher "Nexus OSINT"
 #define AppExeName "Nexus.exe"
 

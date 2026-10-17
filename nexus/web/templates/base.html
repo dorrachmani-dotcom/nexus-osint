@@ -524,7 +524,10 @@
           var row;
           if (a.url) {
             row = document.createElement('a');
-            row.href = a.url; row.target = '_blank'; row.rel = 'noopener';
+            row.href = a.url;
+            // Pages inside the app open in the same window (the chat panel and
+            // its history come along); anything else opens in a new tab.
+            if (!/^\/(?!\/)/.test(a.url)) { row.target = '_blank'; row.rel = 'noopener'; }
             row.className = 'block rounded-md border border-slate-700 bg-slate-800/70 ' +
               'hover:bg-slate-700 px-3 py-2 text-xs text-slate-100 no-underline';
           } else {
