@@ -6,9 +6,14 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-17
+
 ### Added
 - Sherlock can schedule the daily email brief ("open a case on X and email me a
   summary every day"); allowed only once the email connection passed a test.
+- Gmail setup: upload the OAuth client file from Google ("Download JSON")
+  instead of copying the client ID and secret by hand.
+- A 65-second demo video at the top of the README.
 
 ### Changed
 - Sherlock answers small talk (greetings, thanks, "who are you") locally with no
@@ -17,10 +22,18 @@ to [Semantic Versioning](https://semver.org/).
 - Default AI models favour cost, since every analysed item is one call:
   Claude `claude-haiku-4-5`, Gemini `gemini-3.5-flash-lite`, OpenAI
   `gpt-5.4-nano`, Grok `grok-4.3`. Any model can still be set per provider.
+- The daily brief's recipient defaults to the connected Gmail account.
+- Every test runs against an empty, temporary `.env` and database, so the suite
+  can never read the developer's real keys or send real email.
 
-### Added
-- Gmail setup: upload the OAuth client file from Google ("Download JSON")
-  instead of copying the client ID and secret by hand.
+### Fixed
+- Security: the issues raised by the first CodeQL scan (server-side fetches
+  re-validate every redirect hop, the evidence browser blocks private
+  addresses, log lines escape CR/LF) and two regular expressions made linear.
+- Sherlock's links to pages inside the app open in the same window instead of
+  a new tab.
+- The Gmail settings card shows clearly that the Google client file was
+  accepted.
 
 ## [1.0.0] - 2026-10-10
 

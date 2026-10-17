@@ -12,6 +12,12 @@
 
 </div>
 
+<p align="center"><b>65-second demo:</b> one sentence to Sherlock opens a full investigation, then the same workflow by hand.</p>
+
+https://github.com/user-attachments/assets/96bbbcde-d029-4d05-930b-a3b99b4b0d40
+
+<p align="center"><sub>The demo runs on live public sources; names of private individuals are blurred.</sub></p>
+
 <p align="center">
   <img src="docs/media/feed.png" alt="The Nexus-OSINT analyst feed: AI-summarised items with threat level, extracted entities and case membership" width="100%">
 </p>
