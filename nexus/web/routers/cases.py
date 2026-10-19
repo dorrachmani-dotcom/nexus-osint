@@ -28,6 +28,7 @@ from nexus.storage import (
     case_terms_map,
     case_timeline,
     case_unread_count,
+    count_matching_items,
     create_case,
     delete_case,
     delete_note,
@@ -54,18 +55,25 @@ logger = logging.getLogger("nexus")
 router = APIRouter()
 
 
+def _board_rows(conn) -> list[dict]:
+    """Top-level cases for the board, each with its tracking words, the
+    "new since last visit" badge and how many items its words have collected."""
+    rows = list_cases(conn, parent_id=None)  # top-level only; sub-cases nest inside
+    # Required terms only (alert words are passive, don't inflate the counts).
+    terms_by_case = case_terms_map(conn, [c["id"] for c in rows], kind="required")
+    for c in rows:
+        words = terms_by_case.get(c["id"], [])
+        c["terms_preview"] = words
+        c["new_count"] = case_new_count(conn, c["id"], terms=words)
+        c["collected_count"] = count_matching_items(conn, terms=words) if words else 0
+    return rows
+
+
 @router.get("/cases", response_class=HTMLResponse)
 def cases(request: Request) -> HTMLResponse:
     settings = get_settings()
     with get_connection() as conn:
-        rows = list_cases(conn, parent_id=None)  # top-level only; sub-cases nest inside
-        # "New since last visit" badge + the tracking words that drive each case.
-        # Fetch required terms only (alert words are passive, don't inflate badge).
-        terms_by_case = case_terms_map(conn, [c["id"] for c in rows], kind="required")
-        for c in rows:
-            words = terms_by_case.get(c["id"], [])
-            c["terms_preview"] = words
-            c["new_count"] = case_new_count(conn, c["id"], terms=words)
+        rows = _board_rows(conn)
         active = get_active_case(conn)
     return TEMPLATES.TemplateResponse(
         request,
@@ -98,7 +106,7 @@ def cases_create(
             conn, cid, name.strip(), (description or "").strip(),
             settings=get_settings(), brief=brief,
         )
-        rows = list_cases(conn, parent_id=None)
+        rows = _board_rows(conn)
         active = get_active_case(conn)
     return TEMPLATES.TemplateResponse(
         request, "_case_list.html", {"cases": rows, "active_case": active}
@@ -110,7 +118,7 @@ def cases_set_active(request: Request, case_id: int = Form(...)) -> HTMLResponse
     """Set (or clear, with case_id=0) the analyst's current working case."""
     with get_connection() as conn:
         set_active_case(conn, case_id if case_id else None)
-        rows = list_cases(conn, parent_id=None)
+        rows = _board_rows(conn)
         active = get_active_case(conn)
     return TEMPLATES.TemplateResponse(
         request, "_case_list.html", {"cases": rows, "active_case": active}
@@ -132,7 +140,7 @@ def cases_update(
             conn, case_id, name=name, description=description,
             status=status, priority=priority,
         )
-        rows = list_cases(conn, parent_id=None)
+        rows = _board_rows(conn)
         active = get_active_case(conn)
     return TEMPLATES.TemplateResponse(
         request, "_case_list.html", {"cases": rows, "active_case": active}
@@ -161,7 +169,7 @@ def cases_reopen(case_id: int):
 def cases_delete(request: Request, case_id: int) -> HTMLResponse:
     with get_connection() as conn:
         delete_case(conn, case_id)
-        rows = list_cases(conn, parent_id=None)
+        rows = _board_rows(conn)
         active = get_active_case(conn)
     return TEMPLATES.TemplateResponse(
         request, "_case_list.html", {"cases": rows, "active_case": active}

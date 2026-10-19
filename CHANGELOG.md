@@ -6,6 +6,18 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+
+### Changed
+- Header: the row of ~25 source chips is now one "N/M sources" control that
+  opens a list with plain names and what each source needs.
+- The scan action is called "Scan now" everywhere.
+- Feed cards show three actions (Open, Pin to case, Dismiss); the rest moved
+  into a "more" menu. "Single source" reads "1 source", the "aggregator" badge
+  is gone, and a body line that only repeats the headline is hidden.
+- Item details: content first, one close button, Internet Archive below.
+- Case cards say "N collected · M pinned".
+- Settings lists the Gemini key first (recommended).
+
 ## [1.1.0] - 2026-10-17
 
 ### Added

@@ -16,13 +16,15 @@
     {# Where it came from / which collector (API/SRC) #}
     <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">{{ it.source }}</span>
 
-    {# Source-reliability tier #}
+    {# Source-reliability tier. "aggregator" is the common, unremarkable case
+       (a news aggregator relaying an outlet), so it is not shown as a badge. #}
+    {% if rel != 'aggregator' %}
     <span class="px-1.5 py-0.5 rounded border
       {% if rel == 'official' %}bg-emerald-950 text-emerald-300 border-emerald-800
       {% elif rel == 'social' %}bg-sky-950 text-sky-300 border-sky-800
-      {% elif rel == 'aggregator' %}bg-slate-800 text-slate-300 border-slate-700
       {% else %}bg-amber-950/40 text-amber-300 border-amber-800{% endif %}"
       title="Source reliability (heuristic)">{{ rel }}</span>
+    {% endif %}
 
     {% if threat != 'none' %}
     <span class="px-1.5 py-0.5 rounded
@@ -59,7 +61,7 @@
       &#10003; Confirmed by {{ it.source_count }} sources</span>
     {% else %}
     <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700"
-          title="Only one source carries this so far — corroborate before trusting">Single source</span>
+          title="Only one source carries this so far — corroborate before trusting">1 source</span>
     {% endif %}
 
     {# Evidence already captured #}
@@ -82,7 +84,7 @@
      content (which is English when no translation was needed). The original-
      language text is always kept accessible, but demoted behind a disclosure so
      the feed reads in English at a glance. --- #}
-  {% if it.summary %}
+  {% if it.summary and not (it.summary is redundant_with(it.title)) %}
     {# AI summary is English and answers the intelligence questions. #}
     <p class="mt-1 text-sm text-slate-300">{{ it.summary }}</p>
     {% if it.translation %}
@@ -92,7 +94,7 @@
       <summary class="cursor-pointer text-[11px] text-slate-500 hover:text-slate-300 list-none">Show original{% if it.language %} [{{ it.language }}]{% endif %}</summary>
       <p class="mt-1 text-xs text-slate-500">{{ it.content[:320] }}{% if it.content|length > 320 %}&hellip;{% endif %}</p>
     </details>
-  {% elif it.translation %}
+  {% elif it.translation and not (it.translation is redundant_with(it.title)) %}
     {# No AI summary, but we have an English rendering — show it as PRIMARY and
        keep the original one click away. #}
     <p class="mt-1 text-sm text-slate-200">{{ it.translation }}</p>
@@ -100,9 +102,10 @@
       <summary class="cursor-pointer text-[11px] text-slate-500 hover:text-slate-300 list-none">Show original{% if it.language %} [{{ it.language }}]{% endif %}</summary>
       <p class="mt-1 text-xs text-slate-500">{{ it.content[:320] }}{% if it.content|length > 320 %}&hellip;{% endif %}</p>
     </details>
-  {% else %}
+  {% elif not (it.content is redundant_with(it.title)) %}
     {# No summary, no translation: the content itself is the primary text (an
-       English item, or one awaiting translation). #}
+       English item, or one awaiting translation). Hidden when it only repeats
+       the title (typical for news-aggregator items). #}
     <p class="mt-1 text-sm text-slate-300">{{ it.content[:320] }}{% if it.content|length > 320 %}&hellip;{% endif %}</p>
   {% endif %}
 
@@ -199,135 +202,137 @@
         class="text-sky-400 hover:text-sky-300" title="{{ it.url }}">&#128279; {{ it.display_url or 'View source' }}</a>{% endif %}
     <span class="flex-1"></span>
 
-    {# Read / unread toggle #}
-    {% if it.is_read %}
-    <button hx-post="/items/{{ it.id }}/unread" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
-      class="text-slate-400 hover:text-emerald-400" title="Mark unread">&#9711; Unread</button>
-    {% else %}
-    <button hx-post="/items/{{ it.id }}/read" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
-      class="text-slate-400 hover:text-emerald-400" title="Mark read">&#10003; Read</button>
+    {# Primary actions stay visible: Open (details), Pin to case, Dismiss.
+       Everything else lives in the "more" menu. Keyboard shortcuts (r/b/v/p/d)
+       still find these buttons by selector, hidden or not. #}
+    <button hx-get="/items/{{ it.id }}/detail"
+      hx-target="#item-drawer-content" hx-swap="innerHTML"
+      class="text-slate-300 hover:text-sky-400" title="Open the full item">&#8599; Open</button>
+
+    {% set _incase = it.cases | map(attribute='id') | list %}
+    {% if current_case %}
+      {% if current_case.id in _incase %}
+      <span class="text-emerald-300" title="Already pinned to this case">&#128204; Pinned</span>
+      {% else %}
+      <button hx-post="/cases/{{ current_case.id }}/items/{{ it.id }}/add"
+        hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+        hx-vals='{"context_case_id": "{{ current_case.id }}"}'
+        class="text-slate-300 hover:text-amber-300"
+        title="Pin this item into the case you're working in">&#128204; Pin to this case</button>
+      {% endif %}
+    {% elif active_case and active_case.id not in _incase %}
+    {# Active-case one-click pin: files the item straight into the working case. #}
+    <button hx-post="/cases/{{ active_case.id }}/items/{{ it.id }}/add"
+      hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+      class="text-slate-300 hover:text-amber-300"
+      title="Pin to active case: {{ active_case.name }}">&#128204; Pin to {{ active_case.name }}</button>
     {% endif %}
 
     {# Dismiss / restore — removes the item from the default feed view #}
     {% if it.dismissed %}
     <button hx-post="/items/{{ it.id }}/undismiss" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
       {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
-      class="text-slate-600 hover:text-slate-300" title="Restore to feed">&#8635; Restore</button>
+      class="text-slate-400 hover:text-slate-200" title="Restore to feed">&#8635; Restore</button>
     {% else %}
     <button hx-post="/items/{{ it.id }}/dismiss" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
       {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
       class="text-slate-400 hover:text-rose-400" title="Not relevant — hide from feed">&#10005; Dismiss</button>
     {% endif %}
 
-    {# Add-to-list menu (native disclosure, no JS needed) #}
-    <details class="relative">
-      <summary class="cursor-pointer text-slate-400 hover:text-amber-400 list-none">&#9733; List</summary>
-      <div class="absolute right-0 z-10 mt-1 w-52 rounded border border-slate-700 bg-slate-900 p-2 shadow-xl">
-        {% if all_lists %}
-        <div class="space-y-1">
-          {% set member_ids = it.lists | map(attribute='id') | list %}
-          {% for l in all_lists %}
-          {% if l.id in member_ids %}
-          <button hx-post="/lists/{{ l.id }}/items/{{ it.id }}/remove"
-            hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-            {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
-            class="block w-full text-left px-2 py-1 rounded text-emerald-300 hover:bg-slate-800">&#10003; {{ l.name }}</button>
-          {% else %}
-          <button hx-post="/lists/{{ l.id }}/items/{{ it.id }}/add"
-            hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-            {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
-            class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ l.name }}</button>
-          {% endif %}
-          {% endfor %}
-        </div>
-        <div class="my-2 border-t border-slate-800"></div>
+    {# "More" menu (native disclosure, no JS needed). #}
+    <details class="relative item-more">
+      <summary class="cursor-pointer list-none rounded px-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800"
+               title="More actions" aria-label="More actions">&#8943;</summary>
+      <div class="absolute right-0 z-10 mt-1 w-60 rounded border border-slate-700 bg-slate-900 p-1.5 shadow-xl">
+        {% if it.is_read %}
+        <button hx-post="/items/{{ it.id }}/unread" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+          {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800" title="Mark unread">&#9711; Mark unread</button>
+        {% else %}
+        <button hx-post="/items/{{ it.id }}/read" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+          {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800" title="Mark read">&#10003; Mark read</button>
         {% endif %}
-        <form hx-post="/lists/quick-add/{{ it.id }}" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-          class="flex gap-1">
-          {% if current_case %}<input type="hidden" name="case_id" value="{{ current_case.id }}" />{% endif %}
-          <input name="name" placeholder="New list…" maxlength="60"
-            class="flex-1 min-w-0 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-slate-200 placeholder-slate-500" />
-          <button type="submit" class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1 font-medium">Add</button>
-        </form>
+
+        {% if it.is_bookmarked %}
+        <button hx-post="/items/{{ it.id }}/unbookmark" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+          {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+          class="block w-full text-left px-2 py-1 rounded text-amber-400 hover:bg-slate-800" title="Remove bookmark">&#9733; Bookmarked (remove)</button>
+        {% else %}
+        <button hx-post="/items/{{ it.id }}/bookmark" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+          {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#9734; Bookmark</button>
+        {% endif %}
+
+        <button hx-post="/items/{{ it.id }}/evidence" hx-swap="outerHTML"
+          hx-indicator="#ev-{{ it.id }}"
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800"
+          title="Archive a screenshot of the page in the Evidence Vault">&#128247; Capture evidence</button>
+
+        {# Add-to-list submenu #}
+        <details class="mt-1 border-t border-slate-800 pt-1">
+          <summary class="cursor-pointer list-none px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#9733; Add to a list&hellip;</summary>
+          <div class="px-1 pb-1">
+            {% if all_lists %}
+            <div class="space-y-0.5">
+              {% set member_ids = it.lists | map(attribute='id') | list %}
+              {% for l in all_lists %}
+              {% if l.id in member_ids %}
+              <button hx-post="/lists/{{ l.id }}/items/{{ it.id }}/remove"
+                hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+                {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+                class="block w-full text-left px-2 py-1 rounded text-emerald-300 hover:bg-slate-800">&#10003; {{ l.name }}</button>
+              {% else %}
+              <button hx-post="/lists/{{ l.id }}/items/{{ it.id }}/add"
+                hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+                {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
+                class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ l.name }}</button>
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+            <form hx-post="/lists/quick-add/{{ it.id }}" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+              class="mt-1 flex gap-1">
+              {% if current_case %}<input type="hidden" name="case_id" value="{{ current_case.id }}" />{% endif %}
+              <input name="name" placeholder="New list…" maxlength="60" aria-label="New list name"
+                class="flex-1 min-w-0 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-slate-200 placeholder-slate-500" />
+              <button type="submit" class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1 font-medium">Add</button>
+            </form>
+          </div>
+        </details>
+
+        {# Add-to-case submenu (any case, or a new one) #}
+        <details class="border-t border-slate-800 pt-1">
+          <summary class="cursor-pointer list-none px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#128193; {% if current_case %}Pin to another case{% else %}Pin to a case{% endif %}&hellip;</summary>
+          <div class="px-1 pb-1">
+            {% if all_cases %}
+            <div class="space-y-0.5">
+              {% for cs in all_cases %}
+              {% if cs.id in _incase %}
+              <button hx-post="/cases/{{ cs.id }}/items/{{ it.id }}/remove"
+                hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+                {% if current_case %}hx-vals='{"context_case_id": "{{ current_case.id }}"}'{% endif %}
+                class="block w-full text-left px-2 py-1 rounded text-emerald-300 hover:bg-slate-800">&#10003; {{ cs.name }}</button>
+              {% else %}
+              <button hx-post="/cases/{{ cs.id }}/items/{{ it.id }}/add"
+                hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+                {% if current_case %}hx-vals='{"context_case_id": "{{ current_case.id }}"}'{% endif %}
+                class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ cs.name }}</button>
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+            <form hx-post="/cases/quick-add/{{ it.id }}" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
+              class="mt-1 flex gap-1">
+              {% if current_case %}<input type="hidden" name="context_case_id" value="{{ current_case.id }}" />{% endif %}
+              <input name="name" placeholder="New case…" maxlength="120" aria-label="New case name"
+                class="flex-1 min-w-0 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-slate-200 placeholder-slate-500" />
+              <button type="submit" class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1 font-medium">Add</button>
+            </form>
+          </div>
+        </details>
       </div>
     </details>
-
-    {# Active-case one-click pin: only when a working case is set and the item
-       isn't already in it. Files the item straight into the active case. #}
-    {% if active_case %}
-    {% set case_ids = it.cases | map(attribute='id') | list %}
-    {% if active_case.id not in case_ids %}
-    <button hx-post="/cases/{{ active_case.id }}/items/{{ it.id }}/add"
-      hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-      {% if current_case %}hx-vals='{"context_case_id": "{{ current_case.id }}"}'{% endif %}
-      class="text-amber-400 hover:text-amber-300"
-      title="Pin to active case: {{ active_case.name }}">&#128204; &rarr; {{ active_case.name }}</button>
-    {% endif %}
-    {% endif %}
-
-    {# Add-to-case menu (mirrors the list menu) #}
-    {% if current_case %}
-      {% set _incase = it.cases | map(attribute='id') | list %}
-      {% if current_case.id in _incase %}
-      <span class="text-emerald-300" title="Already pinned to this case">&#128204; In this case</span>
-      {% else %}
-      <button hx-post="/cases/{{ current_case.id }}/items/{{ it.id }}/add"
-        hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-        hx-vals='{"context_case_id": "{{ current_case.id }}"}'
-        class="text-amber-400 hover:text-amber-300 font-medium"
-        title="Pin this item into the case you're working in">&#128204; Pin to this case</button>
-      {% endif %}
-    {% endif %}
-
-    <details class="relative">
-      <summary class="cursor-pointer text-slate-400 hover:text-amber-400 list-none">&#128193; Case</summary>
-      <div class="absolute right-0 z-10 mt-1 w-56 rounded border border-slate-700 bg-slate-900 p-2 shadow-xl">
-        {% if all_cases %}
-        <div class="space-y-1">
-          {% set in_case_ids = it.cases | map(attribute='id') | list %}
-          {% for cs in all_cases %}
-          {% if cs.id in in_case_ids %}
-          <button hx-post="/cases/{{ cs.id }}/items/{{ it.id }}/remove"
-            hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-            {% if current_case %}hx-vals='{"context_case_id": "{{ current_case.id }}"}'{% endif %}
-            class="block w-full text-left px-2 py-1 rounded text-emerald-300 hover:bg-slate-800">&#10003; {{ cs.name }}</button>
-          {% else %}
-          <button hx-post="/cases/{{ cs.id }}/items/{{ it.id }}/add"
-            hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-            {% if current_case %}hx-vals='{"context_case_id": "{{ current_case.id }}"}'{% endif %}
-            class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ cs.name }}</button>
-          {% endif %}
-          {% endfor %}
-        </div>
-        <div class="my-2 border-t border-slate-800"></div>
-        {% endif %}
-        <form hx-post="/cases/quick-add/{{ it.id }}" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-          class="flex gap-1">
-          {% if current_case %}<input type="hidden" name="context_case_id" value="{{ current_case.id }}" />{% endif %}
-          <input name="name" placeholder="New case…" maxlength="120"
-            class="flex-1 min-w-0 rounded bg-slate-800 border border-slate-700 px-2 py-1 text-slate-200 placeholder-slate-500" />
-          <button type="submit" class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1 font-medium">Add</button>
-        </form>
-      </div>
-    </details>
-
-    <button hx-get="/items/{{ it.id }}/detail"
-      hx-target="#item-drawer-content" hx-swap="innerHTML"
-      class="text-slate-400 hover:text-sky-400" title="View full item details">&#8599; Details</button>
-    {% if it.is_bookmarked %}
-    <button hx-post="/items/{{ it.id }}/unbookmark" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
-      class="text-amber-400 hover:text-amber-300" title="Remove bookmark">&#9733; Saved</button>
-    {% else %}
-    <button hx-post="/items/{{ it.id }}/bookmark" hx-target="#item-{{ it.id }}" hx-swap="outerHTML"
-      {% if current_case %}hx-vals='{"case_id": "{{ current_case.id }}"}'{% endif %}
-      class="text-slate-400 hover:text-amber-400">&#9733; Bookmark</button>
-    {% endif %}
-    <button hx-post="/items/{{ it.id }}/evidence" hx-swap="outerHTML"
-      hx-indicator="#ev-{{ it.id }}"
-      class="text-slate-400 hover:text-sky-400">&#128247; Evidence</button>
     <span id="ev-{{ it.id }}" class="htmx-indicator text-slate-500">capturing…</span>
   </div>
 </article>
