@@ -191,7 +191,7 @@
 <body class="min-h-screen flex flex-col">
   {% set path = request.url.path if request else '/' %}
   <header class="sticky top-0 z-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/60">
-    <div class="max-w-screen-2xl mx-auto px-5 py-2.5 flex items-center gap-4">
+    <div class="max-w-screen-2xl mx-auto px-5 py-2.5 flex items-center gap-3">
       {# In-app Back/Forward — the app runs in a chromeless window with no browser
          nav buttons, so these drive window.history for the page navigations. #}
       <div class="flex items-center gap-0.5 shrink-0">
@@ -241,7 +241,36 @@
         </details>
         <a href="/guide" class="nav-link text-amber-400/80 hover:text-amber-300 {% if path.startswith('/guide') %}nav-active{% endif %}">Guide</a>
       </nav>
-      <div class="flex-1"></div>
+      <div class="flex-1 -mx-1.5"></div>
+      {# "What's connected": one summary control instead of a row of ~25 chips.
+         Opens a plain <details> list (no JS) with active sources first, each with
+         a human label and what it needs to switch on. #}
+      {% if status %}
+      {% set _on = status.values() | select('equalto', 'on') | list | length %}
+      <details id="connected-menu" class="relative">
+        <summary class="nav-link list-none cursor-pointer flex items-center gap-1.5 whitespace-nowrap text-xs"
+                 title="{{ _on }} of {{ status | length }} sources and tools are connected. Click for details.">
+          <span class="h-2 w-2 rounded-full {% if _on %}bg-emerald-400{% else %}bg-slate-600{% endif %}" aria-hidden="true"></span>
+          <span>{{ _on }}/{{ status | length }} sources</span><span aria-hidden="true">&#9662;</span>
+        </summary>
+        <div class="absolute right-0 z-40 mt-1 w-80 max-h-[70vh] overflow-y-auto rounded border border-slate-700 bg-slate-900 p-2 shadow-xl text-xs">
+          <p class="px-1 pb-1.5 text-slate-400">Green = ready. Grey = not set up yet; everything else still works.</p>
+          <ul class="divide-y divide-slate-800">
+            {% for name, state in sorted_status(status) %}
+            <li class="flex items-start gap-2 px-1 py-1.5">
+              <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full {% if state == 'on' %}bg-emerald-400{% else %}bg-slate-600{% endif %}" aria-hidden="true"></span>
+              <span>
+                <span class="{% if state == 'on' %}text-slate-100{% else %}text-slate-400{% endif %}">{{ source_label(name) }}</span>
+                <span class="sr-only">{% if state == 'on' %}(on){% else %}(off){% endif %}</span>
+                {% if state != 'on' and source_needs(name) %}<span class="block text-slate-500">{{ source_needs(name) }}</span>{% endif %}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          <a href="/settings" class="mt-1.5 block rounded px-1 py-1 text-amber-400 hover:bg-slate-800">Set up sources and keys &rarr;</a>
+        </div>
+      </details>
+      {% endif %}
       <button type="button" id="theme-toggle" onclick="nexusToggleTheme()"
               class="nav-link text-base leading-none" title="Switch between light and dark"
               aria-label="Switch between light and dark theme">
@@ -249,19 +278,6 @@
       </button>
       {% block actions %}{% endblock %}
     </div>
-    {% if status %}
-    <div class="border-t border-slate-800/60 bg-slate-900/30">
-      <div class="max-w-screen-2xl mx-auto px-5 py-1.5 flex flex-wrap items-center gap-1.5"
-           title="Green = connected and ready. Grey = not set up yet (add its key on Settings).">
-        <span class="text-[11px] mono text-slate-500 mr-0.5">What's connected:</span>
-        {% for name, state in status.items() %}
-          <span class="chip {% if state == 'on' %}chip-on{% else %}chip-off{% endif %}">
-            <span class="h-1.5 w-1.5 rounded-full {% if state == 'on' %}bg-emerald-400{% else %}bg-slate-600{% endif %}"></span>{{ name }}
-          </span>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
   </header>
 
   <main class="flex-1 w-full max-w-screen-2xl mx-auto px-5 py-6 animate-fadeIn">

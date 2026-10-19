@@ -52,8 +52,10 @@
   {% endif %}
 
   <div class="mt-2 flex gap-3 text-[11px] mono text-slate-500">
-    <span>{{ c.item_count }} item(s)</span>
-    <span>{{ c.note_count }} note(s)</span>
+    {# "collected" = items its tracking words found; "pinned" = items filed into
+       the case by hand. Two different numbers, so both are labelled. #}
+    <span title="Items its tracking words have collected (its live feed)">{{ c.collected_count or 0 }} collected &middot; {{ c.item_count }} pinned</span>
+    {% if c.note_count %}<span>{{ c.note_count }} note{{ 's' if c.note_count != 1 }}</span>{% endif %}
     {% if c.subcase_count %}<a href="/cases/{{ c.id }}?tab=subcases" class="text-sky-400 hover:text-sky-300">{{ c.subcase_count }} sub-case(s)</a>{% endif %}
   </div>
 

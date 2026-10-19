@@ -23,9 +23,7 @@
             title="Archive this case — it stays readable but is marked closed">&#10006; Close case</button>
   </form>
   {% endif %}
-  <a href="/cases/{{ case.id }}?tab=graph"
-     class="border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-slate-300 text-sm rounded px-3 py-1.5 whitespace-nowrap"
-     title="Relationship graph of this case's tracked items">&#128376; Graph</a>
+  {# The Graph button that used to sit here duplicated the Graph tab below. #}
   <details class="relative inline-block">
     <summary class="cursor-pointer list-none bg-sky-600 hover:bg-sky-500 text-white text-sm rounded px-3 py-1.5 whitespace-nowrap">
       &#11015; Export &#9662;</summary>

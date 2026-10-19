@@ -31,6 +31,7 @@ from nexus.storage import (
     list_query_capsules,
     search_items,
 )
+from nexus.web.source_labels import sorted_status, source_label, source_needs
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 TEMPLATES = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -56,6 +57,29 @@ def _safe_url(value) -> str:
 
 
 TEMPLATES.env.filters["safe_url"] = _safe_url
+
+
+def _norm_text(value) -> str:
+    return re.sub(r"[^0-9a-z]+", "", str(value or "").lower())
+
+
+def _redundant_with(text, title) -> bool:
+    """True when a card's body line only repeats its title.
+
+    News aggregators often ship ``content`` that is just the headline plus the
+    outlet name; showing it under the title adds noise. Compares letters and
+    digits only, so punctuation and " - Outlet" separators don't matter.
+    """
+    body, head = _norm_text(text), _norm_text(title)
+    if not body or not head:
+        return False
+    return body in head or head.startswith(body) or (head in body and len(body) - len(head) <= 40)
+
+
+TEMPLATES.env.tests["redundant_with"] = _redundant_with
+TEMPLATES.env.globals["source_label"] = source_label
+TEMPLATES.env.globals["source_needs"] = source_needs
+TEMPLATES.env.globals["sorted_status"] = sorted_status
 
 
 def _linkify(value: str) -> Markup:

@@ -73,7 +73,7 @@
                   hx-indicator="#case-scan-spin-{{ b.case.id }}"
                   hx-on::after-request="if(typeof window.nexusBriefRefresh==='function')window.nexusBriefRefresh(); htmx.ajax('GET','/brief',{target:'#brief-body',select:'#brief-body',swap:'outerHTML'})"
                   class="text-xs text-slate-500 hover:text-amber-300 mono border border-slate-700 hover:border-amber-600 rounded px-2 py-0.5"
-                  title="Scan new items for this case">&#128260; Scan</button>
+                  title="Scan new items for this case">&#128260; Scan now</button>
           <span id="case-scan-spin-{{ b.case.id }}" class="htmx-indicator text-[11px] mono text-amber-400">scanning…</span>
           <form hx-post="/cases/{{ b.case.id }}/pin-all"
                 hx-target="#pin-all-{{ b.case.id }}" hx-swap="outerHTML" class="inline">

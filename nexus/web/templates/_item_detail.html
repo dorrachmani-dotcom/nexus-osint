@@ -1,8 +1,52 @@
 {% set threat = item.threat_level or 'none' %}
 <div class="space-y-5">
 
-  {# ── Quick actions ── #}
-  <div class="flex flex-wrap items-center gap-2 pb-3 border-b border-slate-800 text-xs mono">
+  {# ── Header ── #}
+  <div class="space-y-1">
+    <div class="flex flex-wrap items-center gap-1.5 text-[11px] mono">
+      <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">{{ item.source or '?' }}</span>
+      {% if threat != 'none' %}
+      <span class="px-1.5 py-0.5 rounded border
+        {% if threat in ['high','critical'] %}bg-red-950 text-red-300 border-red-800
+        {% elif threat == 'medium' %}bg-amber-950 text-amber-300 border-amber-800
+        {% else %}bg-slate-800 text-slate-300{% endif %}">&#9888; {{ threat }}</span>
+      {% endif %}
+      {% if item.reliability %}
+      <span class="px-1.5 py-0.5 rounded border
+        {% if item.reliability == 'official' %}bg-emerald-950 text-emerald-300 border-emerald-800
+        {% elif item.reliability == 'social' %}bg-sky-950 text-sky-300 border-sky-800
+        {% else %}bg-slate-800 text-slate-400 border-slate-700{% endif %}">{{ item.reliability }}</span>
+      {% endif %}
+      {% if item.confidence %}
+      <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">confidence: {{ item.confidence }}</span>
+      {% endif %}
+      <span class="ml-auto text-slate-500">{{ (item.published_at or item.fetched_at or '')[:16] }}</span>
+    </div>
+
+    {% if item.title %}
+    <h3 class="text-base font-semibold text-slate-100 leading-snug">{{ item.title }}</h3>
+    {% endif %}
+
+    {% if item.author %}
+    <p class="text-xs text-slate-500">By {{ item.author }}</p>
+    {% endif %}
+
+    {% if item.url %}
+    <div class="flex items-center gap-2">
+      <a href="{{ item.url | safe_url }}" target="_blank" rel="noopener"
+         class="text-xs text-sky-400 hover:text-sky-300 truncate">
+        &#128279; {{ item.url[:80] }}{% if item.url|length > 80 %}&hellip;{% endif %}
+      </a>
+      <button onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>{this.textContent='&#10003;';setTimeout(()=>{this.textContent='&#128203;'},1500)})"
+              data-url="{{ item.url | e }}"
+              class="shrink-0 text-slate-500 hover:text-emerald-400 text-[11px]"
+              title="Copy URL">&#128203;</button>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Actions: triage first, then analysis tools ── #}
+  <div class="flex flex-wrap items-center gap-2 py-3 border-y border-slate-800 text-xs mono" aria-label="Item actions">
     {% if item.is_read %}
     <button hx-post="/items/{{ item.id }}/unread" hx-swap="none"
       hx-on::after-request="this.textContent='&#9711; Unread'"
@@ -53,65 +97,20 @@
       </div>
     </details>
     {% endif %}
+    <span class="mx-1 h-4 w-px bg-slate-700/70" aria-hidden="true"></span>
     <button hx-post="/items/{{ item.id }}/verify" hx-target="#verify-result" hx-swap="innerHTML"
       hx-indicator="#verify-spin"
       class="rounded border border-slate-700 hover:border-emerald-600 hover:text-emerald-300 text-slate-300 px-2.5 py-1"
       title="Cross-check this claim against your other collected items">&#10003; Verify</button>
-    <span id="verify-spin" class="htmx-indicator text-emerald-300">checking&hellip;</span>
     <button hx-post="/items/{{ item.id }}/similar" hx-target="#similar-result" hx-swap="innerHTML"
       hx-indicator="#similar-spin"
       class="rounded border border-slate-700 hover:border-sky-600 hover:text-sky-300 text-slate-300 px-2.5 py-1"
       title="Find items with similar meaning (local Ollama embeddings)">&#129518; Similar</button>
     <span id="similar-spin" class="htmx-indicator text-sky-300">searching&hellip;</span>
-    <span class="flex-1"></span>
-    <button onclick="closeItemDrawer()" class="text-slate-500 hover:text-slate-300">&#10005; Close</button>
+    <span id="verify-spin" class="htmx-indicator text-emerald-300">checking&hellip;</span>
   </div>
   <div id="verify-result"></div>
   <div id="similar-result"></div>
-
-  {# ── Header ── #}
-  <div class="space-y-1">
-    <div class="flex flex-wrap items-center gap-1.5 text-[11px] mono">
-      <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">{{ item.source or '?' }}</span>
-      {% if threat != 'none' %}
-      <span class="px-1.5 py-0.5 rounded border
-        {% if threat in ['high','critical'] %}bg-red-950 text-red-300 border-red-800
-        {% elif threat == 'medium' %}bg-amber-950 text-amber-300 border-amber-800
-        {% else %}bg-slate-800 text-slate-300{% endif %}">&#9888; {{ threat }}</span>
-      {% endif %}
-      {% if item.reliability %}
-      <span class="px-1.5 py-0.5 rounded border
-        {% if item.reliability == 'official' %}bg-emerald-950 text-emerald-300 border-emerald-800
-        {% elif item.reliability == 'social' %}bg-sky-950 text-sky-300 border-sky-800
-        {% else %}bg-slate-800 text-slate-400 border-slate-700{% endif %}">{{ item.reliability }}</span>
-      {% endif %}
-      {% if item.confidence %}
-      <span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">confidence: {{ item.confidence }}</span>
-      {% endif %}
-      <span class="ml-auto text-slate-500">{{ (item.published_at or item.fetched_at or '')[:16] }}</span>
-    </div>
-
-    {% if item.title %}
-    <h3 class="text-base font-semibold text-slate-100 leading-snug">{{ item.title }}</h3>
-    {% endif %}
-
-    {% if item.author %}
-    <p class="text-xs text-slate-500">By {{ item.author }}</p>
-    {% endif %}
-
-    {% if item.url %}
-    <div class="flex items-center gap-2">
-      <a href="{{ item.url | safe_url }}" target="_blank" rel="noopener"
-         class="text-xs text-sky-400 hover:text-sky-300 truncate">
-        &#128279; {{ item.url[:80] }}{% if item.url|length > 80 %}&hellip;{% endif %}
-      </a>
-      <button onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>{this.textContent='&#10003;';setTimeout(()=>{this.textContent='&#128203;'},1500)})"
-              data-url="{{ item.url | e }}"
-              class="shrink-0 text-slate-500 hover:text-emerald-400 text-[11px]"
-              title="Copy URL">&#128203;</button>
-    </div>
-    {% endif %}
-  </div>
 
   {# ── AI summary ── #}
   {% if item.summary %}
@@ -124,6 +123,27 @@
   </div>
   {% endif %}
 
+  {# ── Translation ── #}
+  {% if item.translation %}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Translation</p>
+    <div class="rounded-lg border border-emerald-900/50 bg-emerald-950/10 p-3
+                text-sm text-emerald-100/90 leading-relaxed whitespace-pre-wrap">
+      {{ item.translation }}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Full content ── #}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
+      Full content
+      {% if item.language %}<span class="normal-case text-slate-600 text-[10px]">[{{ item.language }}]</span>{% endif %}
+    </p>
+    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-3
+                text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">{% if not item.content %}(no content){% elif item.content is redundant_with(item.title) %}<span class="text-slate-500">The source only provided the headline. Open the link above to read the article.</span>{% else %}{{ item.content }}{% endif %}</div>
+  </div>
+
   {# ── Flags ── #}
   {% if item.party or item.contradiction %}
   <div class="flex flex-wrap gap-1.5 text-[11px]">
@@ -135,6 +155,32 @@
     {% if item.contradiction %}
     <span class="px-1.5 py-0.5 rounded bg-fuchsia-950 text-fuchsia-300 border border-fuchsia-800">&#9873; Disputed / possible disinformation</span>
     {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Named entities ── #}
+  {% set eg = item.entities_typed or {} %}
+  {% if eg.people or eg.organizations or eg.locations or eg.identifiers %}
+  <div class="space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Named entities</p>
+    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      {% if eg.people %}
+      <span class="text-slate-400">&#128100;
+        {% for p in eg.people %}<a href="/entity?name={{ p | urlencode }}" title="Open dossier: {{ p }}" class="text-slate-300 hover:text-amber-400">{{ p }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>{% endif %}
+      {% if eg.organizations %}
+      <span class="text-slate-400">&#127970;
+        {% for o in eg.organizations %}<a href="/entity?name={{ o | urlencode }}" title="Open dossier: {{ o }}" class="text-slate-300 hover:text-amber-400">{{ o }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>{% endif %}
+      {% if eg.locations %}
+      <span class="text-slate-400">&#128205;
+        {% for l in eg.locations %}<a href="/entity?name={{ l | urlencode }}" title="Open dossier: {{ l }}" class="text-slate-300 hover:text-amber-400">{{ l }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>{% endif %}
+      {% if eg.identifiers %}
+      <span class="text-slate-400">&#128273;
+        {% for i in eg.identifiers %}<a href="/entity?name={{ i | urlencode }}" title="Open dossier: {{ i }}" class="mono text-slate-300 hover:text-amber-400">{{ i }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+      </span>{% endif %}
+    </div>
   </div>
   {% endif %}
 
@@ -166,9 +212,6 @@
   </div>
   {% endif %}
 
-  {# ── Internet Archive (Wayback Machine) ── #}
-  {% if ar %}{% include "_item_archive.html" %}{% endif %}
-
   {# ── Lists ── #}
   {% if lists %}
   <div class="space-y-1">
@@ -186,54 +229,8 @@
   </div>
   {% endif %}
 
-  {# ── Translation ── #}
-  {% if item.translation %}
-  <div class="space-y-1">
-    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Translation</p>
-    <div class="rounded-lg border border-emerald-900/50 bg-emerald-950/10 p-3
-                text-sm text-emerald-100/90 leading-relaxed whitespace-pre-wrap">
-      {{ item.translation }}
-    </div>
-  </div>
-  {% endif %}
-
-  {# ── Full content ── #}
-  <div class="space-y-1">
-    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
-      Full content
-      {% if item.language %}<span class="normal-case text-slate-600 text-[10px]">[{{ item.language }}]</span>{% endif %}
-    </p>
-    <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-3
-                text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
-      {{ item.content or '(no content)' }}
-    </div>
-  </div>
-
-  {# ── Named entities ── #}
-  {% set eg = item.entities_typed or {} %}
-  {% if eg.people or eg.organizations or eg.locations or eg.identifiers %}
-  <div class="space-y-1">
-    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Named entities</p>
-    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-      {% if eg.people %}
-      <span class="text-slate-400">&#128100;
-        {% for p in eg.people %}<a href="/entity?name={{ p | urlencode }}" title="Open dossier: {{ p }}" class="text-slate-300 hover:text-amber-400">{{ p }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
-      </span>{% endif %}
-      {% if eg.organizations %}
-      <span class="text-slate-400">&#127970;
-        {% for o in eg.organizations %}<a href="/entity?name={{ o | urlencode }}" title="Open dossier: {{ o }}" class="text-slate-300 hover:text-amber-400">{{ o }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
-      </span>{% endif %}
-      {% if eg.locations %}
-      <span class="text-slate-400">&#128205;
-        {% for l in eg.locations %}<a href="/entity?name={{ l | urlencode }}" title="Open dossier: {{ l }}" class="text-slate-300 hover:text-amber-400">{{ l }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
-      </span>{% endif %}
-      {% if eg.identifiers %}
-      <span class="text-slate-400">&#128273;
-        {% for i in eg.identifiers %}<a href="/entity?name={{ i | urlencode }}" title="Open dossier: {{ i }}" class="mono text-slate-300 hover:text-amber-400">{{ i }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
-      </span>{% endif %}
-    </div>
-  </div>
-  {% endif %}
+  {# ── Internet Archive (Wayback Machine) ── #}
+  {% if ar %}{% include "_item_archive.html" %}{% endif %}
 
   {# ── Footer meta ── #}
   <div class="border-t border-slate-800 pt-3 text-[11px] mono text-slate-600 space-y-1">
@@ -242,5 +239,4 @@
     {% if item.published_at %}<div>Published: {{ item.published_at[:19] }}</div>{% endif %}
     {% if item.dismissed %}<div class="text-rose-500">Dismissed from feed</div>{% endif %}
   </div>
-
 </div>

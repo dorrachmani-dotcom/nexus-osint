@@ -46,22 +46,22 @@ def _archive_settings_ctx(conn, settings, **extra) -> dict:
 # allow-listed key in nexus/envstore.py. The actual values are written to .env
 # only (never the DB) and are never rendered back — the UI shows Set / Not set.
 SECRET_FIELDS: list[dict] = [
+    {"key": "GEMINI_API_KEY", "label": "Google (Gemini) API key",
+     "hint": "Recommended: free tier available. Powers AI summaries, translation and threat scoring.",
+     "url": "https://aistudio.google.com/app/apikey",
+     "steps": [
+         "Open aistudio.google.com and sign in with a Google account.",
+         "Click 'Get API key' → 'Create API key'.",
+         "Copy the generated key and paste it here.",
+     ]},
     {"key": "ANTHROPIC_API_KEY", "label": "Anthropic (Claude) API key",
-     "hint": "Powers AI summaries, translation and threat scoring.",
+     "hint": "Alternative AI provider for analysis (Claude models).",
      "url": "https://console.anthropic.com/settings/keys",
      "steps": [
          "Open console.anthropic.com and sign in (or create an account).",
          "Add a payment method under Billing — usage is pay-as-you-go.",
          "Go to Settings → API keys and click 'Create Key'.",
          "Copy the key (starts with sk-ant-) and paste it here.",
-     ]},
-    {"key": "GEMINI_API_KEY", "label": "Google (Gemini) API key",
-     "hint": "Free alternative AI provider for analysis.",
-     "url": "https://aistudio.google.com/app/apikey",
-     "steps": [
-         "Open aistudio.google.com and sign in with a Google account.",
-         "Click 'Get API key' → 'Create API key'.",
-         "Copy the generated key and paste it here.",
      ]},
     {"key": "OPENAI_API_KEY", "label": "OpenAI (ChatGPT) API key",
      "hint": "Alternative AI provider for analysis (GPT models).",
