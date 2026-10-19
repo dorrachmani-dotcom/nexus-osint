@@ -9,9 +9,30 @@
 
   {# ── Tracking words panel ─────────────────────────────────────────────── #}
   <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-4">
-    <div class="flex items-center justify-between gap-2">
-      <h2 class="text-sm font-medium text-slate-200">Tracking words</h2>
+    {# One-line summary + the two everyday actions. The editor below starts
+       collapsed once the case has words (open when it has none) and remembers
+       the analyst's choice per case for this browser session, so adding a word
+       (which re-renders this tab) doesn't snap it shut. #}
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+        <h2 class="text-sm font-medium text-slate-200">Tracking words</h2>
+        <span id="tw-summary" class="text-xs text-slate-400">
+          {{ terms|length }} search word{{ 's' if terms|length != 1 }}
+          &middot; {{ alert_terms|length }} alert word{{ 's' if alert_terms|length != 1 }}{% if inherited_terms %}
+          &middot; {{ inherited_terms|length }} inherited{% endif %}
+        </span>
+        {% if terms %}
+        <span class="hidden lg:inline text-xs text-slate-500 truncate max-w-[32rem]"
+              title="{{ terms | map(attribute='term') | join(', ') }}">{{ terms[:4] | map(attribute='term') | join(', ') }}{% if terms|length > 4 %}, &hellip;{% endif %}</span>
+        {% endif %}
+        <button type="button" id="tw-edit" aria-controls="tw-editor"
+                aria-expanded="{{ 'false' if terms else 'true' }}"
+                onclick="nexusToggleTerms()"
+                class="text-xs rounded border border-slate-600 hover:border-sky-500 hover:text-sky-300 text-slate-300 px-2 py-0.5">
+          <span class="tw-edit-label">{{ 'Edit' if terms else 'Hide' }}</span></button>
+      </div>
       <div class="flex items-center gap-2">
+        <span id="case-scan-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
         <button hx-post="/cases/{{ case.id }}/read-all" hx-target="#case-feed-tab" hx-swap="outerHTML"
                 class="text-xs rounded border border-slate-600 hover:border-emerald-500 hover:text-emerald-300 text-slate-300 px-2.5 py-1.5"
                 title="Mark every tracked item as reviewed">&#10003; Mark all read</button>
@@ -22,6 +43,7 @@
       </div>
     </div>
 
+    <div id="tw-editor" data-case="{{ case.id }}" class="space-y-4{% if terms %} hidden{% endif %}">
     {# Inherited words (sub-case only, read-only) #}
     {% if inherited_terms %}
     <div class="rounded border border-slate-700/50 bg-slate-800/30 px-3 py-2 space-y-1.5">
@@ -103,7 +125,6 @@
           </div>
         </details>
         {% endif %}
-        <span id="case-scan-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
       </div>
     </div>
 
@@ -142,7 +163,35 @@
         <button class="text-xs bg-amber-900/60 hover:bg-amber-800/60 text-amber-200 border border-amber-800/60 rounded px-2 py-1">Add alert</button>
       </form>
     </div>
+    </div>{# /tw-editor #}
   </div>
+  <script>
+    (function () {
+      var ed = document.getElementById('tw-editor');
+      if (!ed) return;
+      var key = 'nexus-tw-open-' + ed.dataset.case;
+      function show(open) {
+        ed.classList.toggle('hidden', !open);
+        var b = document.getElementById('tw-edit');
+        if (b) {
+          b.setAttribute('aria-expanded', open ? 'true' : 'false');
+          var l = b.querySelector('.tw-edit-label');
+          if (l) l.textContent = open ? 'Hide' : 'Edit';
+        }
+      }
+      try {
+        var saved = sessionStorage.getItem(key);
+        if (saved !== null) show(saved === '1');
+      } catch (e) {}
+      window.nexusToggleTerms = function () {
+        var e = document.getElementById('tw-editor');
+        if (!e) return;
+        var open = e.classList.contains('hidden');
+        show(open);
+        try { sessionStorage.setItem('nexus-tw-open-' + e.dataset.case, open ? '1' : '0'); } catch (x) {}
+      };
+    })();
+  </script>
 
   {# ── Filter bar + items queue ─────────────────────────────────────────── #}
   <div id="case-feed-items">

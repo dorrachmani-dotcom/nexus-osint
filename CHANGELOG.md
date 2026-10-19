@@ -17,6 +17,12 @@ to [Semantic Versioning](https://semver.org/).
 - Item details: content first, one close button, Internet Archive below.
 - Case cards say "N collected · M pinned".
 - Settings lists the Gemini key first (recommended).
+- Case page: tracking words collapse to a one-line summary with an Edit
+  button; Close case moved into a "more" menu; clearer rename/edit links.
+- Cases page: the create form opens from a "+ New case" button.
+- Narrow screens get a Menu button for the navigation.
+- Sherlock explains that it needs an AI model (with a Set up AI link) instead
+  of offering a chat that cannot act.
 
 ## [1.1.0] - 2026-10-17
 

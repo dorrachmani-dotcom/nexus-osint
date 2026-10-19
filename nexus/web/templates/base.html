@@ -55,7 +55,8 @@
     html.light [class~="bg-slate-950/40"],
     html.light [class~="bg-slate-950/60"],
     html.light [class~="bg-slate-950/80"],
-    html.light [class~="supports-[backdrop-filter]:bg-slate-950/60"] { background-color: #ffffff; }
+    html.light [class~="supports-[backdrop-filter]:bg-slate-950/60"],
+    html.light [class~="max-md:bg-slate-950"] { background-color: #ffffff; }
     html.light [class~="bg-slate-900"],
     html.light [class~="bg-slate-900/30"],
     html.light [class~="bg-slate-900/40"],
@@ -191,10 +192,10 @@
 <body class="min-h-screen flex flex-col">
   {% set path = request.url.path if request else '/' %}
   <header class="sticky top-0 z-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/60">
-    <div class="max-w-screen-2xl mx-auto px-5 py-2.5 flex items-center gap-3">
+    <div class="max-w-screen-2xl mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap md:flex-nowrap items-center gap-3">
       {# In-app Back/Forward — the app runs in a chromeless window with no browser
          nav buttons, so these drive window.history for the page navigations. #}
-      <div class="flex items-center gap-0.5 shrink-0">
+      <div class="hidden sm:flex items-center gap-0.5 shrink-0">
         <button type="button" onclick="history.back()" aria-label="Go back" title="Back"
           class="nav-link text-lg leading-none px-2">&#8592;</button>
         <button type="button" onclick="history.forward()" aria-label="Go forward" title="Forward"
@@ -210,18 +211,23 @@
       {# Nav grouped by the workflow: Review (Brief/Feed) -> Investigate
          (Cases/Graph) -> Collect (Sources). Less-used tools live under "More",
          and config under "Setup", so the main flow stays uncluttered. #}
-      <nav class="flex flex-wrap items-center gap-0.5 text-sm">
+      {# Under 768px the nav collapses behind a Menu button (plain inline JS,
+         CSP-safe); it opens as a full-width panel under the header. #}
+      <button type="button" id="nav-toggle" aria-controls="main-nav" aria-expanded="false"
+              onclick="var n=document.getElementById('main-nav'); var o=n.classList.toggle('max-md:hidden'); this.setAttribute('aria-expanded', o?'false':'true');"
+              class="md:hidden nav-link text-sm border border-slate-700 rounded px-2.5 py-1">&#9776; Menu</button>
+      <nav id="main-nav" class="max-md:hidden max-md:absolute max-md:inset-x-0 max-md:top-full max-md:z-30 max-md:flex-col max-md:items-stretch max-md:gap-1 max-md:border-b max-md:border-slate-800 max-md:bg-slate-950 max-md:p-3 max-md:shadow-xl flex flex-wrap items-center gap-0.5 text-sm">
         <a href="/brief" class="nav-link {% if path.startswith('/brief') %}nav-active{% endif %}">Brief<span id="brief-badge" class="hidden ml-1 rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5"></span></a>
         <a href="/attention" class="nav-link {% if path.startswith('/attention') %}nav-active{% endif %}" title="Needs your eyes — the few unread items that most warrant attention">&#128064; Focus<span id="attention-badge" class="hidden ml-1 rounded-full bg-sky-500 text-slate-950 text-[10px] font-bold px-1.5 py-0.5"></span></a>
         <a href="/" class="nav-link {% if path == '/' or path.startswith('/intel') %}nav-active{% endif %}">Feed</a>
         <a href="/cases" class="nav-link {% if path.startswith('/cases') %}nav-active{% endif %}">Cases</a>
         <a href="/graph" class="nav-link {% if path.startswith('/graph') %}nav-active{% endif %}">Graph</a>
-        <span class="mx-1 h-4 w-px bg-slate-700/70" aria-hidden="true"></span>
+        <span class="mx-1 h-4 w-px bg-slate-700/70 max-md:hidden" aria-hidden="true"></span>
         <a href="/sources" class="nav-link {% if path.startswith('/sources') or path.startswith('/topics') %}nav-active{% endif %}">Sources</a>
 
         <details class="relative">
           <summary class="nav-link list-none cursor-pointer {% if path.startswith('/lists') or path.startswith('/tools') or path.startswith('/watchlists') or path.startswith('/requirements') %}nav-active{% endif %}">More &#9662;</summary>
-          <div class="absolute right-0 z-40 mt-1 w-44 rounded border border-slate-700 bg-slate-900 p-1 shadow-xl">
+          <div class="absolute right-0 z-40 mt-1 w-44 max-md:static max-md:w-auto rounded border border-slate-700 bg-slate-900 p-1 shadow-xl">
             <a href="/lists" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Lists <span class="text-slate-500 text-xs">(triage lanes)</span></a>
             <a href="/watchlists" class="flex items-center justify-between px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Watchlists<span id="watchlist-badge" class="hidden rounded-full bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 leading-none"></span></a>
             <a href="/tools" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">OSINT tools</a>
@@ -229,10 +235,10 @@
           </div>
         </details>
 
-        <span class="mx-1 h-4 w-px bg-slate-700/70" aria-hidden="true"></span>
+        <span class="mx-1 h-4 w-px bg-slate-700/70 max-md:hidden" aria-hidden="true"></span>
         <details class="relative">
           <summary class="nav-link list-none cursor-pointer {% if path.startswith('/settings') or path.startswith('/security') or path.startswith('/transfer') %}nav-active{% endif %}">Setup &#9662;</summary>
-          <div class="absolute right-0 z-40 mt-1 w-44 rounded border border-slate-700 bg-slate-900 p-1 shadow-xl">
+          <div class="absolute right-0 z-40 mt-1 w-44 max-md:static max-md:w-auto rounded border border-slate-700 bg-slate-900 p-1 shadow-xl">
             <a href="/settings" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Settings &amp; keys</a>
             <a href="/sources" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Sources</a>
             <a href="/security" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Security center</a>
@@ -247,7 +253,7 @@
          a human label and what it needs to switch on. #}
       {% if status %}
       {% set _on = status.values() | select('equalto', 'on') | list | length %}
-      <details id="connected-menu" class="relative">
+      <details id="connected-menu" class="relative max-md:hidden">
         <summary class="nav-link list-none cursor-pointer flex items-center gap-1.5 whitespace-nowrap text-xs"
                  title="{{ _on }} of {{ status | length }} sources and tools are connected. Click for details.">
           <span class="h-2 w-2 rounded-full {% if _on %}bg-emerald-400{% else %}bg-slate-600{% endif %}" aria-hidden="true"></span>
@@ -324,11 +330,22 @@
       <button type="button" onclick="nexusAssistantToggle(false)"
               class="text-slate-400 hover:text-slate-100 text-lg leading-none px-1" title="Close">&times;</button>
     </div>
+    {% set _ai_on = ai_ready() %}
     <div id="assistant-log" class="flex-1 overflow-y-auto px-3 py-3 space-y-3 text-sm">
+      {% if not _ai_on %}
+      {# No AI provider: say so plainly instead of offering a chat that can't act. #}
+      <div id="assistant-needs-ai" class="rounded-lg border border-amber-800/60 bg-amber-950/30 text-slate-200 px-3 py-3 space-y-2">
+        <p class="font-medium text-amber-300">Sherlock needs an AI model</p>
+        <p class="text-slate-300">To answer questions about your data and do things for you (open cases, build reports), Sherlock needs an AI provider. A free option takes about two minutes to set up.</p>
+        <p class="text-slate-400 text-xs">Everything else in the app works without it.</p>
+        <a href="/settings" class="inline-block rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-3 py-1.5 text-sm">Set up AI &rarr;</a>
+      </div>
+      {% else %}
       <div class="assistant-msg-bot rounded-lg bg-slate-800 text-slate-200 px-3 py-2"
            style="white-space:pre-wrap">Hi, I'm Sherlock — your OSINT assistant. I can explain how to use this workstation, answer questions about your collected data, and actually do things for you. Try: "open a case on the Nightjar Group breach, add the related items, and make me a PDF."</div>
+      {% endif %}
     </div>
-    <div id="assistant-suggestions" class="px-2 pt-2 flex flex-wrap gap-1.5">
+    <div id="assistant-suggestions" class="px-2 pt-2 flex flex-wrap gap-1.5{% if not _ai_on %} hidden{% endif %}">
       {% set _chips = [
         ('Track a subject', 'Open a case on Nightjar Group and set up its tracking words and starter questions'),
         ('Add a question', "Add the question 'What is the latest on the transfer?' to this case"),
@@ -361,12 +378,13 @@
     </script>
     <form id="assistant-form" class="border-t border-slate-800 p-2 flex items-end gap-2">
       <textarea id="assistant-input" rows="1" required
-                placeholder="Ask the assistant…"
+                {% if not _ai_on %}disabled aria-disabled="true"{% endif %}
+                placeholder="{{ 'Ask the assistant…' if _ai_on else 'Set up an AI model to chat with Sherlock' }}"
                 class="flex-1 resize-none bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm
                        text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-slate-500"
                 style="max-height:120px"></textarea>
-      <button type="submit" id="assistant-send"
-              class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-3 py-1.5 text-sm">
+      <button type="submit" id="assistant-send" {% if not _ai_on %}disabled{% endif %}
+              class="{% if _ai_on %}bg-amber-500 hover:bg-amber-400 text-slate-950{% else %}bg-slate-800 text-slate-500 cursor-not-allowed{% endif %} font-medium rounded px-3 py-1.5 text-sm">
         Send
       </button>
     </form>
@@ -636,6 +654,8 @@
       function resetChat() {
         history = [];
         var log = el('assistant-log');
+        // No AI configured: keep the "set up AI" card instead of a chat greeting.
+        if (el('assistant-needs-ai')) return;
         if (log) {
           log.innerHTML = '';
           var b = document.createElement('div');

@@ -1,18 +1,37 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="space-y-5">
-  <div>
-    <h1 class="text-lg font-semibold text-slate-100">Investigation cases</h1>
-    <p class="text-sm text-slate-400">Group pinned items and notes into named investigations.</p>
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-lg font-semibold text-slate-100">Investigation cases</h1>
+      <p class="text-sm text-slate-400">A case follows one subject: it collects matching items automatically and keeps your pins, notes and reports together.</p>
+    </div>
+    <button type="button" id="new-case-button" aria-controls="new-case"
+            aria-expanded="{{ 'false' if cases else 'true' }}"
+            onclick="var d=document.getElementById('new-case'); d.open=!d.open; if(d.open){var i=d.querySelector('[name=name]'); if(i) i.focus();}"
+            class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-4 py-1.5 text-sm whitespace-nowrap">{% if cases %}+ New case{% else %}&times; Cancel{% endif %}</button>
   </div>
 
+  {# The create form sits behind "+ New case" once cases exist, so the board is
+     the first thing you see; with no cases it starts open. #}
+  <details id="new-case" class="space-y-3"{% if not cases %} open{% endif %}
+           ontoggle="var b=document.getElementById('new-case-button'); if(b){b.innerHTML=this.open?'&times; Cancel':'+ New case'; b.setAttribute('aria-expanded', this.open?'true':'false');}">
+    <summary class="sr-only">New case form</summary>
+
+  {% if not cases %}
+  <p class="text-sm text-slate-300">
+    No cases yet. Name the subject you want to follow below &mdash; the app sets up its search words for you.
+    Prefer to just describe it? Open <span class="text-emerald-300">Sherlock</span> (bottom-left) and type what you want to track.
+  </p>
+  {% endif %}
+
   <form hx-post="/cases" hx-target="#case-list" hx-swap="outerHTML"
-        hx-on::after-request="this.reset()"
+        hx-on::after-request="if(event.detail.successful){this.reset(); var d=document.getElementById('new-case'); if(d) d.open=false;}"
         class="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-3">
     <div class="grid gap-3 sm:grid-cols-[1fr_2fr_auto_auto] items-end">
       <label class="block">
         <span class="text-xs text-slate-400">Case name</span>
-        <input name="name" required maxlength="120"
+        <input name="name" required maxlength="120" placeholder="e.g. Nightjar Group"
                class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
       </label>
       <label class="block">
@@ -42,6 +61,7 @@
              class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
     </label>
   </form>
+  </details>
 
   {% include "_case_list.html" %}
 </section>
