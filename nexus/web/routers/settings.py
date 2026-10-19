@@ -58,6 +58,42 @@ def guide(request: Request) -> HTMLResponse:
     )
 
 
+@router.get("/setup", response_class=HTMLResponse)
+def setup_page(request: Request) -> HTMLResponse:
+    """The setup checklist: five steps with live status, one button each, plus
+    the daily-brief card and the per-case daily-report switches. Reuses the
+    Settings / email contexts, so nothing here duplicates configuration logic."""
+    from nexus import daily_reports as dr
+    from nexus.setup_status import setup_steps
+    from nexus.storage import case_terms_map, list_cases
+
+    settings = get_settings()
+    email = _email_context(settings)
+    with get_connection() as conn:
+        cases = list_cases(conn, status="open", parent_id=None)
+        words = case_terms_map(conn, [c["id"] for c in cases], kind="required")
+        report_ids = set(dr.enabled_case_ids(conn))
+        for c in cases:
+            c["word_count"] = len(words.get(c["id"], []))
+            c["report"] = dr.get_config(conn, c["id"])
+    status = settings.availability_report()
+    steps = setup_steps(
+        status=status,
+        active_provider=settings.active_provider(),
+        email_ready=email["email_ready"],
+        email_verified=email["email_verified"],
+        email_label=email["email_label"],
+        digest=email["brief"],
+        tracked_cases=sum(1 for c in cases if c["word_count"]),
+        report_cases=len(report_ids),
+    )
+    return TEMPLATES.TemplateResponse(
+        request, "setup.html",
+        {**email, "status": status, "steps": steps, "open_cases": cases,
+         "done_count": sum(1 for st in steps if st["state"] == "done")},
+    )
+
+
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request) -> HTMLResponse:
     """Configuration overview, onboarding guide, and the secure key editor.

@@ -6,6 +6,7 @@ context, archive settings and the email wizard context.
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 from nexus import wayback
 from nexus.analysis.ollama_admin import RECOMMENDED_MODELS as OLLAMA_RECOMMENDED
@@ -13,8 +14,10 @@ from nexus.db import get_connection
 from nexus.mailer import (
     PROVIDERS as EMAIL_PROVIDERS,
 )
+from nexus.setup_status import digest_status
 from nexus.storage import (
     get_meta,
+    list_cases,
 )
 
 logger = logging.getLogger("nexus")
@@ -281,6 +284,16 @@ def _email_context(settings, **extra) -> dict:
         scan_first = get_meta(conn, "digest_scan_first") == "1"
         last_sent = get_meta(conn, "last_digest_sent_at") or ""
         last_status = get_meta(conn, "last_digest_status") or ""
+        # What the brief covers: every open top-level case (see
+        # nexus.digest.collect_digest_data) plus the top "Needs your eyes" items.
+        digest_cases = [
+            {"id": c["id"], "name": c["name"]}
+            for c in list_cases(conn, status="open", parent_id=None)
+        ]
+    brief = digest_status(
+        now=datetime.now(UTC), enabled=digest_enabled, verified=verified,
+        daily_time=digest_time, last_sent=last_sent, last_status=last_status,
+    )
     ctx = {
         "email_providers": EMAIL_PROVIDERS,
         "email_provider": cfg.provider,
@@ -308,6 +321,8 @@ def _email_context(settings, **extra) -> dict:
         "email_ok": True,
         "digest_msg": "",
         "digest_ok": True,
+        "brief": brief,
+        "digest_cases": digest_cases,
     }
     ctx.update(extra)
     return ctx

@@ -148,6 +148,7 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
     ('GET', '/intel/feed'),
     ('POST', '/intel/scan'),
     ('GET', '/guide'),
+    ('GET', '/setup'),
     ('GET', '/settings'),
     ('POST', '/settings/auto-scan'),
     ('GET', '/settings/auto-scan-status'),

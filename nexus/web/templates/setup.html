@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{# Setup checklist: everything a new user needs, in order, with live status.
+   Context: steps, done_count, open_cases, the email/digest context (brief,
+   digest_*, email_*), status. #}
+{% block content %}
+<section class="mx-auto max-w-4xl space-y-6">
+  <div>
+    <h1 class="text-xl font-semibold text-slate-100">Set up Nexus</h1>
+    <p class="text-sm text-slate-400">Five short steps. Only the first is needed to start collecting &mdash; the rest are optional extras.
+      <span class="text-slate-300">{{ done_count }} of {{ steps|length }} done.</span></p>
+  </div>
+
+  <ol id="setup-steps" class="space-y-3">
+    {% for st in steps %}
+    <li id="step-{{ st.key }}" class="rounded-lg border bg-slate-900/60 p-4 flex flex-wrap items-center gap-4
+        {% if st.state == 'done' %}border-emerald-900/70{% elif st.state == 'todo' %}border-amber-700/70{% else %}border-slate-800{% endif %}">
+      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold
+        {% if st.state == 'done' %}bg-emerald-600 text-white{% elif st.state == 'todo' %}bg-amber-500 text-slate-950{% else %}bg-slate-800 text-slate-300{% endif %}"
+        aria-hidden="true">{% if st.state == 'done' %}&#10003;{% else %}{{ loop.index }}{% endif %}</span>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="font-medium text-slate-100">{{ loop.index }}. {{ st.title }}</h2>
+          <span class="step-badge rounded px-1.5 py-0.5 text-[11px] font-medium
+            {% if st.state == 'done' %}bg-emerald-950/60 text-emerald-300 border border-emerald-800
+            {% elif st.state == 'todo' %}bg-amber-950/40 text-amber-300 border border-amber-800
+            {% else %}bg-slate-800 text-slate-400 border border-slate-700{% endif %}">
+            {{ {'done': 'Done', 'todo': 'To do', 'optional': 'Optional'}[st.state] }}</span>
+        </div>
+        <p class="mt-0.5 text-sm text-slate-400">{{ st.line }}</p>
+      </div>
+      <a href="{{ st.href }}"
+         class="shrink-0 rounded px-3 py-1.5 text-sm font-medium whitespace-nowrap
+         {% if st.state == 'done' %}border border-slate-600 text-slate-300 hover:border-amber-500 hover:text-amber-300
+         {% else %}bg-amber-500 text-slate-950 hover:bg-amber-400{% endif %}">{{ st.button }}</a>
+    </li>
+    {% endfor %}
+  </ol>
+
+  {# Step 4 in full: the daily brief schedule. #}
+  {% include "_digest_card.html" %}
+
+  {# Step 5 in full: per-case daily reports. #}
+  <div id="case-reports-list" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2 text-sm">
+    <h2 class="text-base font-semibold text-slate-100">&#128197; Daily case reports</h2>
+    <p class="text-slate-400">Each case can save a report of its new items every day at
+      <span class="mono text-slate-200">{{ brief.time }}</span> (the daily-brief time above), on this computer.
+      If the daily brief is on, the email can link to it or attach it.</p>
+    {% if open_cases %}
+    <ul class="divide-y divide-slate-800">
+      {% for c in open_cases %}{% include "_setup_report_row.html" %}{% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-slate-500">No open cases yet. <a href="/cases" class="text-sky-400 hover:text-sky-300">Open a case &rarr;</a></p>
+    {% endif %}
+  </div>
+
+  <p class="text-xs text-slate-500">All keys stay in the local <span class="mono">.env</span> file; everything runs on 127.0.0.1.
+    Advanced options (translation, archive, auto-scan, every API key) are on <a href="/settings" class="text-sky-400 hover:text-sky-300">Settings</a>.</p>
+</section>
+{% endblock %}

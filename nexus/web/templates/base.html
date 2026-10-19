@@ -237,8 +237,10 @@
 
         <span class="mx-1 h-4 w-px bg-slate-700/70 max-md:hidden" aria-hidden="true"></span>
         <details class="relative">
-          <summary class="nav-link list-none cursor-pointer {% if path.startswith('/settings') or path.startswith('/security') or path.startswith('/transfer') %}nav-active{% endif %}">Setup &#9662;</summary>
-          <div class="absolute right-0 z-40 mt-1 w-44 max-md:static max-md:w-auto rounded border border-slate-700 bg-slate-900 p-1 shadow-xl">
+          <summary class="nav-link list-none cursor-pointer {% if path.startswith('/setup') or path.startswith('/settings') or path.startswith('/security') or path.startswith('/transfer') %}nav-active{% endif %}">Setup &#9662;</summary>
+          <div class="absolute right-0 z-40 mt-1 w-56 max-md:static max-md:w-auto rounded border border-slate-700 bg-slate-900 p-1 shadow-xl">
+            <a href="/setup" class="block px-2 py-1 rounded text-amber-300 hover:bg-slate-800">Setup checklist <span class="text-slate-500 text-xs">(start here)</span></a>
+            <a href="/setup#daily-brief" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Daily email brief</a>
             <a href="/settings" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Settings &amp; keys</a>
             <a href="/sources" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Sources</a>
             <a href="/security" class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Security center</a>

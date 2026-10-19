@@ -45,11 +45,11 @@
       <span class="mt-0.5 h-6 w-6 shrink-0 rounded-full grid place-items-center text-xs font-bold
         {{ step.done if setup.ai_on else step.todo }}">{% if setup.ai_on %}&check;{% else %}2{% endif %}</span>
       <div class="flex-1">
-        <span class="font-medium text-slate-200">Add API keys</span>
-        <span class="ml-2 text-[11px] mono text-slate-500">optional — unlocks AI analysis &amp; more sources</span>
-        <p class="text-sm text-slate-400">Paste your keys once on the Settings page. Anything without a key is simply skipped — the app still works.</p>
+        <span class="font-medium text-slate-200">Optional extras: AI and the daily email</span>
+        <span class="ml-2 text-[11px] mono text-slate-500">optional</span>
+        <p class="text-sm text-slate-400">The setup checklist walks you through AI analysis, email and a daily brief. Anything you skip is simply off &mdash; the app still works.</p>
       </div>
-      <a href="/settings" class="shrink-0 rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-sm px-3 py-1.5">Open Settings</a>
+      <a href="/setup" class="shrink-0 rounded border border-slate-600 hover:border-amber-500 hover:text-amber-300 text-sm px-3 py-1.5">Open setup checklist</a>
     </li>
 
     <!-- Step 3: scan -->
