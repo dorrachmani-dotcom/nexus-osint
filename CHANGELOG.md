@@ -24,6 +24,13 @@ to [Semantic Versioning](https://semver.org/).
 - Sherlock explains that it needs an AI model (with a Set up AI link) instead
   of offering a chat that cannot act.
 
+### Added
+- Setup checklist (Setup → Setup checklist): five steps with live status and
+  one button each, including a daily-brief card with an on/off switch, local
+  time, "scan first", what is included, a test send and "Next / Last sent".
+- Per-case daily reports can be switched on from the Setup page, and each
+  case's Reports tab shows the next and last report and whether it is emailed.
+
 ## [1.1.0] - 2026-10-17
 
 ### Added
