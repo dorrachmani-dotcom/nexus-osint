@@ -77,6 +77,22 @@ def _redundant_with(text, title) -> bool:
 
 
 TEMPLATES.env.tests["redundant_with"] = _redundant_with
+
+
+def _ai_ready() -> bool:
+    """Whether an AI provider is active (drives Sherlock's enabled state).
+
+    Never raises: a settings problem simply reads as "no AI", which only
+    disables the assistant, never the page."""
+    try:
+        from nexus.config import get_settings
+
+        return bool(get_settings().analysis_enabled)
+    except Exception:
+        return False
+
+
+TEMPLATES.env.globals["ai_ready"] = _ai_ready
 TEMPLATES.env.globals["source_label"] = source_label
 TEMPLATES.env.globals["source_needs"] = source_needs
 TEMPLATES.env.globals["sorted_status"] = sorted_status

@@ -127,3 +127,91 @@ def test_gemini_key_is_listed_first():
     from nexus.web.settings_context import SECRET_FIELDS
 
     assert SECRET_FIELDS[0]["key"] == "GEMINI_API_KEY"
+
+
+# --- PR 2: case page and cases list ----------------------------------------------
+
+def _case_with_words(conn, words=("acme", "widget")) -> int:
+    from nexus.storage import add_case_term, create_case
+
+    cid = create_case(conn, "Acme watch", None, "medium")
+    for w in words:
+        add_case_term(conn, cid, w)
+    return cid
+
+
+def test_tracking_words_collapse_to_a_summary_when_present(temp_db):
+    with temp_db() as conn:
+        cid = _case_with_words(conn)
+    with temp_db():
+        html = _client().get(f"/cases/{cid}?tab=feed").text
+    assert 'id="tw-summary"' in html and "2 search words" in html
+    assert 'id="tw-edit"' in html
+    assert 'class="space-y-4 hidden"' in html          # editor collapsed
+    # Every control is still rendered (just collapsed): add, AI suggest, alerts.
+    assert f'hx-post="/cases/{cid}/terms"' in html
+    assert f'hx-post="/cases/{cid}/terms/generate"' in html
+    assert "Scan now" in html and "Mark all read" in html
+
+
+def test_tracking_words_editor_open_when_case_has_no_words(temp_db):
+    with temp_db() as conn:
+        from nexus.storage import create_case
+
+        cid = create_case(conn, "Empty case", None, "medium")
+    with temp_db():
+        html = _client().get(f"/cases/{cid}?tab=feed").text
+    assert 'id="tw-editor"' in html and 'class="space-y-4 hidden"' not in html
+
+
+def test_close_case_lives_in_the_more_menu(temp_db):
+    with temp_db() as conn:
+        cid = _case_with_words(conn)
+    with temp_db():
+        html = _client().get(f"/cases/{cid}").text
+    menu = html[html.index('id="case-more-menu"'):]
+    assert f'action="/cases/{cid}/close"' in menu
+    assert "&#9998; rename" in html and "&#9998; edit" in html
+
+
+def test_new_case_form_is_behind_a_button_when_cases_exist(temp_db):
+    with temp_db() as conn:
+        _case_with_words(conn)
+    with temp_db():
+        html = _client().get("/cases").text
+    assert 'id="new-case-button"' in html and "+ New case" in html
+    assert '<details id="new-case" class="space-y-3"\n' in html  # closed (no open attr)
+
+
+def test_new_case_form_open_when_there_are_no_cases(temp_db):
+    with temp_db():
+        html = _client().get("/cases").text
+    assert '<details id="new-case" class="space-y-3" open' in html
+    assert "No cases yet" in html
+
+
+def test_mobile_nav_toggle_present(temp_db):
+    with temp_db():
+        html = _client().get("/cases").text
+    assert 'id="nav-toggle"' in html and 'aria-controls="main-nav"' in html
+    assert 'id="main-nav"' in html
+
+
+def test_sherlock_disabled_without_ai(temp_db):
+    with temp_db():
+        html = _client().get("/cases").text
+    assert 'id="assistant-needs-ai"' in html
+    assert "Set up AI" in html
+    panel = html[html.index('id="assistant-input"'):html.index('id="assistant-input"') + 300]
+    assert "disabled" in panel
+
+
+def test_sherlock_enabled_with_ai(temp_db, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
+    from nexus.config import get_settings
+
+    get_settings.cache_clear()
+    with temp_db():
+        html = _client().get("/cases").text
+    assert 'id="assistant-needs-ai"' not in html
+    assert "Hi, I'm Sherlock" in html
