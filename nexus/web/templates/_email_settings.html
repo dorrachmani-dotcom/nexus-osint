@@ -206,47 +206,8 @@
   <p class="text-xs {% if email_ok %}text-emerald-300{% else %}text-rose-300{% endif %}">{{ email_msg }}</p>
   {% endif %}
 
-  {# --- Schedule --- #}
-  <div id="digest-settings" class="border-t border-slate-800 pt-3 space-y-2 text-xs">
-    <p class="text-slate-300"><span class="font-medium text-slate-200">Schedule.</span>
-      {% if digest_enabled %}The brief is emailed every day at <span class="mono">{{ digest_time }}</span> (this computer's time).
-      {% else %}The daily email brief is off.{% endif %}
-      {% if last_digest_sent_at %}Last sent: <span class="mono">{{ last_digest_sent_at }}</span> UTC.{% endif %}</p>
-    <form hx-post="/settings/digest" hx-target="#email-settings" hx-swap="outerHTML"
-          class="flex flex-wrap items-end gap-3">
-      <label class="flex items-center gap-2 {% if email_verified %}text-slate-200{% else %}text-slate-500{% endif %}"
-             {% if not email_verified %}title="Pass “Send test email” first"{% endif %}>
-        <input type="checkbox" name="enabled" value="1" class="accent-amber-500"
-               {% if digest_enabled %}checked{% endif %} {% if not email_verified %}disabled{% endif %} />
-        Email me the daily brief
-      </label>
-      <label class="block">
-        <span class="text-slate-400">Time</span>
-        <input type="time" name="digest_time" value="{{ digest_time }}"
-               class="mt-1 block bg-slate-950 border border-slate-700 rounded px-2 py-1 mono" />
-      </label>
-      <label class="flex items-center gap-2 text-slate-300" title="Collect fresh items right before the brief is written">
-        <input type="checkbox" name="scan_first" value="1" class="accent-amber-500" {% if digest_scan_first %}checked{% endif %} />
-        Run a scan first
-      </label>
-      <button class="rounded bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 border border-slate-600">Save</button>
-    </form>
-    <p class="text-slate-500">The same time is used for the daily case reports (each case's
-      <span class="font-medium text-slate-400">Reports</span> tab).
-      With no AI connected the brief is still sent, as a plain summary.</p>
-    <div class="flex flex-wrap items-center gap-2">
-      <button hx-post="/settings/digest/test" hx-target="#email-settings" hx-swap="outerHTML"
-              hx-indicator="#digest-test-spin"
-              {% if not email_ready %}disabled{% endif %}
-              class="rounded px-3 py-1.5 font-medium {% if email_ready %}bg-sky-700 hover:bg-sky-600 text-white{% else %}bg-slate-800 text-slate-500 cursor-not-allowed{% endif %}">
-        Send a test brief now
-      </button>
-      <span id="digest-test-spin" class="htmx-indicator mono text-sky-300">Sherlock is writing&hellip;</span>
-    </div>
-    {% if digest_msg %}
-    <p class="{% if digest_ok %}text-emerald-300{% else %}text-rose-300{% endif %}">{{ digest_msg }}</p>
-    {% elif last_digest_status and last_digest_status.startswith('error') %}
-    <p class="text-rose-300">Last scheduled send failed: {{ last_digest_status[7:] }}</p>
-    {% endif %}
+  {# --- Schedule: the shared daily-brief card (also on the Setup page). --- #}
+  <div class="border-t border-slate-800 pt-3">
+    {% include "_digest_card.html" %}
   </div>
 </div>

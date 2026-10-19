@@ -1,0 +1,38 @@
+{# One open case on the Setup page: its daily-report switch. Saves through the
+   case's own POST /cases/<id>/reports/settings (view=row re-renders this row).
+   Context: c (case with .report and .word_count), digest_time, report_msg. #}
+<li id="report-row-{{ c.id }}" class="flex flex-wrap items-center justify-between gap-3 py-2.5">
+  <div class="min-w-0">
+    <a href="/cases/{{ c.id }}?tab=reports" class="text-slate-100 hover:text-amber-300">{{ c.name }}</a>
+    <span class="block text-xs text-slate-500">
+      {% if c.word_count %}{{ c.word_count }} search word{{ 's' if c.word_count != 1 }}{% else %}no search words yet &mdash; its report would be empty{% endif %}
+      {% if report_msg %}&middot; <span class="text-emerald-300">{{ report_msg }}</span>{% endif %}
+    </span>
+  </div>
+  <form hx-post="/cases/{{ c.id }}/reports/settings" hx-target="#report-row-{{ c.id }}" hx-swap="outerHTML"
+        hx-trigger="change" class="flex flex-wrap items-center gap-3 text-xs">
+    <input type="hidden" name="view" value="row" />
+    <label class="inline-flex items-center gap-2 cursor-pointer text-slate-200">
+      <input type="checkbox" name="enabled" value="1" class="peer sr-only" {% if c.report.enabled %}checked{% endif %} />
+      <span aria-hidden="true"
+            class="relative inline-block h-5 w-9 shrink-0 rounded-full bg-slate-700 transition
+                   peer-checked:bg-emerald-600 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-500
+                   after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition
+                   peer-checked:after:translate-x-4"></span>
+      Daily report
+    </label>
+    <label class="inline-flex items-center gap-1 text-slate-400">as
+      <select name="format" aria-label="Report format" class="bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-slate-200">
+        <option value="pdf" {% if c.report.format == 'pdf' %}selected{% endif %}>PDF</option>
+        <option value="html" {% if c.report.format == 'html' %}selected{% endif %}>HTML</option>
+      </select>
+    </label>
+    <label class="inline-flex items-center gap-1 text-slate-400">email
+      <select name="email" aria-label="In the daily email" class="bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-slate-200">
+        <option value="link" {% if c.report.email == 'link' %}selected{% endif %}>link it</option>
+        <option value="attach" {% if c.report.email == 'attach' %}selected{% endif %}>attach it</option>
+        <option value="none" {% if c.report.email == 'none' %}selected{% endif %}>don't mention</option>
+      </select>
+    </label>
+  </form>
+</li>

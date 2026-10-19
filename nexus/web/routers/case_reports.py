@@ -228,6 +228,33 @@ def case_evidence_manifest(case_id: int) -> Response:
 
 
 # --- Daily case reports (case "Reports" tab) ---------------------------------
+def _report_status(cfg: dict, digest_time: str, last_report: str | None,
+                   last_run: str | None, brief_on: bool) -> dict:
+    """Plain-English 'next / last / by email' lines for one case's daily report."""
+    from datetime import UTC, datetime
+
+    from nexus.setup_status import human_when, next_daily_run, parse_stored_time
+
+    now = datetime.now(UTC)
+    last_dt = parse_stored_time(last_report)
+    nxt = next_daily_run(now, digest_time, last_run) if cfg.get("enabled") else None
+    if not cfg.get("enabled"):
+        email = "Switch the daily report on to get it by email."
+    elif cfg.get("email") == "none":
+        email = "Not mentioned in the daily email (saved here only)."
+    elif brief_on:
+        email = ("Attached to" if cfg.get("email") == "attach" else "Linked from") + " your daily email."
+    else:
+        email = "Saved here only. Turn on the daily brief (Setup) to get it by email too."
+    return {
+        "next": (human_when(nxt, now) if nxt and nxt > now.astimezone().replace(tzinfo=None)
+                 else ("within a minute" if nxt else "not scheduled")),
+        "last": human_when(last_dt, now) if last_dt else "never",
+        "email": email,
+        "brief_on": brief_on,
+    }
+
+
 def _render_case_reports(request: Request, case_id: int, **extra) -> HTMLResponse:
     from nexus import daily_reports as dr
 
@@ -238,9 +265,13 @@ def _render_case_reports(request: Request, case_id: int, **extra) -> HTMLRespons
             return HTMLResponse("Case not found", status_code=404)
         cfg = dr.get_config(conn, case_id)
         digest_time = get_meta(conn, "digest_time") or "08:00"
+        last_report = get_meta(conn, f"daily_report_last:{int(case_id)}")
+        last_run = get_meta(conn, "last_daily_reports_at")
+        brief_on = get_meta(conn, "digest_enabled") == "1"
     ctx = {
         "case": case,
         "report_cfg": cfg,
+        "report_status": _report_status(cfg, digest_time, last_report, last_run, brief_on),
         "reports": dr.list_reports(settings, case_id=case_id),
         "digest_time": digest_time,
         "pdf_note": "If no PDF engine is installed, the report is saved as HTML instead.",
@@ -260,15 +291,27 @@ def case_reports_tab(request: Request, case_id: int) -> HTMLResponse:
 def case_reports_settings(
     request: Request, case_id: int,
     enabled: str = Form(""), format: str = Form("pdf"), email: str = Form("link"),
+    view: str = Form(""),
 ) -> HTMLResponse:
+    """Save one case's daily-report switch. ``view=row`` re-renders just its
+    row on the Setup page; otherwise the case's Reports tab."""
     from nexus import daily_reports as dr
+    from nexus.storage import case_terms
 
     with get_connection() as conn:
-        if get_case(conn, case_id) is None:
+        case = get_case(conn, case_id)
+        if case is None:
             return HTMLResponse("Case not found", status_code=404)
         cfg = dr.set_config(conn, case_id, enabled=enabled == "1", fmt=format, email=email)
+        word_count = sum(1 for t in case_terms(conn, case_id) if t.get("kind") != "alert")
     msg = ("Saved — a report will be generated every day." if cfg["enabled"]
            else "Saved — the daily report is off.")
+    if view == "row":
+        row = {**case, "report": cfg, "word_count": word_count}
+        return TEMPLATES.TemplateResponse(
+            request, "_setup_report_row.html",
+            {"c": row, "report_msg": "Saved" + (" — on" if cfg["enabled"] else " — off")},
+        )
     return _render_case_reports(request, case_id, report_msg=msg, report_ok=True)
 
 

@@ -38,6 +38,12 @@ def _render_email(request: Request, **extra) -> HTMLResponse:
     return TEMPLATES.TemplateResponse(request, "_email_settings.html", ctx)
 
 
+def _render_digest_card(request: Request, **extra) -> HTMLResponse:
+    """Just the daily-brief card (Setup page / Settings), same context as above."""
+    settings = get_settings()
+    return TEMPLATES.TemplateResponse(request, "_digest_card.html", _email_context(settings, **extra))
+
+
 @router.post("/settings/email/provider", response_class=HTMLResponse)
 def settings_email_provider(request: Request, provider: str = Form("")) -> HTMLResponse:
     """Pick how email is sent (a preference, stored in DB meta, not a secret)."""
@@ -146,8 +152,13 @@ def settings_digest(
     enabled: str = Form(""),
     digest_time: str = Form("08:00"),
     scan_first: str = Form(""),
+    view: str = Form(""),
 ) -> HTMLResponse:
-    """Daily brief schedule: on/off (only once the email is verified), time, scan-first."""
+    """Daily brief schedule: on/off (only once the email is verified), time, scan-first.
+
+    ``view=card`` re-renders only the daily-brief card (Setup page); otherwise
+    the whole email section, as before."""
+    render = _render_digest_card if view == "card" else _render_email
     from nexus.digest import parse_digest_time
     from nexus.mailer import is_verified, resolve_email_config
 
@@ -157,7 +168,7 @@ def settings_digest(
     with get_connection() as conn:
         verified = is_verified(conn, resolve_email_config(settings))
         if want_on and not verified:
-            return _render_email(
+            return render(
                 request, digest_ok=False,
                 digest_msg="Connect your email and pass “Send test email” first.",
             )
@@ -166,22 +177,23 @@ def settings_digest(
         set_meta(conn, "digest_scan_first", "1" if scan_first == "1" else "0")
     msg = (f"Saved — the brief will be emailed daily at {h:02d}:{m:02d}." if want_on
            else "Saved — the daily email brief is off.")
-    return _render_email(request, digest_ok=True, digest_msg=msg)
+    return render(request, digest_ok=True, digest_msg=msg)
 
 
 @router.post("/settings/digest/test", response_class=HTMLResponse)
-def settings_digest_test(request: Request) -> HTMLResponse:
+def settings_digest_test(request: Request, view: str = Form("")) -> HTMLResponse:
     """Compose and send a real brief now (marked [Test]); schedule untouched."""
     from nexus.digest import build_and_send_digest
 
+    render = _render_digest_card if view == "card" else _render_email
     settings = get_settings()
     if not settings.email_enabled:
-        return _render_email(
+        return render(
             request, digest_ok=False,
-            digest_msg="Set up the email connection above before sending a brief.",
+            digest_msg="Set up the email connection first (Setup, step 3) before sending a brief.",
         )
     ok, message = build_and_send_digest(settings, test=True)
-    return _render_email(request, digest_ok=ok, digest_msg=("Test brief sent. " if ok else "") + message)
+    return render(request, digest_ok=ok, digest_msg=("Test brief sent. " if ok else "") + message)
 
 
 # ------------------------------------------------- Connect Gmail (OAuth, send-only)

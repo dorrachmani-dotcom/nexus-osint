@@ -4,12 +4,12 @@
   <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
-        <h2 class="text-sm font-semibold text-slate-200">&#128197; Daily report</h2>
+        <h2 class="text-sm font-semibold text-slate-200">&#128197; Daily report for this case</h2>
         <p class="text-xs text-slate-400 mt-0.5">
-          Every day at <span class="mono text-slate-300">{{ digest_time }}</span> (the daily-brief time in
-          <a href="/settings#digest-settings" class="text-sky-400 hover:text-sky-300">Settings</a>),
-          Nexus saves a report of this case's items collected since the previous report.
-          Reports stay on this computer.
+          Every day at <span class="mono text-slate-300">{{ digest_time }}</span> (this computer's time; change it on
+          <a href="/setup#daily-brief" class="text-sky-400 hover:text-sky-300">Setup</a>),
+          Nexus saves a report of this case's items collected since the previous report &mdash; and can
+          link or attach it in your daily email. Reports stay on this computer.
         </p>
       </div>
       <span class="px-2 py-0.5 rounded text-xs mono
@@ -17,11 +17,21 @@
         {{ 'scheduled' if report_cfg.enabled else 'off' }}</span>
     </div>
 
+    {% if report_status %}
+    <dl id="report-status" class="grid gap-x-6 gap-y-0.5 sm:grid-cols-[auto_1fr] text-xs">
+      <dt class="text-slate-500">Next report</dt><dd class="text-slate-200">{{ report_status.next }}</dd>
+      <dt class="text-slate-500">Last report</dt><dd class="text-slate-200">{{ report_status.last }}</dd>
+      <dt class="text-slate-500">By email</dt>
+      <dd class="text-slate-300">{{ report_status.email }}{% if report_cfg.enabled and report_cfg.email != 'none' and not report_status.brief_on %}
+        <a href="/setup#daily-brief" class="text-sky-400 hover:text-sky-300">Set up the daily brief &rarr;</a>{% endif %}</dd>
+    </dl>
+    {% endif %}
+
     <form hx-post="/cases/{{ case.id }}/reports/settings" hx-target="#case-reports" hx-swap="outerHTML"
           class="flex flex-wrap items-end gap-3 text-sm">
       <label class="flex items-center gap-2 text-slate-300">
         <input type="checkbox" name="enabled" value="1" class="accent-amber-500" {% if report_cfg.enabled %}checked{% endif %} />
-        Export a daily report
+        Save a report of this case every day
       </label>
       <label class="block">
         <span class="text-xs text-slate-400">Format</span>
