@@ -75,3 +75,55 @@ def clean_text(value: str | None) -> str:
             return _WS.sub(" ", str(value)).strip()
         except Exception:
             return ""
+
+
+# --- Assistant answers: Markdown -> readable plain text ----------------------
+# Sherlock's answers are rendered as TEXT in the browser (textContent only —
+# never HTML), so any Markdown the model emits shows up as literal ``**`` and
+# ``- `` noise. ``markdown_to_plain`` strips that formatting while keeping the
+# line structure. It never interprets or removes HTML: a ``<script>`` in an
+# answer stays as inert literal text, exactly as before.
+_MD_FENCE = re.compile(r"^\s*```[^\n]*$", re.MULTILINE)
+_MD_HEADING = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]+", re.MULTILINE)
+_MD_RULE = re.compile(r"^[ \t]*([-*_])([ \t]*\1){2,}[ \t]*$", re.MULTILINE)
+_MD_BULLET = re.compile(r"^([ \t]*)[-*+][ \t]+", re.MULTILINE)
+_MD_QUOTE = re.compile(r"^[ \t]*>[ \t]?", re.MULTILINE)
+_MD_BOLD = re.compile(r"(\*\*|__)(?=\S)(.+?)(?<=\S)\1")
+_MD_ITALIC = re.compile(r"(?<![\w*])\*(?=\S)([^*\n]+?)(?<=\S)\*(?![\w*])")
+_MD_CODE = re.compile(r"`([^`\n]+)`")
+_MD_ANSWER_LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
+_BLANK_RUNS = re.compile(r"\n{3,}")
+
+
+def _link_to_text(m: re.Match[str]) -> str:
+    label, url = m.group(1).strip(), m.group(2).strip()
+    return label if label == url else f"{label} ({url})"
+
+
+def markdown_to_plain(value: str | None) -> str:
+    """Turn a Markdown-flavoured assistant answer into clean plain text.
+
+    ``**bold**`` / ``__bold__`` / ``*em*`` / ```code``` lose their markers,
+    ``#`` headings and fence lines are dropped, ``- `` / ``* `` / ``+ `` bullets
+    become ``• `` and ``[label](url)`` becomes ``label (url)``. Newlines are
+    preserved (the chat bubble uses ``white-space: pre-wrap``). HTML is left
+    untouched on purpose — the client renders the result as text, so it is
+    inert. Never raises.
+    """
+    if not value:
+        return ""
+    try:
+        text = str(value).replace("\r\n", "\n")
+        text = _MD_FENCE.sub("", text)
+        text = _MD_RULE.sub("", text)
+        text = _MD_HEADING.sub("", text)
+        text = _MD_QUOTE.sub("", text)
+        text = _MD_BULLET.sub(lambda m: m.group(1) + "• ", text)
+        text = _MD_ANSWER_LINK.sub(_link_to_text, text)
+        text = _MD_BOLD.sub(r"\2", text)
+        text = _MD_ITALIC.sub(r"\1", text)
+        text = _MD_CODE.sub(r"\1", text)
+        text = _BLANK_RUNS.sub("\n\n", text)
+        return text.strip()
+    except Exception:  # pragma: no cover - defensive, regexes are static
+        return str(value)

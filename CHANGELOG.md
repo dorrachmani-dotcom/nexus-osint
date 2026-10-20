@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Sherlock's answers read as clean text: Markdown markers such as `**bold**`
+  and `- ` bullets no longer show up literally (bullets become "•"). Answers
+  are still displayed as text only, never as HTML.
+
 ## [1.2.0] - 2026-10-20
 
 A clearer interface: calmer pages, obvious primary actions, and a Setup checklist

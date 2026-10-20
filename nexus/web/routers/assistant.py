@@ -61,6 +61,13 @@ def assistant_ask(
             "actions": [],
             "error": "Something went wrong answering that. Please try again.",
         }
+    # Models often answer in Markdown; the chat renders text only (never HTML),
+    # so normalise it to clean plain text here — one choke point for every
+    # provider. HTML in the answer is left as-is and stays inert on the client.
+    if isinstance(result, dict) and isinstance(result.get("answer"), str):
+        from nexus.textclean import markdown_to_plain
+
+        result["answer"] = markdown_to_plain(result["answer"])
     return JSONResponse(result)
 
 
