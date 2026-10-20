@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-20
+
+A clearer interface: calmer pages, obvious primary actions, and a Setup checklist
+that makes configuring sources, AI, email and the daily brief straightforward.
 
 ### Changed
 - Header: the row of ~25 source chips is now one "N/M sources" control that
@@ -30,6 +34,7 @@ to [Semantic Versioning](https://semver.org/).
   time, "scan first", what is included, a test send and "Next / Last sent".
 - Per-case daily reports can be switched on from the Setup page, and each
   case's Reports tab shows the next and last report and whether it is emailed.
+- The README demo video now shows the redesigned interface.
 
 ## [1.1.0] - 2026-10-17
 

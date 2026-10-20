@@ -14,7 +14,7 @@
 
 <p align="center"><b>65-second demo:</b> one sentence to Sherlock opens a full investigation, then the same workflow by hand.</p>
 
-https://github.com/user-attachments/assets/96bbbcde-d029-4d05-930b-a3b99b4b0d40
+https://github.com/user-attachments/assets/5a123727-9177-4f8b-bb7b-09266f8b30b6
 
 <p align="center"><sub>The demo runs on live public sources; names of private individuals are blurred.</sub></p>
 
