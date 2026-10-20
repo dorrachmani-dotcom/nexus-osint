@@ -215,3 +215,37 @@ def test_sherlock_enabled_with_ai(temp_db, monkeypatch):
         html = _client().get("/cases").text
     assert 'id="assistant-needs-ai"' not in html
     assert "Hi, I'm Sherlock" in html
+
+
+# --- v1.2 leftovers --------------------------------------------------------------
+def _render_detail(**over):
+    from nexus.web.common import TEMPLATES
+
+    item = {"id": 7, "source": "gnews", "title": "Acme ships a widget",
+            "reliability": "aggregator", "threat_level": "none",
+            "fetched_at": "2026-10-01T10:00:00", "url": "https://example.com/a"}
+    item.update(over)
+    return TEMPLATES.get_template("_item_detail.html").render(
+        item=item, wl_hits=[], cases=[], lists=[], open_cases=[],
+        pinned_case_ids=set(), ar={})
+
+
+def test_item_drawer_hides_aggregator_badge_like_feed_cards():
+    assert ">aggregator</span>" not in _render_detail()
+    assert ">official</span>" in _render_detail(reliability="official")
+
+
+def test_end_chat_hidden_without_ai(temp_db):
+    with temp_db():
+        html = _client().get("/cases").text
+    assert "nexusAssistantEnd()" not in html
+
+
+def test_end_chat_shown_with_ai(temp_db, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
+    from nexus.config import get_settings
+
+    get_settings.cache_clear()
+    with temp_db():
+        html = _client().get("/cases").text
+    assert "nexusAssistantEnd()" in html

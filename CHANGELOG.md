@@ -13,6 +13,8 @@ to [Semantic Versioning](https://semver.org/).
 - AI summaries state the news directly in one neutral sentence instead of
   commentary such as "The text claims…" or "The headline discusses…";
   headline-only items are summarised from what the headline reports.
+- Item details no longer show the "aggregator" badge, matching the feed cards.
+- Sherlock's "End chat" button is hidden while no AI model is set up.
 
 ## [1.2.0] - 2026-10-20
 
