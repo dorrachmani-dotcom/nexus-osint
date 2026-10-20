@@ -10,6 +10,9 @@ to [Semantic Versioning](https://semver.org/).
 - Sherlock's answers read as clean text: Markdown markers such as `**bold**`
   and `- ` bullets no longer show up literally (bullets become "•"). Answers
   are still displayed as text only, never as HTML.
+- AI summaries state the news directly in one neutral sentence instead of
+  commentary such as "The text claims…" or "The headline discusses…";
+  headline-only items are summarised from what the headline reports.
 
 ## [1.2.0] - 2026-10-20
 
