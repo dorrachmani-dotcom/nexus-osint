@@ -11,7 +11,9 @@
         {% elif threat == 'medium' %}bg-amber-950 text-amber-300 border-amber-800
         {% else %}bg-slate-800 text-slate-300{% endif %}">&#9888; {{ threat }}</span>
       {% endif %}
-      {% if item.reliability %}
+      {# Same rule as the feed cards: "aggregator" is the unremarkable default
+         (a news aggregator relaying an outlet), so it gets no badge. #}
+      {% if item.reliability and item.reliability != 'aggregator' %}
       <span class="px-1.5 py-0.5 rounded border
         {% if item.reliability == 'official' %}bg-emerald-950 text-emerald-300 border-emerald-800
         {% elif item.reliability == 'social' %}bg-sky-950 text-sky-300 border-sky-800

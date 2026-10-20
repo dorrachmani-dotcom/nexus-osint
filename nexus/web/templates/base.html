@@ -306,6 +306,7 @@
   {# A grounded helper that knows the product and can answer questions about the
      collected data. Runs on whichever model the analyst configured (cloud API or
      a local Ollama model). Pure client-side widget posting to /assistant/ask. #}
+  {% set _ai_on = ai_ready() %}
   <div id="assistant-panel"
        class="fixed bottom-20 left-5 z-40 w-[360px] max-w-[calc(100vw-2.5rem)]
               hidden flex-col rounded-xl border border-slate-700 bg-slate-900
@@ -326,13 +327,15 @@
         <div class="text-sm font-semibold text-slate-100 leading-tight">Sherlock</div>
         <div class="text-[10px] mono text-slate-500 leading-tight">your OSINT assistant — ask, or tell me to act</div>
       </div>
+      {# No AI model: there is no conversation to end, so no End chat button. #}
+      {% if _ai_on %}
       <button type="button" onclick="nexusAssistantEnd()"
               class="text-[11px] text-slate-400 hover:text-slate-100 px-2 py-0.5 rounded border border-slate-700"
               title="End this conversation">End chat</button>
+      {% endif %}
       <button type="button" onclick="nexusAssistantToggle(false)"
               class="text-slate-400 hover:text-slate-100 text-lg leading-none px-1" title="Close">&times;</button>
     </div>
-    {% set _ai_on = ai_ready() %}
     <div id="assistant-log" class="flex-1 overflow-y-auto px-3 py-3 space-y-3 text-sm">
       {% if not _ai_on %}
       {# No AI provider: say so plainly instead of offering a chat that can't act. #}
