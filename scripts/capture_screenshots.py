@@ -40,7 +40,10 @@ def _shot(page: Page, name: str) -> None:
 
 def capture(base: str) -> None:
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        try:
+            browser = p.chromium.launch()
+        except Exception:  # Playwright's Chromium not installed: use the system Edge
+            browser = p.chromium.launch(channel="msedge")
         page = browser.new_page(viewport=VIEWPORT, device_scale_factor=2)
 
         # Feed: scroll past the onboarding card to the analysed items.
@@ -64,6 +67,7 @@ def capture(base: str) -> None:
             ("timeline", "/cases/1?tab=timeline", 1200),
             ("entity", "/entity?name=Nightjar%20Group", 1200),
             ("settings", "/settings", 800),
+            ("setup", "/setup", 800),
         ):
             _open(page, f"{base}{path}", wait)
             _shot(page, name)

@@ -35,6 +35,10 @@ that makes configuring sources, AI, email and the daily brief straightforward.
 - Per-case daily reports can be switched on from the Setup page, and each
   case's Reports tab shows the next and last report and whether it is emailed.
 - The README demo video now shows the redesigned interface.
+- README screenshots re-captured on the redesigned interface, plus the Setup checklist.
+
+### Fixed
+- The Brief page's Scan now button no longer wraps the navigation onto two lines.
 
 ## [1.1.0] - 2026-10-17
 

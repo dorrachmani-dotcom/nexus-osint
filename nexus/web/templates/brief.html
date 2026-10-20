@@ -6,9 +6,10 @@
   <button hx-post="/scan" hx-swap="none"
           hx-indicator="#brief-spin"
           hx-on::after-request="window.location.href='/brief'"
-          class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold">
-    &#128260; Scan now</button>
-  <span id="brief-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip; this can take a minute or two</span>
+          title="Collect from every source (can take a minute or two)"
+          class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold whitespace-nowrap">
+    Scan now</button>
+  <span id="brief-spin" class="htmx-indicator mono text-xs text-amber-400">scanning&hellip;</span>
 {% endblock %}
 {% block content %}
 <section class="space-y-5">

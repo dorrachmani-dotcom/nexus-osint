@@ -191,7 +191,15 @@ reach the network. Collected text is untrusted input, so the assistant's output
 is rendered as text, never HTML: a prompt injection hidden in a scraped post
 cannot become script execution in your browser.
 
-#### 8. Settings that explain themselves
+#### 8. A setup checklist, and settings that explain themselves
+
+<img src="docs/media/setup.png" alt="Setup checklist: five steps with live status (sources, AI, email, daily brief, daily case reports) and the daily-brief scheduling card" width="100%">
+
+**Setup** walks through five short steps, each with a live status and one button:
+sources (several work with no keys), an optional AI provider, the email
+connection, the daily brief (on/off, local time, "scan first", a test send and
+when it last went out / goes out next) and per-case daily reports. Only the
+first step is needed to start collecting.
 
 <img src="docs/media/settings.png" alt="Settings page: AI provider choice, key editor showing set / not set only, and source configuration" width="100%">
 
