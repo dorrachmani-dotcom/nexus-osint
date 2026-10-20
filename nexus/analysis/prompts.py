@@ -18,8 +18,15 @@ concise, neutral, evidence-based assessment.
 Return ONLY a single JSON object (no markdown, no prose) with exactly these keys:
 - "threat_level": one of "none", "low", "medium", "high", "critical".
   Judge the security/safety relevance of the content, not how upsetting it is.
-- "summary": one or two sentences, in {target_lang}, capturing the core claim
-  or event. Be factual and source-agnostic.
+- "summary": ONE neutral sentence, in {target_lang}, that states the news
+  itself directly, as a reporter would (e.g. "Acme recalled 2 million
+  routers after a firmware flaw."). Never describe the item instead of the
+  news: do not write "The text claims…", "The headline discusses…", "The
+  content is a tutorial…", "This article reports…" or any other commentary
+  about the text, title, headline, article, post or content. When only a
+  headline is available, summarise what the headline reports, using only
+  what it says; never invent details it does not contain. Attribute claims
+  to their source where relevant ("Police say…"), not to "the text".
 - "translation": the content translated into {target_lang}. If the content is
   already in {target_lang}, return an empty string.
 - "entities": a JSON object grouping notable named entities by type, with exactly
@@ -51,9 +58,21 @@ def build_user_prompt(title: str | None, content: str | None, language: str | No
         "content": content or "",
         "detected_language": language or "unknown",
     }
+    # Headline-only items (common for news aggregators) tempt the model into
+    # meta-commentary ("The text serves as a headline..."); say so explicitly.
+    body = (content or "").strip()
+    headline_only = bool(title) and (not body or body == (title or "").strip())
+    note = (
+        "Only the headline is available for this item: summarise what it "
+        "reports, without inventing details and without describing the "
+        "headline itself.\n\n"
+        if headline_only
+        else ""
+    )
     return (
         "Analyse the following open-source item and respond with the JSON object "
         "described in your instructions.\n\n"
+        + note
         + json.dumps(payload, ensure_ascii=False)
     )
 
