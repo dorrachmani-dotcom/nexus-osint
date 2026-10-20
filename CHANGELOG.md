@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Sherlock keeps the current conversation (and whether its panel is open)
+  when you move to another page. It lasts for the browser tab only and is
+  cleared by "End chat".
+
 ### Fixed
 - Sherlock's answers read as clean text: Markdown markers such as `**bold**`
   and `- ` bullets no longer show up literally (bullets become "•"). Answers

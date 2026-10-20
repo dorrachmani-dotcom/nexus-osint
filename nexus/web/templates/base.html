@@ -464,18 +464,65 @@
     // ---- analyst assistant (floating chat) ----
     (function () {
       var history = [];  // [{role:'user'|'assistant', content:'...'}]
+      // What the chat log shows, so it can be rebuilt after a page navigation:
+      // [{role:'user', text} | {role:'bot', text, items, sources, actions}].
+      var transcript = [];
 
       function el(id) { return document.getElementById(id); }
 
-      window.nexusAssistantToggle = function (force) {
+      // ---- keep the conversation across page navigations (this tab only) ----
+      // sessionStorage lives in THIS browser tab and is gone when it closes; it
+      // never leaves the machine. Restored messages are re-rendered through the
+      // same text-only functions as live ones (no innerHTML). Every access is
+      // guarded: storage can be blocked, full or hold junk.
+      var STORE_KEY = 'nexus.sherlock.v1';
+      function panelOpen() {
+        var p = el('assistant-panel');
+        return !!(p && !p.classList.contains('hidden'));
+      }
+      function persist() {
+        try {
+          window.sessionStorage.setItem(STORE_KEY, JSON.stringify({
+            open: panelOpen(), history: history.slice(-40), log: transcript.slice(-60)
+          }));
+        } catch (e) {}
+      }
+      function loadStored() {
+        try {
+          var d = JSON.parse(window.sessionStorage.getItem(STORE_KEY) || 'null');
+          return (d && typeof d === 'object') ? d : null;
+        } catch (e) { return null; }
+      }
+      function clearStored() {
+        try { window.sessionStorage.removeItem(STORE_KEY); } catch (e) {}
+      }
+      // A stored action must never auto-open a tab again when it is replayed.
+      function replayableActions(actions) {
+        if (!Array.isArray(actions)) return [];
+        return actions.filter(function (a) { return a && typeof a === 'object'; })
+          .map(function (a) {
+            var c = {};
+            for (var k in a) { if (k !== 'open') c[k] = a[k]; }
+            return c;
+          });
+      }
+
+      function setPanel(show, focus) {
         var p = el('assistant-panel');
         var launcher = el('assistant-launcher');
         if (!p) return;
-        var show = (typeof force === 'boolean') ? force : p.classList.contains('hidden');
         p.classList.toggle('hidden', !show);
         p.classList.toggle('flex', show);
         if (launcher) launcher.style.display = show ? 'none' : 'flex';
-        if (show) { var i = el('assistant-input'); if (i) i.focus(); }
+        if (show && focus) { var i = el('assistant-input'); if (i) i.focus(); }
+      }
+
+      window.nexusAssistantToggle = function (force) {
+        var p = el('assistant-panel');
+        if (!p) return;
+        var show = (typeof force === 'boolean') ? force : p.classList.contains('hidden');
+        setPanel(show, true);
+        persist();
       };
 
       // Safely render a bot message, turning "Item N" references into clickable
@@ -537,12 +584,15 @@
         wrap.className = 'space-y-1';
         actions.forEach(function (a) {
           if (!a || !a.label) return;
+          // Only in-app paths and http(s) links are ever used as an href or opened
+          // (a stored/replayed action can never smuggle in a javascript: URL).
+          var url = (typeof a.url === 'string' && /^(\/(?!\/)|https?:\/\/)/i.test(a.url)) ? a.url : '';
           // A "navigate" action takes the analyst to a page in THIS window — a
           // prominent amber button (not a new tab, never auto-fired so a click
           // is always an explicit choice).
-          if (a.type === 'navigate' && a.url) {
+          if (a.type === 'navigate' && url) {
             var nav = document.createElement('a');
-            nav.href = a.url; // same-window navigation, no target=_blank
+            nav.href = url; // same-window navigation, no target=_blank
             nav.className = 'block rounded-md border border-amber-500/70 bg-amber-500/15 ' +
               'hover:bg-amber-500/25 px-3 py-2 text-xs font-semibold text-amber-200 ' +
               'no-underline text-center';
@@ -561,12 +611,12 @@
             : a.type === 'evidence' ? '📸 '
             : a.type === 'error' ? '⚠️ ' : '';
           var row;
-          if (a.url) {
+          if (url) {
             row = document.createElement('a');
-            row.href = a.url;
+            row.href = url;
             // Pages inside the app open in the same window (the chat panel and
             // its history come along); anything else opens in a new tab.
-            if (!/^\/(?!\/)/.test(a.url)) { row.target = '_blank'; row.rel = 'noopener'; }
+            if (!/^\/(?!\/)/.test(url)) { row.target = '_blank'; row.rel = 'noopener'; }
             row.className = 'block rounded-md border border-slate-700 bg-slate-800/70 ' +
               'hover:bg-slate-700 px-3 py-2 text-xs text-slate-100 no-underline';
           } else {
@@ -603,7 +653,7 @@
           }
           // Honour "open this for me" (e.g. the PDF). Pop-up blockers may stop
           // this; the clickable row above is always the reliable fallback.
-          if (a.open && a.url) { try { window.open(a.url, '_blank', 'noopener'); } catch (e) {} }
+          if (a.open && url) { try { window.open(url, '_blank', 'noopener'); } catch (e) {} }
         });
         log.appendChild(wrap);
         log.scrollTop = log.scrollHeight;
@@ -658,6 +708,8 @@
 
       function resetChat() {
         history = [];
+        transcript = [];
+        persist();  // overwrites the saved chat; keeps only open/closed state
         var log = el('assistant-log');
         // No AI configured: keep the "set up AI" card instead of a chat greeting.
         if (el('assistant-needs-ai')) return;
@@ -753,7 +805,41 @@
         t.style.height = Math.min(t.scrollHeight, 120) + 'px';
       }
 
+      // Rebuild the conversation saved by an earlier page in this tab. Each
+      // entry goes through addBubble / renderSources / renderActions — the
+      // same text-only path as a live answer.
+      function restoreChat() {
+        var d = loadStored();
+        if (!d) return;
+        // No AI model configured: nothing to continue, drop any leftovers.
+        if (el('assistant-needs-ai')) { clearStored(); return; }
+        if (Array.isArray(d.history)) {
+          history = d.history.filter(function (t) {
+            return t && (t.role === 'user' || t.role === 'assistant') &&
+              typeof t.content === 'string';
+          });
+        }
+        if (Array.isArray(d.log)) {
+          d.log.forEach(function (m) {
+            if (!m || typeof m.text !== 'string') return;
+            if (m.role === 'user') {
+              addBubble('user', m.text);
+            } else if (m.role === 'bot') {
+              var items = Array.isArray(m.items) ? m.items : [];
+              addBubble('assistant', m.text, items);
+              if (m.sources) renderSources(items, m.text);
+              renderActions(replayableActions(m.actions));
+            } else {
+              return;
+            }
+            transcript.push(m);
+          });
+        }
+        if (d.open === true) setPanel(true, false);
+      }
+
       document.addEventListener('DOMContentLoaded', function () {
+        restoreChat();
         var form = el('assistant-form');
         var input = el('assistant-input');
         if (!form || !input) return;
@@ -774,6 +860,8 @@
 
           addBubble('user', q);
           history.push({ role: 'user', content: q });
+          transcript.push({ role: 'user', text: q });
+          persist();
           input.value = '';
           autosize(input);
 
@@ -827,6 +915,12 @@
               if (data.ok && data.answer) renderSources(data.items || [], data.answer);
               if (data.ok && data.answer) history.push({ role: 'assistant', content: data.answer });
               if (data.ok && data.actions) renderActions(data.actions);
+              transcript.push({
+                role: 'bot', text: msg, items: data.items || [],
+                sources: !!(data.ok && data.answer),
+                actions: data.ok ? replayableActions(data.actions) : []
+              });
+              persist();
               var log = el('assistant-log');
               if (log) log.scrollTop = log.scrollHeight;
             })
