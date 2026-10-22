@@ -9,7 +9,7 @@ python-multipart==0.0.32
 
 # --- Config / models ---
 pydantic==2.13.5
-pydantic-settings==2.15.0
+pydantic-settings==2.16.0
 
 # --- Intelligence core ---
 anthropic==0.42.0
