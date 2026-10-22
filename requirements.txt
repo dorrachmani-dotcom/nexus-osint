@@ -48,7 +48,7 @@ weasyprint==70.0            # HTML -> PDF (primary; Linux/Docker); 70.0 includes
 xhtml2pdf==0.2.21           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 
 # --- Entity graph (Maltego replacement) ---
-networkx==3.4.2
+networkx==3.6.1
 pyvis==0.3.2
 
 # --- Dev / tests ---
