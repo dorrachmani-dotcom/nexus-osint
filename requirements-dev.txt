@@ -3,6 +3,6 @@
 -r requirements.txt
 
 pytest==9.1.1               # same pin as requirements.txt (kept in sync)
-ruff==0.16.10               # linter / formatter
+ruff==0.17.1               # linter / formatter
 mypy==2.4.0                 # static type checker
 pre-commit==4.6.2           # git hook runner
