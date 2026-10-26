@@ -38,7 +38,10 @@ one SQLite file you own, and every outbound connection can be audited.
 
 - **Collects** from RSS, Google News, Reddit and GDELT with no API keys, plus
   optional Twitter/X, Telegram, SERPAPI and Google CSE, any user-defined JSON API,
-  and wrapped OSINT CLI tools.
+  and wrapped OSINT CLI tools. Reddit works keyless through its public search
+  feed; the official Reddit Data API (`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`,
+  for steady per-subreddit pulls) is optional and, since 2026, needs approval
+  from Reddit before keys work. Commercial use needs a separate agreement with Reddit.
 - **Deduplicates and searches**: exact re-fetches are no-ops, near-duplicates
   collapse into one row with an "echoed N times" badge, and the whole history is
   searchable through SQLite FTS5.
