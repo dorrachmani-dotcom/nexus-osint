@@ -13,9 +13,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 import feedparser
-import httpx
 
 from nexus.models import RawItem
+from nexus.netguard import safe_get
 
 logger = logging.getLogger("nexus.sources")
 
@@ -31,17 +31,16 @@ def fetch_feed(url: str, timeout: float = 30.0):
     single slow or hung host can stall an entire scan thread indefinitely. Every
     other source in this package fetches over httpx with a bounded timeout; this
     helper does the same for the RSS/Atom backbone: it pulls the bytes through
-    httpx (bounded timeout, redirects followed, a UA some feeds require) and then
-    hands the content to feedparser, which only parses — it never touches the
-    network. Raises on a network error / non-2xx so the caller (which already
+    httpx (bounded timeout, a UA some feeds require) and then hands the content
+    to feedparser, which only parses — it never touches the network.
+
+    Redirects go through :func:`nexus.netguard.safe_get`, which re-checks every
+    hop with the SSRF guard, so a public feed URL cannot bounce the request to a
+    loopback / private / link-local address. Raises on a refused hop
+    (``ValueError``), a network error or a non-2xx so the caller (which already
     wraps the call in try/except) can isolate that one feed.
     """
-    resp = httpx.get(
-        url,
-        timeout=timeout,
-        follow_redirects=True,
-        headers={"User-Agent": _FEED_USER_AGENT},
-    )
+    resp = safe_get(url, timeout=timeout, headers={"User-Agent": _FEED_USER_AGENT})
     resp.raise_for_status()
     return feedparser.parse(resp.content)
 
