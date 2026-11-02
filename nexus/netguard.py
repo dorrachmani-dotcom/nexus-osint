@@ -98,10 +98,10 @@ def parse_policy(hosts_raw: str | None, cidrs_raw: str | None) -> InternalPolicy
         try:
             net = ipaddress.ip_network(tok, strict=False)
         except ValueError:
-            logger.warning("Ignoring invalid INTERNAL_ALLOWED_CIDRS entry %r", tok)
+            logger.warning("Ignoring an invalid INTERNAL_ALLOWED_CIDRS entry")
             continue
         if net.prefixlen == 0:
-            logger.warning("Ignoring catch-all INTERNAL_ALLOWED_CIDRS entry %r", tok)
+            logger.warning("Ignoring a catch-all INTERNAL_ALLOWED_CIDRS entry (/0)")
             continue
         nets.append(net)
     return InternalPolicy(hosts=tuple(hosts), networks=tuple(nets))

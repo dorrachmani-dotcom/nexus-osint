@@ -205,10 +205,11 @@ def test_web_sources_page_and_create(temp_db, site):
     r = c.post("/sources/web", data={"url": "https://docs.example.org/guide/", "crawl": "1",
                                      "max_depth": "9", "max_pages": "999",
                                      "auth_type": "bearer", "secret": "tok"})
-    assert r.status_code == 200 and "docs.example.org" in r.text
+    assert r.status_code == 200
     with temp_db() as conn:
         row = conn.execute("SELECT * FROM web_sources").fetchone()
         assert row["max_depth"] == 3 and row["max_pages"] == 200
+        assert row["url"] == "https://docs.example.org/guide/"
     from nexus.envstore import read_env_value
 
     assert read_env_value(f"WEB_SOURCE_{row['id']}_SECRET") == "tok"

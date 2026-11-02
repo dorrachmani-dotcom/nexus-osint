@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from nexus.config import get_settings
 from nexus.db import get_connection
 from nexus.envstore import read_env_value, reload_settings, update_env, web_source_env_name
-from nexus.netguard import internal_policy, parse_policy
+from nexus.netguard import internal_policy, parse_policy, tls_verify_for
 from nexus.storage.web_sources import (
     MAX_DEPTH,
     MAX_PAGES,
@@ -169,11 +169,10 @@ async def internal_network_save(request: Request) -> HTMLResponse:
     })
     reload_settings()
     error = None
-    if ca:
-        import os
-
-        if not os.path.isfile(ca):
-            error = "The CA bundle path does not exist on this computer."
+    # Check the saved setting (not the raw form value) with the same resolver
+    # the fetchers use; it falls back to normal verification if the file is missing.
+    if ca and tls_verify_for("ca_bundle") is True:
+        error = "The CA bundle path does not exist on this computer."
     return TEMPLATES.TemplateResponse(
         request, "_internal_network_settings.html", _internal_ctx(saved=True, error=error)
     )
