@@ -7,6 +7,7 @@ to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- README and `.env.example` explain that Reddit works keyless via its search feed, and that the official Reddit Data API is optional and needs approval from Reddit (since 2026).
 - Sherlock keeps the current conversation (and whether its panel is open)
   when you move to another page. It lasts for the browser tab only and is
   cleared by "End chat".
