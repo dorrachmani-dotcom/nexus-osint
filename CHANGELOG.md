@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+- RSS / search-feed fetches now re-check every redirect hop with the SSRF guard,
+  so a public feed URL can no longer redirect the request to a loopback,
+  private or link-local address.
+
 ### Changed
 - README and `.env.example` explain that Reddit works keyless via its search feed, and that the official Reddit Data API is optional and needs approval from Reddit (since 2026).
 - Sherlock keeps the current conversation (and whether its panel is open)
