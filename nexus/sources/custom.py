@@ -49,7 +49,7 @@ def _parse_date(value) -> datetime | None:
         try:
             return datetime.fromtimestamp(int(text), tz=UTC)
         except (OverflowError, OSError, ValueError):
-            pass
+            logger.debug("Numeric date %r is not a valid epoch; trying ISO format", text, exc_info=True)
     try:
         return datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:

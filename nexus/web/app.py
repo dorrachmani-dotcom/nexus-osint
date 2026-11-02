@@ -107,7 +107,7 @@ def _auto_scan_loop(collector: Collector) -> None:
                         if datetime.now(UTC) - last_dt < timedelta(hours=interval_h):
                             continue
                     except ValueError:
-                        pass
+                        logger.debug("Unparseable last_auto_scan_at %r; scanning now", last_raw, exc_info=True)
                 set_meta(conn, "last_auto_scan_at", datetime.now(UTC).isoformat())
             logger.info("Auto-scan: starting scheduled scan (interval=%dh)", interval_h)
             collector.scan()

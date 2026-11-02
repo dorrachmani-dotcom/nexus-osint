@@ -56,6 +56,7 @@ CLAUDE.md
 *.db
 *.sqlite
 assistant_logs/
+logs/
 evidence/
 .venv*/
 

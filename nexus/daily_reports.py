@@ -137,7 +137,7 @@ def get_config(conn, case_id: int) -> dict:
                 if data.get("email") in EMAIL_MODES:
                     cfg["email"] = data["email"]
         except ValueError:
-            pass
+            logger.debug("Ignoring malformed daily-report config; using defaults", exc_info=True)
     return cfg
 
 

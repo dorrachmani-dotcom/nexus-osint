@@ -33,7 +33,7 @@ it that way. Architecture and extension points are covered in the
 git clone <your fork>
 cd nexus-osint
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt                  # runtime deps + pytest/ruff/mypy
 cp .env.example .env                                 # keys are optional
 uvicorn nexus.web.app:app --host 127.0.0.1 --port 8000 --reload
 ```
