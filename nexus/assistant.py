@@ -718,7 +718,8 @@ def _extract_json(text: str | None) -> dict | None:
         obj = json.loads(text)
         return obj if isinstance(obj, dict) else None
     except (ValueError, RecursionError):
-        pass  # not a bare JSON document; fall back to extracting the {...} span
+        # Not a bare JSON document; fall back to extracting the {...} span.
+        logger.debug("Model reply is not bare JSON; extracting the {...} span", exc_info=True)
     start, end = text.find("{"), text.rfind("}")
     if start != -1 and end > start:
         try:

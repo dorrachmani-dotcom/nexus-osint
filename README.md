@@ -349,7 +349,7 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-The suite (about 500 tests) uses temporary SQLite databases and avoids the
+The suite (about 600 tests) uses temporary SQLite databases and avoids the
 network; it covers storage and dedup, source parsing, the assistant allow-list,
 web hardening, export/transfer round-trips and route smoke tests.
 

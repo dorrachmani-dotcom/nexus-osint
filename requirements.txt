@@ -51,5 +51,4 @@ xhtml2pdf==0.2.21           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 networkx==3.6.1
 pyvis==0.3.2
 
-# --- Dev / tests ---
-pytest==9.1.1               # 9.0.3 fixes CVE-2025-71176 (dev-only)
+# Dev / test tools (pytest, ruff, mypy, pre-commit) live in requirements-dev.txt.
