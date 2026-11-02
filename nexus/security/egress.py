@@ -175,6 +175,19 @@ def _configured_allow() -> dict[str, str]:
     except Exception:
         logger.debug("Could not read custom sources for egress allow-list", exc_info=True)
 
+    # Watched web pages / docs sites the operator added.
+    try:
+        from nexus.db import get_connection
+
+        with get_connection() as conn:
+            rows = conn.execute("SELECT url FROM web_sources WHERE enabled = 1").fetchall()
+        for row in rows:
+            h = _host_of(str(row[0] or ""))
+            if h:
+                allow[h] = "Source (your watched web page)"
+    except Exception:
+        logger.debug("Could not read web sources for egress allow-list", exc_info=True)
+
     _allow_cache = allow
     _allow_cache_at = now
     return allow
@@ -204,8 +217,21 @@ def classify(host: str, port: int) -> tuple[str, bool]:
     if not h:
         return "Unknown", False
 
+    if h in ("localhost", "127.0.0.1", "::1"):
+        return "Local machine", True
+
+    # An intranet target the operator explicitly allow-listed
+    # (INTERNAL_ALLOWED_HOSTS / INTERNAL_ALLOWED_CIDRS).
+    try:
+        from nexus.netguard import is_internal_destination
+
+        if is_internal_destination(h):
+            return "Internal network (allowed)", True
+    except Exception:
+        logger.debug("internal allow-list check failed", exc_info=True)
+
     # Local machine / private network (covers a local Ollama, the app itself).
-    if h in ("localhost", "127.0.0.1", "::1") or _is_local_ip(h):
+    if _is_local_ip(h):
         return "Local machine", True
 
     if port == 53:

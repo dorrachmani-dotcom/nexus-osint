@@ -171,6 +171,17 @@ class Settings(BaseSettings):
     archive_org_access_key: str | None = Field(default=None)
     archive_org_secret_key: str | None = Field(default=None)
 
+    # --- Internal / air-gapped networks (opt-in) ---
+    # By default every server-side fetch refuses private addresses (SSRF guard).
+    # Hosts (wildcards allowed, e.g. "wiki.corp,*.docs.internal") and networks
+    # (e.g. "10.20.0.0/16") listed here MAY resolve to private addresses, so web
+    # pages and APIs on an intranet can be ingested. Loopback, link-local
+    # (incl. cloud metadata) and the app's own port stay blocked regardless.
+    internal_allowed_hosts: str = Field(default="")
+    internal_allowed_cidrs: str = Field(default="")
+    # PEM bundle of an internal CA, used by sources set to "trust internal CA".
+    internal_ca_bundle: str = Field(default="")
+
     # --- Storage ---
     data_dir: str = Field(default="data")
     database_path: str = Field(default="data/nexus.db")

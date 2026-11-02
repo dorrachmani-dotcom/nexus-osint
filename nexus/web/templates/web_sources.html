@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Sources</h1>
+    <p class="text-sm text-slate-400">Where your data comes from.</p>
+    {% set active = 'web' %}{% include "_sources_tabs.html" %}
+  </div>
+  <p class="text-sm text-slate-400">
+    Watch a web page or a whole documentation site. On every scan Nexus reads the page text,
+    and adds an item when a page is <span class="text-slate-300">new</span> or its text has
+    <span class="text-slate-300">changed</span> (with a short summary of what changed).
+    It follows <span class="mono">robots.txt</span> of that site, waits between requests, and never
+    leaves the site you entered.
+  </p>
+  {% if not internal_enabled %}
+  <p class="text-xs text-slate-500">
+    Intranet or internal wiki? Internal addresses are blocked by default. Allow the specific
+    hosts or networks under
+    <a href="/settings#internal-network" class="text-sky-400 hover:text-sky-300">Settings &rsaquo; Internal network</a>.
+  </p>
+  {% endif %}
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+      <h2 class="text-sm font-medium text-slate-300">&#127760; Watch a page or site</h2>
+      <form hx-post="/sources/web" hx-target="#web-source-list" hx-swap="outerHTML"
+            hx-on::after-request="if (event.detail.successful) this.reset()" class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-400">Address</label>
+          <input type="url" name="url" required placeholder="https://docs.example.org/guide/"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Name (optional)</label>
+          <input type="text" name="name" placeholder="e.g. Vendor docs"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+        </div>
+        <div class="rounded border border-slate-800 p-2.5 space-y-2">
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" name="crawl" value="1" class="accent-amber-500" />
+            Also follow links on the same site
+          </label>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-[11px] text-slate-500">Link depth (max {{ max_depth }})</label>
+              <input type="number" name="max_depth" value="1" min="0" max="{{ max_depth }}"
+                     class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm" />
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-500">Max pages (max {{ max_pages }})</label>
+              <input type="number" name="max_pages" value="20" min="1" max="{{ max_pages }}"
+                     class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm" />
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-500">Seconds between pages</label>
+              <input type="number" name="delay_seconds" value="1" min="0.5" max="30" step="0.5"
+                     class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm" />
+            </div>
+          </div>
+          <label class="flex items-center gap-2 text-xs text-slate-400">
+            <input type="checkbox" name="stay_under_path" value="1" checked class="accent-amber-500" />
+            Only pages below the start address (e.g. stay inside <span class="mono">/guide/</span>)
+          </label>
+        </div>
+        <details class="rounded border border-slate-800 p-2.5">
+          <summary class="text-xs text-slate-400 cursor-pointer">Login &amp; certificates (internal sites)</summary>
+          <div class="mt-2 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[11px] text-slate-500">Login</label>
+                <select name="auth_type" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm">
+                  <option value="none">None</option>
+                  <option value="basic">Basic (user:password)</option>
+                  <option value="bearer">Bearer token</option>
+                  <option value="header">Custom header</option>
+                  <option value="cookie">Cookie</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-500">Header name (custom header)</label>
+                <input type="text" name="auth_param" placeholder="X-Auth-Token"
+                       class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+              </div>
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-500">Secret &mdash; saved to the local <span class="mono">.env</span> only, never shown again</label>
+              <input type="password" name="secret" autocomplete="off" placeholder="user:password, token, header value or cookie string"
+                     class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-500">TLS certificate</label>
+              <select name="tls_mode" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm">
+                <option value="verify">Verify normally (recommended)</option>
+                <option value="ca_bundle">Trust my internal CA{% if not ca_bundle_set %} (set its file in Settings first){% endif %}</option>
+                <option value="insecure">Do NOT verify (self-signed; insecure)</option>
+              </select>
+            </div>
+          </div>
+        </details>
+        <button class="w-full rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-4 py-2 text-sm">Add</button>
+      </form>
+    </div>
+    <div class="space-y-2">
+      <h2 class="text-sm font-medium text-slate-300">Watched pages</h2>
+      {% include "_web_source_list.html" %}
+    </div>
+  </div>
+</section>
+{% endblock %}

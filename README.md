@@ -47,6 +47,12 @@ one SQLite file you own, and every outbound connection can be audited.
   (including an exported wiki or docs site) into a case or a shared knowledge
   pool that Sherlock answers from. Files stay local; unknown formats are read on
   a best-effort basis, and archives are unpacked with ZIP-bomb protection.
+- **Watches web pages and documentation sites**: add a URL (optionally crawl the
+  same site within depth/page limits, honouring `robots.txt`) and each scan adds
+  an item for a new page or a short summary of what changed on an existing one.
+  Works on closed networks too: intranet hosts are blocked unless you allow-list
+  them (`INTERNAL_ALLOWED_HOSTS` / `INTERNAL_ALLOWED_CIDRS`), with optional
+  internal-CA trust and Basic/token/header/cookie logins kept in `.env`.
 - **Deduplicates and searches**: exact re-fetches are no-ops, near-duplicates
   collapse into one row with an "echoed N times" badge, and the whole history is
   searchable through SQLite FTS5.
@@ -344,6 +350,11 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
   no page loads a remote asset.
 - The Security center lists every outbound destination the app has contacted and
   flags any that is not a configured source or AI provider.
+- **Server-side fetches are SSRF-guarded.** Only http(s) to public addresses,
+  re-checked on every redirect hop. Internal hosts are reachable only when you
+  list them explicitly (they then show as "Internal network (allowed)" in the
+  Security center); loopback, link-local/cloud-metadata and the app's own port
+  are never reachable.
 
 Reporting vulnerabilities and the full policy: [SECURITY.md](SECURITY.md).
 

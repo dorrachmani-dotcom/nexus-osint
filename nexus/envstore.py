@@ -69,6 +69,10 @@ EDITABLE_KEYS: frozenset[str] = frozenset(
         # Optional Internet Archive keys (Save Page Now 2). Secrets.
         "ARCHIVE_ORG_ACCESS_KEY",
         "ARCHIVE_ORG_SECRET_KEY",
+        # Opt-in internal-network allow-list (not secrets; shown back).
+        "INTERNAL_ALLOWED_HOSTS",
+        "INTERNAL_ALLOWED_CIDRS",
+        "INTERNAL_CA_BUNDLE",
     }
 )
 
@@ -85,8 +89,23 @@ def custom_source_env_name(source_id: int) -> str:
     return f"CUSTOM_SOURCE_{int(source_id)}_KEY"
 
 
+# Per-web-page-source secret (Basic "user:password", a bearer token, a header
+# value or a Cookie string). Same rule: the name comes from an integer id.
+_WEB_KEY_RE = re.compile(r"^WEB_SOURCE_\d+_SECRET$")
+
+
+def web_source_env_name(source_id: int) -> str:
+    """Canonical .env variable name holding a watched web source's secret."""
+    return f"WEB_SOURCE_{int(source_id)}_SECRET"
+
+
+def is_per_source_secret(key: str) -> bool:
+    """A per-source secret variable (name derived from a numeric source id)."""
+    return bool(_CUSTOM_KEY_RE.match(key) or _WEB_KEY_RE.match(key))
+
+
 def _is_writable_key(key: str) -> bool:
-    return key in EDITABLE_KEYS or bool(_CUSTOM_KEY_RE.match(key))
+    return key in EDITABLE_KEYS or is_per_source_secret(key)
 
 
 def _env_path() -> Path:

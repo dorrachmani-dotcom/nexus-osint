@@ -190,6 +190,15 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
     ('GET', '/documents/{doc_id}/file'),
     ('POST', '/documents/{doc_id}/delete'),
     ('GET', '/cases/{case_id}/documents'),
+    # Watched web pages + the internal-network allow-list.
+    ('GET', '/sources/web'),
+    ('POST', '/sources/web'),
+    ('POST', '/sources/web/{source_id}/toggle'),
+    ('POST', '/sources/web/{source_id}/delete'),
+    ('POST', '/sources/web/{source_id}/test'),
+    ('POST', '/sources/web/{source_id}/scan'),
+    ('GET', '/settings/internal-network'),
+    ('POST', '/settings/internal-network'),
 ]
 
 

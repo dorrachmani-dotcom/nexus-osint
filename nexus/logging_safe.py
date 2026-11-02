@@ -27,7 +27,7 @@ def _secret_values() -> list[str]:
     longer secret are handled by the longer match first)."""
     try:
         from nexus.config import get_settings
-        from nexus.envstore import _CUSTOM_KEY_RE, EDITABLE_KEYS, _env_path
+        from nexus.envstore import EDITABLE_KEYS, _env_path, is_per_source_secret
 
         settings = get_settings()
         values = []
@@ -45,7 +45,7 @@ def _secret_values() -> list[str]:
                 if not stripped or stripped.startswith("#") or "=" not in stripped:
                     continue
                 name, _, raw = stripped.partition("=")
-                if not _CUSTOM_KEY_RE.match(name.strip()):
+                if not is_per_source_secret(name.strip()):
                     continue
                 val = raw.strip()
                 if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):

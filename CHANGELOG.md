@@ -16,6 +16,17 @@ to [Semantic Versioning](https://semver.org/).
   opt-in per upload, with a warning when the AI provider is a cloud service.
   ZIP-bomb, path-traversal and XML-entity protections, size limits, and
   originals stored locally and never served inline.
+- Watch web pages and documentation sites (Sources › Web pages): optional
+  same-site crawl with depth/page limits, `robots.txt` honoured, polite delays,
+  and an item for each new page or a summary of what changed on a known one.
+- Closed-network support: an opt-in internal allow-list
+  (`INTERNAL_ALLOWED_HOSTS`, `INTERNAL_ALLOWED_CIDRS`, Settings › Internal
+  network) applied centrally to every server-side fetch and every redirect hop;
+  loopback, link-local/cloud metadata and the app's own port stay blocked. Per
+  source: trust an internal CA (`INTERNAL_CA_BUNDLE`) or, explicitly, skip TLS
+  verification; Basic/bearer/header/cookie logins kept in `.env`. Allowed
+  internal connections show as "Internal network (allowed)" in the Security
+  center.
 
 ### Security
 - RSS / search-feed fetches now re-check every redirect hop with the SSRF guard,
