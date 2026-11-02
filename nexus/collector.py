@@ -29,6 +29,7 @@ from nexus.sources.rss import RSSSource
 from nexus.sources.serpapi import SerpApiSource
 from nexus.sources.telegram import TelegramSource
 from nexus.sources.twitter import TwitterSource
+from nexus.sources.webpage import load_web_sources
 from nexus.storage import (
     get_source_watermark,
     match_watchlists,
@@ -71,7 +72,8 @@ class Collector:
         # are loaded fresh each call so a source added from the dashboard is
         # picked up on the next scan without a restart.
         custom = load_custom_sources(self.settings)
-        return [s for s in (*self.sources, *custom) if s.is_available()]
+        web = load_web_sources(self.settings)
+        return [s for s in (*self.sources, *custom, *web) if s.is_available()]
 
     def scan(self) -> dict:
         """Fetch from every available source and persist. Returns per-source stats."""
@@ -122,6 +124,15 @@ class Collector:
                 prev_watermarks.append(watermark)
             total_new += new
             stats[source.name] = {"fetched": len(items), "new": new, "alerts": alerts}
+
+            # Sources that track state between scans (watched web pages) commit
+            # it only now, after their items were stored, so nothing is lost.
+            commit = getattr(source, "commit_state", None)
+            if callable(commit):
+                try:
+                    commit()
+                except Exception:
+                    logger.exception("Committing state for '%s' failed", source.name)
 
             # Auto-Adapt: a custom API that responded but yielded nothing may have
             # drifted; self-heal its field mapping (cost-guarded, AI-only).

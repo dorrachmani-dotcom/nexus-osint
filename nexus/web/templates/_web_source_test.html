@@ -1,0 +1,10 @@
+{% if result.scanned %}
+<p class="text-xs text-emerald-300">Scanned: {{ result.status or 'done' }} &mdash; {{ result.found }} item{{ '' if result.found == 1 else 's' }} found, {{ result.new }} new.</p>
+{% elif result.ok %}
+<div class="text-xs space-y-0.5">
+  <p class="text-emerald-300">Reachable: &ldquo;{{ result.title }}&rdquo; &middot; {{ result.chars }} characters of text &middot; {{ result.links }} same-site link{{ '' if result.links == 1 else 's' }}</p>
+  {% if result.excerpt %}<p class="text-slate-500 line-clamp-2">{{ result.excerpt }}</p>{% endif %}
+</div>
+{% else %}
+<p class="text-xs text-rose-400">{{ result.error }}</p>
+{% endif %}

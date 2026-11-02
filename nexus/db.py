@@ -304,6 +304,40 @@ CREATE TABLE IF NOT EXISTS document_items (
     PRIMARY KEY (document_id, chunk_index)
 );
 CREATE INDEX IF NOT EXISTS idx_docitems_item ON document_items(item_id);
+-- Watched web pages / documentation sites. Each scan fetches the start page
+-- (optionally crawling the same site within depth/page limits), and emits an
+-- item for every NEW page and for every page whose text CHANGED (with a short
+-- diff summary). Secrets (Basic credentials, tokens, cookies) live in .env as
+-- WEB_SOURCE_<id>_SECRET — never here.
+CREATE TABLE IF NOT EXISTS web_sources (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL,
+    url             TEXT NOT NULL,
+    enabled         INTEGER NOT NULL DEFAULT 1,
+    crawl           INTEGER NOT NULL DEFAULT 0,     -- follow same-site links
+    max_depth       INTEGER NOT NULL DEFAULT 1,
+    max_pages       INTEGER NOT NULL DEFAULT 20,
+    stay_under_path INTEGER NOT NULL DEFAULT 1,     -- only URLs below the start path
+    delay_seconds   REAL NOT NULL DEFAULT 1.0,      -- politeness between requests
+    tls_mode        TEXT NOT NULL DEFAULT 'verify', -- verify | ca_bundle | insecure
+    auth_type       TEXT NOT NULL DEFAULT 'none',   -- none | basic | bearer | header | cookie
+    auth_param      TEXT,                           -- header name for auth_type=header
+    last_scan_at    TEXT,
+    last_status     TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS web_pages (
+    source_id     INTEGER NOT NULL REFERENCES web_sources(id) ON DELETE CASCADE,
+    url           TEXT NOT NULL,
+    title         TEXT,
+    content_hash  TEXT NOT NULL,
+    text          TEXT NOT NULL DEFAULT '',          -- last seen text (capped), for diffs
+    first_seen    TEXT NOT NULL DEFAULT (datetime('now')),
+    last_changed  TEXT NOT NULL DEFAULT (datetime('now')),
+    last_seen     TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (source_id, url)
+);
 
 -- Full-text search over items (external content).
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
@@ -362,7 +396,7 @@ _KNOWN_TABLES = frozenset({
     "notes", "watchlists", "subscriptions", "watchlist_hits", "item_reads", "lists",
     "list_memberships", "meta", "case_terms", "requirements", "requirement_hits",
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
-    "item_archives", "documents", "document_items",
+    "item_archives", "documents", "document_items", "web_sources", "web_pages",
 })
 
 

@@ -60,6 +60,7 @@ from nexus.web.routers import (
     topics,
     transfer,
     watchlists,
+    web_sources,
 )
 
 # Names other modules and tests import from here (kept stable across the split).
@@ -266,6 +267,7 @@ ROUTERS = (
     notifications,
     sources,
     documents,
+    web_sources,
 )
 for _module in ROUTERS:
     app.include_router(_module.router)

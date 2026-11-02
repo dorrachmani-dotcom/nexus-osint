@@ -102,6 +102,9 @@
 
   {# ── Internet Archive ───────────────────────────────────────────────────── #}
   {% include "_archive_settings.html" %}
+  <div hx-get="/settings/internal-network" hx-trigger="load" hx-swap="outerHTML" id="internal-network">
+    <p class="text-xs text-slate-500">Loading internal-network settings…</p>
+  </div>
 
   {# ── Auto-scan ──────────────────────────────────────────────────────────── #}
   <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">

@@ -56,6 +56,29 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   - The PDF, Word, Excel and PowerPoint parsers (`pypdf`, `python-docx`,
     `openpyxl`, `python-pptx`) and `defusedxml` are optional: without one, only
     that format is switched off and the upload page says so.
+- **Watch web pages and documentation sites** — on **Sources › Web pages**, add
+  a URL. Each scan reads the page's main text (scripts, navigation and footers
+  are dropped) and adds an item when the page is **new**, or when its text
+  **changed**, as a short summary of the added and removed lines. Optionally
+  follow links on the same site (same scheme and host, optionally only below the
+  start path) up to a link depth (max 3) and a page count (max 200). `robots.txt`
+  of that site is honoured (no other host is ever contacted), requests are spaced
+  out (at least 0.5 s, default 1 s), and a linked PDF/DOCX/JSON/… is read with the
+  upload parsers. **Test** fetches only the start page; **Scan now** checks this
+  one source immediately.
+- **Closed / air-gapped networks** — internal targets are refused by default. In
+  **Settings › Internal network** (or `.env`) list the hosts
+  (`INTERNAL_ALLOWED_HOSTS`, `*` wildcards) and/or networks
+  (`INTERNAL_ALLOWED_CIDRS`) that may resolve to private addresses. The same
+  policy covers web pages, custom APIs, the AI planner's docs fetch, feeds and
+  evidence capture, and every redirect hop is re-checked. Loopback,
+  link-local/cloud-metadata, reserved addresses and the app's own port stay
+  blocked even if listed. Per source you can trust an internal CA
+  (`INTERNAL_CA_BUNDLE`, a PEM file) or, explicitly and clearly labelled, skip
+  TLS verification for a self-signed certificate. Logins (Basic `user:password`,
+  bearer token, custom header, or a Cookie string) are stored in `.env` as
+  `WEB_SOURCE_<id>_SECRET`. Nothing needs the public internet: with no outbound
+  access at all, upload saved pages (`.mhtml`) or a ZIP export of the site instead.
 - **Unified feed (The River)** — a dense, dark, terminal-style stream of items
   with threat badges, AI summaries, optional translation, and echo/virality
   counts for near-duplicate content.

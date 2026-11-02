@@ -1,0 +1,41 @@
+{# Opt-in allow-list for intranet / air-gapped targets (stored in .env). #}
+<div id="internal-network" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+  <div>
+    <h2 class="text-sm font-semibold text-slate-200">&#127970; Internal network</h2>
+    <p class="text-xs text-slate-400 mt-0.5">
+      By default Nexus refuses to fetch anything on a private address, so a crafted link can never
+      reach your LAN. To ingest an intranet wiki, an internal docs portal or an internal API, list
+      exactly those hosts or networks here. Loopback (127.x, ::1), link-local / cloud-metadata
+      (169.254.x) and this app's own port stay blocked even if listed. Every redirect is checked again.
+    </p>
+  </div>
+  <form hx-post="/settings/internal-network" hx-target="#internal-network" hx-swap="outerHTML" class="space-y-2">
+    <div>
+      <label class="text-xs text-slate-400">Allowed internal hosts <span class="text-slate-500">(comma separated; <span class="mono">*</span> wildcards, e.g. <span class="mono">wiki.corp, *.docs.internal</span>)</span></label>
+      <input type="text" name="hosts" value="{{ hosts }}" placeholder="wiki.corp, *.docs.internal"
+             class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+    </div>
+    <div>
+      <label class="text-xs text-slate-400">Allowed internal networks <span class="text-slate-500">(CIDR, e.g. <span class="mono">10.20.0.0/16</span>)</span></label>
+      <input type="text" name="cidrs" value="{{ cidrs }}" placeholder="10.20.0.0/16, 192.168.50.0/24"
+             class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+    </div>
+    <div>
+      <label class="text-xs text-slate-400">Internal CA bundle <span class="text-slate-500">(path to a PEM file; used by sources set to &ldquo;Trust my internal CA&rdquo;)</span></label>
+      <input type="text" name="ca_bundle" value="{{ ca_bundle }}" placeholder="C:\certs\corp-root.pem"
+             class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+    </div>
+    <div class="flex items-center gap-2">
+      <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">Save</button>
+      {% if saved and not error %}<span class="text-xs text-emerald-400">Saved.</span>{% endif %}
+      {% if error %}<span class="text-xs text-rose-400">{{ error }}</span>{% endif %}
+    </div>
+  </form>
+  <p class="text-xs text-slate-500">
+    {% if policy_hosts or policy_nets %}
+      Active: {{ (policy_hosts|list + policy_nets)|join(', ') }}
+    {% else %}
+      Active: none &mdash; only public internet addresses can be fetched.
+    {% endif %}
+  </p>
+</div>
