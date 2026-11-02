@@ -275,6 +275,36 @@ CREATE TABLE IF NOT EXISTS item_embeddings (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Uploaded documents (reports, docs, spreadsheets, archives...). The original
+-- file is kept under DATA_DIR/uploads (named by sha256, local only); its text
+-- becomes ordinary items linked through document_items. case_id = the case it
+-- was uploaded to; in_pool = part of the shared knowledge pool Sherlock reads;
+-- no_ai = the analyst chose to keep this upload away from AI enrichment.
+CREATE TABLE IF NOT EXISTS documents (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename     TEXT NOT NULL,
+    sha256       TEXT NOT NULL,
+    size_bytes   INTEGER NOT NULL DEFAULT 0,
+    kind         TEXT NOT NULL DEFAULT 'unknown',
+    stored_path  TEXT NOT NULL,
+    case_id      INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+    in_pool      INTEGER NOT NULL DEFAULT 0,
+    no_ai        INTEGER NOT NULL DEFAULT 0,
+    chunks       INTEGER NOT NULL DEFAULT 0,
+    notes        TEXT NOT NULL DEFAULT '[]',
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_documents_sha ON documents(sha256);
+CREATE INDEX IF NOT EXISTS idx_documents_case ON documents(case_id);
+
+CREATE TABLE IF NOT EXISTS document_items (
+    document_id  INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    item_id      INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    chunk_index  INTEGER NOT NULL,
+    PRIMARY KEY (document_id, chunk_index)
+);
+CREATE INDEX IF NOT EXISTS idx_docitems_item ON document_items(item_id);
+
 -- Full-text search over items (external content).
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     title, content, summary,
@@ -332,7 +362,7 @@ _KNOWN_TABLES = frozenset({
     "notes", "watchlists", "subscriptions", "watchlist_hits", "item_reads", "lists",
     "list_memberships", "meta", "case_terms", "requirements", "requirement_hits",
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
-    "item_archives",
+    "item_archives", "documents", "document_items",
 })
 
 

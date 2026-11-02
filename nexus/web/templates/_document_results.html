@@ -1,0 +1,22 @@
+<div class="space-y-1.5">
+  {% for r in results %}
+  <div class="rounded border {% if r.ok %}border-emerald-900/70 bg-emerald-950/20{% else %}border-rose-900/70 bg-rose-950/20{% endif %} px-2.5 py-1.5">
+    <div class="flex items-center justify-between gap-2">
+      <span class="text-xs text-slate-200 truncate">{{ r.filename }}</span>
+      {% if r.ok %}
+      <span class="text-[11px] mono text-emerald-300 shrink-0">{{ r.kind_label or r.kind }} &middot; {{ r.chunks }} section{{ '' if r.chunks == 1 else 's' }}{% if r.chunks and r.new != r.chunks %} ({{ r.new }} new){% endif %}</span>
+      {% else %}
+      <span class="text-[11px] text-rose-300 shrink-0">not added</span>
+      {% endif %}
+    </div>
+    {% if r.error %}<p class="text-[11px] text-rose-300 mt-0.5">{{ r.error }}</p>{% endif %}
+    {% for n in r.notes or [] %}<p class="text-[11px] text-amber-300/90 mt-0.5">{{ n }}</p>{% endfor %}
+  </div>
+  {% endfor %}
+  {% if results and results|selectattr('ok')|list %}
+  <p class="text-[11px] text-slate-500">
+    {% if case_id %}Pinned into the case{% if in_pool %} and added to the knowledge pool{% endif %}.{% else %}Added to the knowledge pool.{% endif %}
+    Searchable now{% if not no_ai %}; AI enrichment runs with the next scan{% else %}; kept away from AI{% endif %}.
+  </p>
+  {% endif %}
+</div>

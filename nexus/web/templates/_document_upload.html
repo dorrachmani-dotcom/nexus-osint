@@ -1,0 +1,68 @@
+{# Upload form. With `fixed_case_id` set it uploads straight into that case
+   (used on the case page); otherwise the analyst picks a destination. #}
+<div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+  <div class="flex items-center justify-between gap-2">
+    <h2 class="text-sm font-medium text-slate-300">&#128206; Add documents</h2>
+    <span class="text-[11px] text-slate-500">up to {{ max_file_mb }} MB per file &middot; {{ max_request_mb }} MB per upload</span>
+  </div>
+  <form hx-post="/documents/upload" hx-encoding="multipart/form-data"
+        hx-target="#upload-results{{ '-' ~ fixed_case_id if fixed_case_id else '' }}" hx-swap="innerHTML"
+        hx-indicator="#upload-spin{{ '-' ~ fixed_case_id if fixed_case_id else '' }}"
+        hx-on::after-request="if (event.detail.successful) this.reset()"
+        class="space-y-3">
+    <label class="block rounded border border-dashed border-slate-700 bg-slate-950/50 hover:border-amber-600 px-3 py-4 text-center cursor-pointer">
+      <span class="block text-sm text-slate-300">Choose files or a ZIP</span>
+      <span class="block text-[11px] text-slate-500 mt-0.5">Reports, docs, spreadsheets, slides, web pages, saved sites, e-mails, data files &mdash; anything with text.</span>
+      <input type="file" name="files" multiple required
+             class="mt-2 block w-full text-xs text-slate-400 file:mr-3 file:rounded file:border-0 file:bg-slate-800 file:px-3 file:py-1 file:text-slate-200 hover:file:bg-slate-700" />
+    </label>
+
+    {% if fixed_case_id %}
+      <input type="hidden" name="destination" value="{{ fixed_case_id }}" />
+      <label class="flex items-start gap-2 text-xs text-slate-400">
+        <input type="checkbox" name="also_pool" value="1" class="mt-0.5 accent-amber-500" />
+        <span>Also add to the general <span class="text-slate-300">knowledge pool</span> (Sherlock can answer from it in any case)</span>
+      </label>
+    {% else %}
+      <div>
+        <label class="text-xs text-slate-400">Where should these go?</label>
+        <select name="destination"
+                class="mt-0.5 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+          <option value="pool">General knowledge pool (not tied to a case)</option>
+          {% for c in cases %}
+          <option value="{{ c.id }}">Case: {{ c.name }}</option>
+          {% endfor %}
+        </select>
+        <label class="mt-1.5 flex items-start gap-2 text-xs text-slate-400">
+          <input type="checkbox" name="also_pool" value="1" class="mt-0.5 accent-amber-500" />
+          <span>When a case is chosen, also add to the knowledge pool</span>
+        </label>
+      </div>
+    {% endif %}
+
+    {% if cloud_ai %}
+    <div class="rounded border border-amber-800/70 bg-amber-950/30 p-2.5 space-y-1.5">
+      <p class="text-xs text-amber-200">
+        Your AI provider (<span class="mono">{{ active_provider }}</span>) is a <strong>cloud service</strong>.
+        If you allow AI, the text of these files is sent to it for summaries, translation and
+        question scoring, and Sherlock may quote it.
+      </p>
+      <label class="flex items-start gap-2 text-xs text-slate-300">
+        <input type="checkbox" name="allow_ai" value="1" class="mt-0.5 accent-amber-500" />
+        <span>Allow cloud AI for this upload (leave unticked to keep it on this computer)</span>
+      </label>
+    </div>
+    {% else %}
+    <label class="flex items-start gap-2 text-xs text-slate-400">
+      <input type="checkbox" name="allow_ai" value="1" checked class="mt-0.5 accent-amber-500" />
+      <span>Allow AI enrichment{% if active_provider != 'off' %} (local model &mdash; nothing leaves this computer){% endif %}</span>
+    </label>
+    {% endif %}
+
+    <button class="w-full rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-4 py-2 text-sm">
+      Upload and read
+      <span id="upload-spin{{ '-' ~ fixed_case_id if fixed_case_id else '' }}" class="htmx-indicator">&hellip; reading</span>
+    </button>
+  </form>
+  <div id="upload-results{{ '-' ~ fixed_case_id if fixed_case_id else '' }}"></div>
+</div>

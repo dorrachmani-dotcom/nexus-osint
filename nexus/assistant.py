@@ -50,6 +50,8 @@ logger = logging.getLogger("nexus.assistant")
 
 # How many feed items to put in front of the model as grounded context.
 _MAX_CONTEXT_ITEMS = 14
+# Uploaded-document chunks (knowledge pool / active case) added on top.
+_MAX_DOC_CHUNKS = 5
 _MAX_HISTORY_TURNS = 6  # trailing user/assistant pairs carried for follow-ups
 
 # Tiny English stop-word list so keyword extraction for the data search keeps
@@ -155,6 +157,10 @@ SOURCES & SETTINGS
 - Sources that need an API key are enabled by putting the key in a local .env
   file via the Settings page. A source with no key is simply skipped. RSS needs
   no key and is the always-on backbone. You can also define custom API sources.
+- Documents: on Sources > Documents (or a case's Documents tab) the analyst can
+  upload files (PDF, Word, Excel, PowerPoint, HTML, e-mails, ZIP of a docs site,
+  and more). They go into a case or the general knowledge pool. Pool documents
+  appear in your data as "Reference documents"; answer from them when relevant.
 - API keys live only in the local .env file. They are never shown back, never
   stored in the database, and never leave the machine.
 
@@ -423,6 +429,7 @@ _PAGES: dict[str, tuple[str, str]] = {
     "watchlists": ("/watchlists", "Watchlists"),
     "transfer":   ("/transfer", "the Transfer station"),
     "sources":    ("/sources/custom", "Sources"),
+    "documents":  ("/sources/documents", "Documents (uploads and the knowledge pool)"),
     "topics":     ("/topics", "Topics"),
     "tools":      ("/tools", "the OSINT Tools"),
     "settings":   ("/settings", "Settings"),
@@ -441,6 +448,8 @@ _PAGE_ALIASES: dict[str, str] = {
     "relationship": "graph", "relationships": "graph", "network": "graph", "entities": "graph",
     "source": "sources", "rss": "sources", "feeds": "sources", "custom source": "sources",
     "topic": "topics",
+    "upload": "documents", "uploads": "documents", "knowledge pool": "documents",
+    "files": "documents", "document": "documents",
     "tool": "tools",
     "config": "settings", "configuration": "settings", "preferences": "settings",
     "keys": "settings", "api keys": "settings", "model": "settings", "provider": "settings",
@@ -554,12 +563,14 @@ def _data_context(
         lines.append(f"Open/known cases ({len(cases)}): {names}.")
 
     terms = _keywords(question)
+    # Uploads marked "no AI" never reach a cloud model; a local model is fine.
+    cloud = _cloud_ai()
     rows: list[dict] = []
     if terms:
-        rows = search_items(conn, terms=terms, limit=_MAX_CONTEXT_ITEMS)
+        rows = _ai_visible(conn, search_items(conn, terms=terms, limit=_MAX_CONTEXT_ITEMS), cloud)
     if not rows:
         # No keyword hits (or a generic question) -> show the most recent items.
-        rows = search_items(conn, limit=_MAX_CONTEXT_ITEMS)
+        rows = _ai_visible(conn, search_items(conn, limit=_MAX_CONTEXT_ITEMS), cloud)
         lines.append("Most recent items (no specific match for the question):")
     else:
         lines.append(f"Items most relevant to the question (search: {' '.join(terms)}):")
@@ -584,7 +595,66 @@ def _data_context(
             "source": src, "when": when,
         })
 
+    # Uploaded reference documents (knowledge pool + the active case's uploads):
+    # longer excerpts, numbered on from the items so citations still link.
+    seen_ids = {r.get("id") for r in rows}
+    docs = [d for d in _document_context(conn, terms, cloud) if d.get("id") not in seen_ids]
+    if docs:
+        lines.append(
+            "Reference documents the analyst uploaded (knowledge pool / active case). "
+            "Treat them as the analyst's own reference material and cite them when relevant:"
+        )
+        n = len(rows)
+        for d in docs:
+            n += 1
+            title = _truncate(d.get("title"), 160) or "(untitled)"
+            lines.append(
+                f"Item {n}. (document: {d.get('filename')}) {title}\n"
+                f"   {_truncate(d.get('content'), 900)}"
+            )
+            ctx_items.append({
+                "n": n, "id": d.get("id"), "url": "", "title": title,
+                "source": "upload", "when": "",
+            })
+
     return "\n".join(lines), ctx_items
+
+
+def _cloud_ai() -> bool:
+    try:
+        from nexus.ingest.upload import cloud_ai_active
+
+        return cloud_ai_active()
+    except Exception:
+        return True  # unknown -> assume cloud, the cautious side
+
+
+def _ai_visible(conn: sqlite3.Connection, rows: list[dict], cloud: bool) -> list[dict]:
+    """Drop items from "no AI" uploads when the model is a cloud service."""
+    if not cloud or not rows:
+        return rows
+    from nexus.storage.documents import drop_ai_excluded
+
+    return drop_ai_excluded(conn, rows)
+
+
+def _document_context(conn: sqlite3.Connection, terms: list[str], cloud: bool) -> list[dict]:
+    """Best-matching uploaded-document chunks for the question (fail-soft)."""
+    if not terms:
+        return []
+    try:
+        from nexus.storage.documents import search_document_chunks
+
+        active = get_active_case(conn)
+        rows = search_document_chunks(
+            conn, terms, case_id=active["id"] if active else None, limit=_MAX_DOC_CHUNKS
+        )
+    except Exception:
+        logger.debug("document context unavailable", exc_info=True)
+        return []
+    if cloud:
+        rows = [r for r in rows if not r.get("no_ai")]
+    return rows
 
 
 def _format_history(history: list[dict] | None) -> str:
@@ -1276,7 +1346,7 @@ def _deep_gather(provider, question: str, conn: sqlite3.Connection,
             break
         tried.add(key)
         try:
-            rows = search_items(conn, q=query, limit=6)
+            rows = _ai_visible(conn, search_items(conn, q=query, limit=6), _cloud_ai())
         except Exception:
             rows = []
         if not rows:

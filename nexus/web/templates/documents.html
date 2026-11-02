@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Sources</h1>
+    <p class="text-sm text-slate-400">Where your data comes from.</p>
+    {% set active = 'documents' %}{% include "_sources_tabs.html" %}
+  </div>
+  <p class="text-sm text-slate-400">
+    Upload your own material &mdash; internal reports, documentation, spreadsheets, exported
+    wiki or docs sites, e-mails, data dumps. Nexus reads the text, splits it into one item per
+    page, section, sheet or slide, and makes it searchable alongside everything it collects.
+    Files stay on this computer: the original is kept in the local data folder and nothing is
+    uploaded anywhere.
+  </p>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div class="space-y-4">
+      {% include "_document_upload.html" %}
+    </div>
+    <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+      <h2 class="text-sm font-medium text-slate-300">What can I upload?</h2>
+      <ul class="grid gap-1 sm:grid-cols-2">
+        {% for f in formats %}
+        <li class="text-xs flex items-start gap-1.5" {% if f.note %}title="{{ f.note }}"{% endif %}>
+          <span class="{% if f.ok and not f.note %}text-emerald-400{% elif f.ok %}text-amber-400{% else %}text-slate-600{% endif %}">{% if f.ok %}&#10003;{% else %}&#10007;{% endif %}</span>
+          <span class="{% if f.ok %}text-slate-300{% else %}text-slate-500{% endif %}">{{ f.label }}{% if f.note %}<span class="block text-[10px] text-slate-500">{{ f.note }}</span>{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="text-[11px] text-slate-500 pt-1">
+        Anything else is read on a best-effort basis: if it contains readable text, that text is
+        kept. ZIP archives are unpacked safely (size and ratio limits, no path tricks); Office
+        macros are never run.
+      </p>
+      <p class="text-[11px] text-slate-500">
+        <span class="text-slate-300">Knowledge pool:</span> documents not tied to a case. Sherlock
+        uses them as reference material when answering questions
+        ({{ counts.pool }} in the pool now).
+      </p>
+    </div>
+  </div>
+
+  <div>
+    <h2 class="text-sm font-medium text-slate-300 mb-2">Uploaded documents <span class="text-slate-500 font-normal">({{ counts.documents }})</span></h2>
+    <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+      {% include "_document_list.html" %}
+    </div>
+  </div>
+</section>
+{% endblock %}

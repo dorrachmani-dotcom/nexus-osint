@@ -47,6 +47,16 @@ pytesseract==0.3.13         # thin wrapper around the Tesseract OCR engine
 weasyprint==70.0            # HTML -> PDF (primary; Linux/Docker); 70.0 includes the latest security fixes
 xhtml2pdf==0.2.21           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 
+# --- Document upload (universal ingestion) ---
+# All OPTIONAL + guarded: a missing package only disables that one format in
+# the upload page (graceful degradation). CSV, HTML, MHTML, text/Markdown,
+# JSON, e-mail, RTF and ZIP need no extra package. Licenses are permissive.
+pypdf==6.12.2               # PDF text (BSD-3-Clause)
+python-docx==1.2.0          # Word .docx (MIT)
+openpyxl==3.1.5             # Excel .xlsx, read-only, never runs macros (MIT)
+python-pptx==1.0.2          # PowerPoint .pptx (MIT)
+defusedxml==0.7.1           # safe XML parsing: no entity bombs / external refs (PSF)
+
 # --- Entity graph (Maltego replacement) ---
 networkx==3.6.1
 pyvis==0.3.2

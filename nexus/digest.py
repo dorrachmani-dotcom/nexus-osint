@@ -129,12 +129,16 @@ def collect_digest_data(conn, since_ts: str, now: datetime | None = None) -> dic
         list_cases,
         threat_counts_since,
     )
+    from nexus.storage.documents import drop_ai_excluded
 
     blocks: list[dict] = []
     quiet = 0
     total_case_items = 0
     for c in list_cases(conn, status="open", parent_id=None):
         n, rows = case_items_collected_since(conn, c["id"], since_ts, limit=ITEMS_PER_CASE)
+        # The brief is e-mailed (and may be written by a cloud model): uploads
+        # marked "no AI" stay on this machine.
+        rows = drop_ai_excluded(conn, rows)
         if n <= 0:
             quiet += 1
             continue
@@ -145,7 +149,8 @@ def collect_digest_data(conn, since_ts: str, now: datetime | None = None) -> dic
         })
         total_case_items += n
     try:
-        attention = [_item_view(r) for r in attention_items(conn, limit=ATTENTION_IN_DIGEST)]
+        attention = [_item_view(r) for r in drop_ai_excluded(
+            conn, attention_items(conn, limit=ATTENTION_IN_DIGEST))]
     except Exception:
         attention = []
     counts = threat_counts_since(conn, since_ts)
