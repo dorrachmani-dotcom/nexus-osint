@@ -6,12 +6,27 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Upload documents into a case or a shared knowledge pool (Sources › Documents,
+  or a case's Documents tab): PDF, Word, Excel, PowerPoint, OpenDocument, CSV,
+  HTML, saved pages (MHTML), Markdown/text, JSON/NDJSON, XML, e-mail, RTF,
+  images (OCR) and ZIP archives, including exported wiki/docs sites. Unknown
+  formats are read best-effort. Each page/section/sheet/slide becomes a
+  searchable item; Sherlock answers from the knowledge pool. AI enrichment is
+  opt-in per upload, with a warning when the AI provider is a cloud service.
+  ZIP-bomb, path-traversal and XML-entity protections, size limits, and
+  originals stored locally and never served inline.
+
 ### Security
 - RSS / search-feed fetches now re-check every redirect hop with the SSRF guard,
   so a public feed URL can no longer redirect the request to a loopback,
   private or link-local address.
+- Dependency updates: Pillow 13.0.0 (security fixes), playwright 1.64.0,
+  anthropic 1.15.0, pydantic-settings 2.16.0, networkx 3.6.1, ruff 0.17.1.
 
 ### Changed
+- Development tools (pytest) moved out of `requirements.txt`; install
+  `requirements-dev.txt` to run the test suite. The runtime install is unchanged.
 - README and `.env.example` explain that Reddit works keyless via its search feed, and that the official Reddit Data API is optional and needs approval from Reddit (since 2026).
 - Sherlock keeps the current conversation (and whether its panel is open)
   when you move to another page. It lasts for the browser tab only and is
@@ -195,5 +210,7 @@ First tagged release.
 - Inline script embedding of collected data uses Jinja `|tojson` to prevent
   `</script>` breakout.
 
-[Unreleased]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/dorrachmani-dotcom/nexus-osint/releases/tag/v1.0.0

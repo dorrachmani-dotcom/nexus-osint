@@ -1,0 +1,11 @@
+{# Shared tab bar for the Sources area. Set `active` before including. #}
+{% set _tabs = [
+  ('feeds', '/topics', 'Feeds &amp; presets'),
+  ('custom', '/sources/custom', 'Custom APIs'),
+  ('documents', '/sources/documents', 'Documents'),
+] %}
+<div class="mt-2 flex gap-1 border-b border-slate-800">
+  {% for key, href, label in _tabs %}
+  <a href="{{ href }}" class="px-3 py-1.5 text-sm rounded-t border-b-2 -mb-px {% if active == key %}border-amber-500 text-amber-300 font-semibold{% else %}border-transparent text-slate-400 hover:text-slate-200{% endif %}">{{ label|safe }}</a>
+  {% endfor %}
+</div>

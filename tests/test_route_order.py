@@ -182,6 +182,14 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
     ('POST', '/sources/custom/{source_id}/toggle'),
     ('POST', '/sources/custom/{source_id}/delete'),
     ('POST', '/sources/custom/{source_id}/test'),
+    # Universal ingestion: uploaded documents (added after the router split).
+    ('GET', '/sources/documents'),
+    ('GET', '/documents/list'),
+    ('POST', '/documents/upload'),
+    ('GET', '/documents/{doc_id}/chunks'),
+    ('GET', '/documents/{doc_id}/file'),
+    ('POST', '/documents/{doc_id}/delete'),
+    ('GET', '/cases/{case_id}/documents'),
 ]
 
 

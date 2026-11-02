@@ -20,7 +20,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from nexus import __version__
@@ -42,6 +42,7 @@ from nexus.web.routers import (
     case_reports,
     cases,
     demo,
+    documents,
     entity,
     feed,
     graph,
@@ -107,7 +108,7 @@ def _auto_scan_loop(collector: Collector) -> None:
                         if datetime.now(UTC) - last_dt < timedelta(hours=interval_h):
                             continue
                     except ValueError:
-                        pass
+                        logger.debug("Unparseable last_auto_scan_at %r; scanning now", last_raw, exc_info=True)
                 set_meta(conn, "last_auto_scan_at", datetime.now(UTC).isoformat())
             logger.info("Auto-scan: starting scheduled scan (interval=%dh)", interval_h)
             collector.scan()
@@ -218,7 +219,20 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 # Serve stored evidence screenshots (and any other data assets) read-only.
 _DATA_DIR = Path(get_settings().data_dir)
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/data", StaticFiles(directory=str(_DATA_DIR)), name="data")
+
+
+class _DataFiles(StaticFiles):
+    """The data mount, minus uploaded originals: those are untrusted files (an
+    uploaded .html could run script in this origin), so they are only ever
+    served by /documents/{id}/file as a download."""
+
+    async def get_response(self, path: str, scope):
+        if path.replace("\\", "/").lstrip("/").lower().startswith("uploads"):
+            return PlainTextResponse("Not found", status_code=404)
+        return await super().get_response(path, scope)
+
+
+app.mount("/data", _DataFiles(directory=str(_DATA_DIR)), name="data")
 
 
 # Domain routers. Starlette matches routes first-come-first-served, so this
@@ -251,6 +265,7 @@ ROUTERS = (
     llm,
     notifications,
     sources,
+    documents,
 )
 for _module in ROUTERS:
     app.include_router(_module.router)

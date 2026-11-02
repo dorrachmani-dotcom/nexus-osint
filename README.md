@@ -42,6 +42,11 @@ one SQLite file you own, and every outbound connection can be audited.
   feed; the official Reddit Data API (`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`,
   for steady per-subreddit pulls) is optional and, since 2026, needs approval
   from Reddit before keys work. Commercial use needs a separate agreement with Reddit.
+- **Ingests your own documents**: upload PDFs, Word, Excel, PowerPoint, CSV, HTML,
+  saved pages (MHTML), Markdown/text, JSON, XML, e-mails, images (OCR) or a ZIP
+  (including an exported wiki or docs site) into a case or a shared knowledge
+  pool that Sherlock answers from. Files stay local; unknown formats are read on
+  a best-effort basis, and archives are unpacked with ZIP-bomb protection.
 - **Deduplicates and searches**: exact re-fetches are no-ops, near-duplicates
   collapse into one row with an "echoed N times" badge, and the whole history is
   searchable through SQLite FTS5.
@@ -349,7 +354,7 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-The suite (about 500 tests) uses temporary SQLite databases and avoids the
+The suite (about 600 tests) uses temporary SQLite databases and avoids the
 network; it covers storage and dedup, source parsing, the assistant allow-list,
 web hardening, export/transfer round-trips and route smoke tests.
 

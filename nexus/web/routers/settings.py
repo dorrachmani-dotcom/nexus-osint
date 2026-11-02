@@ -4,6 +4,7 @@ archive settings.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Form, Request
@@ -33,6 +34,8 @@ from nexus.web.settings_context import (
     _email_context,
     _settings_context,
 )
+
+logger = logging.getLogger("nexus.web.settings")
 
 router = APIRouter()
 
@@ -142,7 +145,7 @@ def settings_auto_scan_status() -> JSONResponse:
             next_dt = last_dt + timedelta(hours=interval_h)
             next_at = next_dt.strftime("%H:%M")
         except ValueError:
-            pass
+            logger.debug("Unparseable last_auto_scan_at %r; no next-run time", last_raw, exc_info=True)
     return JSONResponse({"interval_hours": interval_h, "next_at": next_at,
                          "last_at": last_raw[:16] if last_raw else ""})
 

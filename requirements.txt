@@ -12,7 +12,7 @@ pydantic==2.13.5
 pydantic-settings==2.16.0
 
 # --- Intelligence core ---
-anthropic==0.42.0
+anthropic==2.3.0
 # Optional alternative analysis backends. Guarded imports: if either is absent
 # that provider is simply unavailable (graceful degradation).
 google-genai>=1.75.0,<2     # Google Gemini (modern genai.Client API); tested on 1.70.x
@@ -35,7 +35,7 @@ httpx==0.28.1               # SERPAPI / TelemetryApp / Twitter / Ollama REST cal
 # future release; v1 is API-only.
 
 # --- Evidence / reporting ---
-playwright==1.63.0          # headless screenshots for the evidence vault
+playwright==1.64.1          # headless screenshots for the evidence vault
 # OCR over evidence screenshots so their visible text becomes searchable.
 # Optional + guarded: needs the Tesseract engine binary on the host (installed
 # in the Docker image). Without pytesseract OR the binary, OCR is skipped.
@@ -47,9 +47,18 @@ pytesseract==0.3.13         # thin wrapper around the Tesseract OCR engine
 weasyprint==70.0            # HTML -> PDF (primary; Linux/Docker); 70.0 includes the latest security fixes
 xhtml2pdf==0.2.21           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 
+# --- Document upload (universal ingestion) ---
+# All OPTIONAL + guarded: a missing package only disables that one format in
+# the upload page (graceful degradation). CSV, HTML, MHTML, text/Markdown,
+# JSON, e-mail, RTF and ZIP need no extra package. Licenses are permissive.
+pypdf==6.12.2               # PDF text (BSD-3-Clause)
+python-docx==1.2.0          # Word .docx (MIT)
+openpyxl==3.1.5             # Excel .xlsx, read-only, never runs macros (MIT)
+python-pptx==1.0.2          # PowerPoint .pptx (MIT)
+defusedxml==0.7.1           # safe XML parsing: no entity bombs / external refs (PSF)
+
 # --- Entity graph (Maltego replacement) ---
 networkx==3.6.1
 pyvis==0.3.2
 
-# --- Dev / tests ---
-pytest==9.1.1               # 9.0.3 fixes CVE-2025-71176 (dev-only)
+# Dev / test tools (pytest, ruff, mypy, pre-commit) live in requirements-dev.txt.

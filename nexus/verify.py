@@ -90,7 +90,20 @@ def verify_item(
             "error": "Verification needs an AI model — add one in Settings, then try again.",
         }
 
+    # Uploads marked "no AI" never go to a cloud model, as subject or evidence.
+    from nexus.ingest.upload import cloud_ai_active
+    from nexus.storage.documents import ai_excluded_ids, drop_ai_excluded
+
+    cloud = cloud_ai_active(settings)
+    if cloud and ai_excluded_ids(conn, [item_id]):
+        return {
+            "ok": False,
+            "error": "This item comes from an upload marked 'no AI', so it is not "
+                     "sent to the cloud AI model for verification.",
+        }
     cands = _candidates(conn, item)
+    if cloud:
+        cands = drop_ai_excluded(conn, cands)
     if not cands:
         return {
             "ok": True,
