@@ -176,6 +176,19 @@ def ai_excluded_ids(conn: sqlite3.Connection, item_ids: list[int]) -> set[int]:
     return {int(r["item_id"]) for r in rows}
 
 
+def drop_ai_excluded(conn: sqlite3.Connection, rows: list[dict]) -> list[dict]:
+    """``rows`` (dicts with an ``id``) minus items from "no AI" uploads.
+
+    The single filter every prompt builder applies before item text can reach
+    a cloud model (and the e-mail brief applies always)."""
+    if not rows:
+        return rows
+    hidden = ai_excluded_ids(conn, [r.get("id") or 0 for r in rows])
+    if not hidden:
+        return rows
+    return [r for r in rows if r.get("id") not in hidden]
+
+
 def search_document_chunks(
     conn: sqlite3.Connection,
     terms: list[str] | None,

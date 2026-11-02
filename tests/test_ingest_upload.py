@@ -128,6 +128,44 @@ def test_refused_zip_bomb_stores_nothing(temp_db):
         assert list_documents(conn) == []
 
 
+def test_storage_failure_is_reported_not_raised(temp_db, monkeypatch):
+    def boom(*a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr("nexus.ingest.upload._persist", boom)
+    res = ingest_upload(b"some text", "x.txt", in_pool=True)
+    assert not res["ok"] and "could not store" in res["error"]
+    assert not (uploads_dir() / f"{res.get('sha256', 'none')}.bin").exists()
+    assert not list(uploads_dir().glob("*.bin"))
+
+
+def test_no_ai_uploads_never_reach_digest_or_case_brief(temp_db, monkeypatch):
+    from nexus.digest import collect_digest_data
+
+    with temp_db() as conn:
+        cid = s.create_case(conn, "Ferry")
+        s.add_case_term(conn, cid, "ferry")
+    res = ingest_upload(b"ferry timetable secret annex", "annex.txt", case_id=cid, no_ai=True)
+    with temp_db() as conn:
+        data = collect_digest_data(conn, "2000-01-01 00:00:00")
+        flat = str(data)
+        assert "secret annex" not in flat
+        ids = {r["id"] for r in document_items(conn, res["document_id"])}
+        assert ids
+
+    seen: dict = {}
+
+    def fake_brief(case, items, settings):
+        seen["items"] = items
+        return "ok"
+
+    monkeypatch.setattr("nexus.web.routers.cases._generate_case_briefing", fake_brief)
+    monkeypatch.setattr("nexus.ingest.upload.cloud_ai_active", lambda settings=None: True)
+    monkeypatch.setattr("nexus.config.Settings.analysis_enabled", property(lambda self: True))
+    _client().post(f"/cases/{cid}/brief")
+    assert not ({i["id"] for i in seen.get("items", [])} & ids)
+
+
 # ------------------------------------------------------------------- web
 def test_upload_endpoint_multi_file_into_case(temp_db):
     with temp_db() as conn:

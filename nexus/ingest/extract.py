@@ -357,7 +357,7 @@ def _x_docx(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
     except ImportError:
         ctx.note("Word support is off: install the optional 'python-docx' package")
         return []
-    guarded_ooxml(data, ctx.limits)
+    ctx.account(guarded_ooxml(data, ctx.limits))
     document = docx.Document(io.BytesIO(data))
     out: list[Section] = []
     heading: str | None = None
@@ -401,7 +401,7 @@ def _x_docx(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
 _MAX_ROWS = 100_000
 
 
-def _rows_to_lines(rows) -> list[str]:
+def _rows_to_lines(rows, max_cols: int = 200) -> list[str]:
     """Render table rows as ``Header: value; …`` lines (header = first row)."""
     lines: list[str] = []
     header: list[str] | None = None
@@ -409,7 +409,7 @@ def _rows_to_lines(rows) -> list[str]:
         if n >= _MAX_ROWS:
             lines.append(f"[… stopped after {_MAX_ROWS} rows]")
             break
-        cells = ["" if v is None else str(v).strip() for v in row]
+        cells = ["" if v is None else str(v).strip() for v in list(row)[:max_cols]]
         if not any(cells):
             continue
         if header is None:
@@ -432,7 +432,7 @@ def _x_xlsx(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
     except ImportError:
         ctx.note("Excel support is off: install the optional 'openpyxl' package")
         return []
-    guarded_ooxml(data, ctx.limits)
+    ctx.account(guarded_ooxml(data, ctx.limits))
     # data_only: cached values, never formulas; openpyxl never runs macros.
     wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     out: list[Section] = []
@@ -440,7 +440,10 @@ def _x_xlsx(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
         for ws in wb.worksheets:
             if not ctx.room():
                 break
-            lines = _rows_to_lines(ws.iter_rows(values_only=True))
+            lines = _rows_to_lines(
+                ws.iter_rows(values_only=True, max_col=ctx.limits.max_table_cols),
+                ctx.limits.max_table_cols,
+            )
             ctx.add(out, f"sheet {ws.title}", "\n".join(lines), {"sheet": ws.title})
     finally:
         wb.close()
@@ -456,7 +459,7 @@ def _x_csv(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
     except csv.Error:
         logger.debug("CSV dialect not detected; using '%s'", delimiter)
     reader = csv.reader(io.StringIO(text), delimiter=delimiter)
-    lines = _rows_to_lines(reader)
+    lines = _rows_to_lines(reader, ctx.limits.max_table_cols)
     out: list[Section] = []
     ctx.add(out, "table", "\n".join(lines), {"rows": len(lines)})
     return out
@@ -469,7 +472,7 @@ def _x_pptx(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
     except ImportError:
         ctx.note("PowerPoint support is off: install the optional 'python-pptx' package")
         return []
-    guarded_ooxml(data, ctx.limits)
+    ctx.account(guarded_ooxml(data, ctx.limits))
     prs = Presentation(io.BytesIO(data))
     out: list[Section] = []
     for i, slide in enumerate(prs.slides, 1):
@@ -576,7 +579,7 @@ def _x_xml(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
 
 
 def _x_odf(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
-    guarded_ooxml(data, ctx.limits)
+    ctx.account(guarded_ooxml(data, ctx.limits))
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
         content = read_member(zf, zf.getinfo("content.xml"), ctx.limits)
     out: list[Section] = []

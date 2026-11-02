@@ -305,6 +305,33 @@ def test_docx_bomb_checked_before_parsing():
         extract(data, "evil.docx")
 
 
+def test_office_expansion_cap_is_tighter_than_archives():
+    # 3 parts of 2 MB each (stored, ratio 1) pass a plain-archive check but
+    # exceed a small Office budget.
+    parts = {"word/document.xml": b"<w/>", **{f"word/media/p{i}.bin": b"x" * (2 * 1024 * 1024)
+                                               for i in range(3)}}
+    data = _zip(parts, compression=zipfile.ZIP_STORED)
+    with pytest.raises(UnsafeFileError):
+        extract(data, "fat.docx", Limits(max_office_expanded_bytes=5 * 1024 * 1024))
+
+
+def test_corrupt_office_file_degrades_instead_of_refusing():
+    ex = extract(b"this is not a zip at all, just words in a file", "broken.docx")
+    assert "just words" in _all_text(ex)
+
+
+def test_wide_spreadsheet_columns_capped():
+    openpyxl = pytest.importorskip("openpyxl")
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append([f"h{i}" for i in range(300)])
+    ws.append(list(range(300)))
+    buf = io.BytesIO()
+    wb.save(buf)
+    ex = extract(buf.getvalue(), "wide.xlsx", Limits(max_table_cols=10))
+    assert "h9" in _all_text(ex) and "h10" not in _all_text(ex)
+
+
 def test_text_limit_truncates():
     ex = extract(b"word " * 10_000, "big.txt", Limits(max_text_chars=1000))
     assert len(_all_text(ex)) <= 1000

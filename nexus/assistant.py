@@ -633,10 +633,9 @@ def _ai_visible(conn: sqlite3.Connection, rows: list[dict], cloud: bool) -> list
     """Drop items from "no AI" uploads when the model is a cloud service."""
     if not cloud or not rows:
         return rows
-    from nexus.storage.documents import ai_excluded_ids
+    from nexus.storage.documents import drop_ai_excluded
 
-    hidden = ai_excluded_ids(conn, [r.get("id") or 0 for r in rows])
-    return [r for r in rows if r.get("id") not in hidden]
+    return drop_ai_excluded(conn, rows)
 
 
 def _document_context(conn: sqlite3.Connection, terms: list[str], cloud: bool) -> list[dict]:

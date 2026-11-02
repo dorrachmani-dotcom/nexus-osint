@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import tempfile
 from pathlib import Path
 
 from nexus.config import Settings, get_settings
@@ -55,12 +56,23 @@ def _store_original(data: bytes, sha: str, settings: Settings) -> str:
     so no stored original is ever served with an executable content type.
     """
     name = f"{sha}.bin"
-    target = uploads_dir(settings) / name
+    folder = uploads_dir(settings)
+    target = folder / name
     if not target.exists():
-        tmp = target.with_suffix(target.suffix + ".part")
-        with open(tmp, "wb") as fh:
-            fh.write(data)
-        os.replace(tmp, target)
+        # A unique temp name: two concurrent uploads of the same file must not
+        # fight over one ".part" file. Identical content, so last rename wins.
+        fd, tmp = tempfile.mkstemp(dir=folder, prefix=f".{sha[:16]}-", suffix=".part")
+        try:
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+            try:
+                os.replace(tmp, target)
+            except PermissionError:
+                if not target.exists():  # a concurrent writer holds it; else re-raise
+                    raise
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
     return f"uploads/{name}"
 
 
@@ -138,14 +150,6 @@ def ingest_upload(
     limits: Limits = DEFAULT_LIMITS,
 ) -> dict:
     """Ingest one file. Returns ``{ok, filename, kind, chunks, new, notes, ...}``."""
-    from nexus.db import get_connection
-    from nexus.storage import add_bookmark, match_watchlists, upsert_item
-    from nexus.storage.documents import (
-        create_document,
-        finish_document,
-        link_document_item,
-    )
-
     settings = settings or get_settings()
     name = safe_display_name(filename)
     result: dict = {"ok": False, "filename": name, "kind": "unknown", "chunks": 0,
@@ -174,7 +178,39 @@ def ingest_upload(
     result["kind"] = extracted.kind
     result["kind_label"] = FORMAT_LABELS.get(extracted.kind, "Other / unknown format")
     notes = list(extracted.notes)
-    stored = _store_original(data, sha, settings)
+    existed = (uploads_dir(settings) / f"{sha}.bin").exists()
+    try:
+        stored = _store_original(data, sha, settings)
+        doc_id, chunks, new = _persist(
+            extracted, data, name, sha, stored, case_id=case_id, in_pool=in_pool,
+            no_ai=no_ai, limits=limits, notes=notes,
+        )
+    except Exception as exc:  # disk full, database locked, ...: report, don't 500
+        logger.exception("Storing upload %s failed", name)
+        if not existed:
+            remove_original(f"uploads/{sha}.bin", settings)
+        result["error"] = f"could not store the file ({type(exc).__name__}); please retry"
+        return result
+
+    result.update({"ok": True, "document_id": doc_id, "chunks": chunks, "new": new,
+                   "notes": notes, "sha256": sha})
+    logger.info("Ingested upload %s: %s, %d chunk(s), %d new", name, extracted.kind,
+                chunks, new)
+    return result
+
+
+def _persist(extracted, data: bytes, name: str, sha: str, stored: str, *,
+             case_id: int | None, in_pool: bool, no_ai: bool, limits: Limits,
+             notes: list[str]) -> tuple[int, int, int]:
+    """Write the document row, its items and links in ONE transaction, so an
+    item can never exist without the link carrying its "no AI" flag."""
+    from nexus.db import get_connection
+    from nexus.storage import add_bookmark, match_watchlists, upsert_item
+    from nexus.storage.documents import (
+        create_document,
+        finish_document,
+        link_document_item,
+    )
 
     new = 0
     chunks = 0
@@ -221,9 +257,4 @@ def ingest_upload(
         if chunks == 0 and not notes:
             notes.append("no readable text was found; the original file is stored")
         finish_document(conn, doc_id, chunks, notes)
-
-    result.update({"ok": True, "document_id": doc_id, "chunks": chunks, "new": new,
-                   "notes": notes, "sha256": sha})
-    logger.info("Ingested upload %s: %s, %d chunk(s), %d new", name, extracted.kind,
-                chunks, new)
-    return result
+    return doc_id, chunks, new

@@ -41,6 +41,10 @@ class Limits:
     max_text_chars: int = 5_000_000        # extracted text kept per document
     max_chunks: int = 2000                 # items created per document
     chunk_chars: int = 4000                # target size of one item
+    # Office/ODF containers are parsed fully in memory: much tighter bounds.
+    max_office_expanded_bytes: int = 120 * MB
+    max_office_part_bytes: int = 30 * MB
+    max_table_cols: int = 200              # spreadsheet/CSV columns read per row
 
 
 DEFAULT_LIMITS = Limits()
@@ -152,12 +156,26 @@ def read_member(zf: zipfile.ZipFile, info: zipfile.ZipInfo,
     return bytes(out)
 
 
-def guarded_ooxml(data: bytes, limits: Limits = DEFAULT_LIMITS) -> None:
-    """Office Open XML / ODF files are ZIPs: bomb-check them before parsing."""
+def guarded_ooxml(data: bytes, limits: Limits = DEFAULT_LIMITS) -> int:
+    """Office Open XML / ODF files are ZIPs: bomb-check them before parsing.
+
+    Office parsers load every part (and build an XML tree) in memory, so the
+    bounds here are much tighter than for a plain archive. Returns the total
+    declared expanded size so the caller can count it against its budget.
+    Raises :class:`UnsafeFileError` for a bomb, ``ValueError`` for a merely
+    corrupt container (the caller then falls back to best-effort text).
+    """
     import io
 
+    office = Limits(
+        max_zip_entries=min(limits.max_zip_entries, 5000),
+        max_zip_total_bytes=min(limits.max_zip_total_bytes, limits.max_office_expanded_bytes),
+        max_zip_member_bytes=min(limits.max_zip_member_bytes, limits.max_office_part_bytes),
+        max_zip_ratio=limits.max_zip_ratio,
+    )
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            check_zip(zf, limits)
+            members = check_zip(zf, office)
+            return sum(int(m.file_size) for m in members)
     except zipfile.BadZipFile as exc:
-        raise UnsafeFileError("not a valid Office document (bad ZIP container)") from exc
+        raise ValueError("not a valid Office document (bad ZIP container)") from exc

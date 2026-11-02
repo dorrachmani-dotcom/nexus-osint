@@ -432,6 +432,12 @@ def case_ai_brief(request: Request, case_id: int) -> HTMLResponse:
         if case is None:
             return HTMLResponse("Case not found", status_code=404)
         items = case_live_items(conn, case_id, limit=25, unread_only=False)
+        # Uploads marked "no AI" never go to a cloud model.
+        from nexus.ingest.upload import cloud_ai_active
+        from nexus.storage.documents import drop_ai_excluded
+
+        if cloud_ai_active(settings):
+            items = drop_ai_excluded(conn, items)
         enrich_feed_rows(conn, items)
     error = None
     briefing = ""
