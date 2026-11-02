@@ -51,7 +51,7 @@ xhtml2pdf==0.2.21           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 # All OPTIONAL + guarded: a missing package only disables that one format in
 # the upload page (graceful degradation). CSV, HTML, MHTML, text/Markdown,
 # JSON, e-mail, RTF and ZIP need no extra package. Licenses are permissive.
-pypdf==6.12.2               # PDF text (BSD-3-Clause)
+pypdf==6.21.4               # PDF text (BSD-3-Clause)
 python-docx==1.2.0          # Word .docx (MIT)
 openpyxl==3.1.5             # Excel .xlsx, read-only, never runs macros (MIT)
 python-pptx==1.0.2          # PowerPoint .pptx (MIT)
