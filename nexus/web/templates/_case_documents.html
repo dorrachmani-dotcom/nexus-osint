@@ -1,0 +1,13 @@
+<div id="case-documents" class="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+  <div class="space-y-3">
+    {% include "_document_upload.html" %}
+    <p class="text-[11px] text-slate-500">
+      Uploaded files are read into sections and pinned into this case. Manage every upload
+      on <a href="/sources/documents" class="text-sky-400 hover:text-sky-300">Sources &rsaquo; Documents</a>.
+    </p>
+  </div>
+  <div class="space-y-2">
+    <h2 class="text-sm font-medium text-slate-300">Documents in this case</h2>
+    {% include "_document_list.html" %}
+  </div>
+</div>

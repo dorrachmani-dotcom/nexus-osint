@@ -1,0 +1,12 @@
+<div class="mt-2 border-t border-slate-800 pt-2 space-y-1 max-h-80 overflow-y-auto">
+  {% for c in chunks %}
+  <div class="text-xs">
+    <button hx-get="/items/{{ c.id }}/detail" hx-target="#chunk-detail-{{ c.id }}" hx-swap="innerHTML"
+            class="text-sky-400 hover:text-sky-300 text-left">{{ c.title }}</button>
+    <p class="text-slate-500 line-clamp-2">{{ c.excerpt }}</p>
+    <div id="chunk-detail-{{ c.id }}"></div>
+  </div>
+  {% else %}
+  <p class="text-xs text-slate-500">No sections.</p>
+  {% endfor %}
+</div>

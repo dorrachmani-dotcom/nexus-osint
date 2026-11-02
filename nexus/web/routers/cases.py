@@ -176,7 +176,9 @@ def cases_delete(request: Request, case_id: int) -> HTMLResponse:
     )
 
 
-_CASE_TABS = {"feed", "pinned", "questions", "subcases", "timeline", "graph", "reports"}
+_CASE_TABS = {
+    "feed", "pinned", "questions", "subcases", "timeline", "graph", "reports", "documents",
+}
 
 
 @router.get("/cases/{case_id}", response_class=HTMLResponse)

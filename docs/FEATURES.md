@@ -25,6 +25,37 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   per-source **Test** button does a live fetch so you can confirm it works before
   it joins the next scan. Each source's API key lives in `.env` only (the key name
   is derived server-side from the source id, so nothing arbitrary can be written).
+- **Upload documents (universal ingestion)** — on **Sources › Documents** or a
+  case's **Documents** tab, upload one or many files at once, or a ZIP. Supported:
+  PDF (per page), Word `.docx` (per heading section, tables included), Excel
+  `.xlsx` (per sheet), PowerPoint `.pptx` (per slide, with speaker notes),
+  OpenDocument (`.odt/.ods/.odp`), CSV/TSV, HTML, saved pages (`.mhtml`),
+  Markdown/text (per heading), JSON and NDJSON (per record), XML/RSS/Atom (per
+  record), e-mail `.eml` (with attachments), RTF, images (text via OCR when the
+  Tesseract engine is installed) and ZIP archives. A ZIP export of a wiki or
+  documentation site (Confluence, MediaWiki, MkDocs, Sphinx…) is read page by
+  page, keeping each page's title and its internal links as metadata. Anything
+  else is read best-effort: if it holds readable text, that text is kept.
+  - Each page/section/sheet/slide becomes an ordinary, searchable item (source
+    `upload`, title like `report.pdf — p.3`), split into ~4,000-character chunks.
+    Re-uploading the same file never duplicates anything (sha256 + chunk index).
+  - Choose a **case** (items are pinned into it) or the general **knowledge
+    pool** (reference material Sherlock uses when answering; it can also be both).
+  - The original file is kept under `DATA_DIR/uploads/` (named by its sha256,
+    never served inline) and can be downloaded again from the document list.
+  - **AI is opt-in per upload.** With a cloud AI provider active the form warns
+    that the text would be sent to it, and the "allow AI" box starts unticked.
+    A "no AI" upload is skipped by automatic enrichment (summaries, translation,
+    question scoring) and is never shown to a cloud model by Sherlock; a local
+    model may still read it.
+  - **Safety:** 50 MB per file and 200 MB per upload; ZIP archives are checked
+    for entry count (2,000), total expanded size (500 MB), compression ratio and
+    nesting depth, and member paths can never escape the archive. XML is parsed
+    with `defusedxml` (no entity expansion), Office macros are never run, and
+    HTML scripts are dropped.
+  - The PDF, Word, Excel and PowerPoint parsers (`pypdf`, `python-docx`,
+    `openpyxl`, `python-pptx`) and `defusedxml` are optional: without one, only
+    that format is switched off and the upload page says so.
 - **Unified feed (The River)** — a dense, dark, terminal-style stream of items
   with threat badges, AI summaries, optional translation, and echo/virality
   counts for near-duplicate content.

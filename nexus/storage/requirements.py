@@ -6,6 +6,7 @@ import sqlite3
 
 from nexus.db import last_row_id
 from nexus.storage.cases import _NO_CASE_FILTER
+from nexus.storage.documents import AI_ALLOWED_SQL
 from nexus.storage.items import build_fts_query
 
 
@@ -134,6 +135,7 @@ def pending_requirement_scoring(
                   WHERE h.item_id = i.id AND h.requirement_id = r.id
               )
         )
+          AND """ + AI_ALLOWED_SQL + """
         ORDER BY i.id DESC
         LIMIT ?
         """,

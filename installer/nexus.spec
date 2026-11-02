@@ -94,7 +94,10 @@ binaries = []
 # these, CreatePDF() fails inside the frozen app and export silently degrades to
 # HTML. collect_all pulls each package's data, binaries, and submodules so real
 # PDFs are produced offline.
-for _pkg in ("reportlab", "xhtml2pdf", "html5lib", "svglib", "arabic_reshaper"):
+# Document-upload parsers are imported lazily and python-docx/python-pptx read
+# bundled XML templates at runtime, so collect them whole as well.
+for _pkg in ("reportlab", "xhtml2pdf", "html5lib", "svglib", "arabic_reshaper",
+             "pypdf", "docx", "openpyxl", "pptx", "defusedxml"):
     _d, _b, _h = collect_all(_pkg)
     datas += _d
     binaries += _b

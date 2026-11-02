@@ -8,6 +8,7 @@ import json
 import logging
 import sqlite3
 
+from nexus.storage.documents import AI_ALLOWED_SQL
 from nexus.storage.entities import (
     _clean_entity_display,
     _decode_entities,
@@ -35,6 +36,7 @@ def pending_analysis(conn: sqlite3.Connection, limit: int = 200) -> list[dict]:
         FROM items i
         LEFT JOIN analyses a ON a.item_id = i.id
         WHERE a.item_id IS NULL
+          AND """ + AI_ALLOWED_SQL + """
         ORDER BY i.id DESC
         LIMIT ?
         """,
@@ -143,9 +145,10 @@ def pending_keyless_translation(
         SELECT i.id, i.source, i.title, i.content, i.language
         FROM items i
         LEFT JOIN analyses a ON a.item_id = i.id
-        WHERE a.item_id IS NULL
+        WHERE (a.item_id IS NULL
            OR a.translation IS NULL
-           OR TRIM(a.translation) = ''
+           OR TRIM(a.translation) = '')
+          AND """ + AI_ALLOWED_SQL + """
         ORDER BY i.id DESC
         LIMIT ?
         """,
