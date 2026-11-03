@@ -371,6 +371,9 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
   warning explains the trade-off): the item's URL is sent to archive.org and the
   resulting snapshot is public. Auto-archiving on pin is off unless you enable
   it for a case, and the whole feature can be switched off in Settings.
+- **Backups never contain secrets.** Settings › Backup & restore writes one
+  archive (optionally passphrase-encrypted) without API keys or passwords;
+  restore validates the archive fully and saves the current state first.
 - **Optional encryption at rest** (off by default, Settings): uploaded
   documents and evidence screenshots are stored AES-256-GCM encrypted; the key
   is wrapped by your passphrase (plus a one-time recovery code, and optionally

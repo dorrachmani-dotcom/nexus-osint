@@ -201,6 +201,11 @@ def _hkdf(key: bytes, info: bytes, salt: bytes | None = None) -> bytes:
     return HKDF(algorithm=hashes.SHA256(), length=32, salt=salt, info=info).derive(key)
 
 
+def passphrase_key(passphrase: str, salt: bytes, params: dict[str, int] | None = None) -> bytes:
+    """A 256-bit key from a passphrase (scrypt; production cost by default)."""
+    return _scrypt(passphrase, salt, params or _SCRYPT)
+
+
 def _scrypt(passphrase: str, salt: bytes, params: dict[str, int]) -> bytes:
     return hashlib.scrypt(
         passphrase.encode("utf-8"), salt=salt, n=int(params["n"]), r=int(params["r"]),
@@ -382,11 +387,14 @@ def _nonce(index: int) -> bytes:
     return index.to_bytes(12, "big")
 
 
-def encrypt_stream(src: BinaryIO, dst: BinaryIO) -> None:
-    """Encrypt ``src`` into ``dst`` (NXE1, chunked, constant memory)."""
+def encrypt_stream(src: BinaryIO, dst: BinaryIO, master: bytes | None = None) -> None:
+    """Encrypt ``src`` into ``dst`` (NXE1, chunked, constant memory).
+
+    ``master`` defaults to the at-rest file key; a passphrase-protected backup
+    passes its own key instead."""
     salt = secrets.token_bytes(_SALT_LEN)
     header = MAGIC + bytes([_VERSION]) + salt
-    aead = _aead(_hkdf(_file_master(), b"nexus-file-v1", salt))
+    aead = _aead(_hkdf(master or _file_master(), b"nexus-file-v1", salt))
     dst.write(header)
     index = 0
     chunk = src.read(_CHUNK)
@@ -399,14 +407,14 @@ def encrypt_stream(src: BinaryIO, dst: BinaryIO) -> None:
         chunk, index = nxt, index + 1
 
 
-def decrypt_stream(src: BinaryIO, dst: BinaryIO) -> None:
+def decrypt_stream(src: BinaryIO, dst: BinaryIO, master: bytes | None = None) -> None:
     """Decrypt an NXE1 stream; raises EncryptionError if it was tampered with."""
     from cryptography.exceptions import InvalidTag
 
     header = src.read(_HEADER_LEN)
     if len(header) != _HEADER_LEN or not header.startswith(MAGIC) or header[4] != _VERSION:
         raise EncryptionError("not a Nexus-encrypted file")
-    aead = _aead(_hkdf(_file_master(), b"nexus-file-v1", header[5:]))
+    aead = _aead(_hkdf(master or _file_master(), b"nexus-file-v1", header[5:]))
     index = 0
     block = src.read(_CHUNK + _TAG)
     while True:

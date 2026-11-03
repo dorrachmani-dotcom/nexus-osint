@@ -230,6 +230,10 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
     ('POST', '/settings/encryption'),
     ('GET', '/unlock'),
     ('POST', '/unlock'),
+    ('GET', '/settings/backup'),
+    ('POST', '/settings/backup'),
+    ('GET', '/backups/{name}'),
+    ('POST', '/settings/backup/restore'),
 ]
 
 

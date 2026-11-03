@@ -142,6 +142,22 @@ OCR engine (Tesseract) and ClamAV need while they read a file. On SSDs, older
 plaintext copies of converted files may remain recoverable from free space
 until it is overwritten, so enable encryption before importing sensitive files.
 
+### Backup & restore
+- A backup holds the database, uploads, evidence, saved reports, the
+  encryption keystore (wrapped keys only) and `settings.env`: the `.env` lines
+  whose names do not look like a secret (anything containing KEY, SECRET,
+  TOKEN, PASSWORD, PASS, SESSION, COOKIE, HEADER, AUTH or CREDENTIAL, and all
+  per-source secrets, are dropped). Storage paths are never restored.
+- Without a passphrase the archive is a plain ZIP: treat it like the data
+  itself. With one, it is encrypted with AES-256-GCM under a scrypt key.
+- Restore treats the archive as untrusted: only the expected top-level names
+  and plain file names are accepted (no absolute paths, `..`, drive letters,
+  backslashes, folders or links), member count, total size and compression
+  ratio are capped, every member must match the SHA-256 in the manifest, a
+  backup from a newer Nexus is refused, and the database must pass
+  `PRAGMA integrity_check`. Nothing is changed until all checks pass, and the
+  current state is always saved as a `pre-restore` backup first.
+
 ### Denial-of-service guardrails
 - Analyst-authored watchlist regexes are bounded: the stored pattern is capped in
   length, and the text it runs against is capped, so catastrophic backtracking

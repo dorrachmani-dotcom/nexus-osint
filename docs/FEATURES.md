@@ -247,6 +247,12 @@ limits: [INGESTION.md](INGESTION.md).
   intelligence requirement, write a case note, or open a page. By design it only
   ever performs **constructive, local** actions — it cannot delete anything,
   change settings/keys/the AI provider, or send your data anywhere.
+- **Backup & restore** — Settings › Backup & restore writes one archive
+  (`data/backups/`) with the database, uploads, evidence, saved reports and
+  non-secret settings, optionally passphrase-protected. Restore (upload a file
+  or pick a saved backup) checks the archive completely first and always saves
+  the current state as a `pre-restore` backup before replacing anything. API
+  keys are never in a backup: re-enter them on a new computer.
 - **Encryption at rest (opt-in)** — Settings › Encryption at rest encrypts
   uploaded originals and evidence screenshots on disk (AES-256-GCM, 1 MiB
   authenticated chunks). Set a passphrase, write down the one-time recovery
