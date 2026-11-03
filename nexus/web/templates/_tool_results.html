@@ -50,7 +50,7 @@
       <h2 class="text-sm font-medium text-slate-300 mb-2">Entity graph</h2>
       <iframe class="w-full rounded-lg border border-slate-800 bg-slate-900"
               style="height: 620px;" sandbox="allow-scripts"
-              srcdoc="{{ graph_html|e }}"></iframe>
+              src="{{ graph_html | graph_frame_url }}" title="Entity graph"></iframe>
     </div>
     {% elif result.findings %}
     <p class="text-xs text-slate-500">

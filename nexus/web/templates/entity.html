@@ -44,7 +44,7 @@
        class="rounded border border-slate-700 hover:border-amber-500 hover:text-amber-300 text-slate-300 px-2.5 py-1">&#128376; Graph around it</a>
     {% if active_case %}
     <form hx-post="/watchlists" hx-swap="none"
-          hx-on::after-request="this.querySelector('button').textContent='&#10003; watching'; this.querySelector('button').disabled=true">
+          data-done="done-button" data-done-text="&#10003; watching">
       <input type="hidden" name="label" value="{{ profile.name }}" />
       <input type="hidden" name="pattern" value="{{ profile.name }}" />
       <input type="hidden" name="kind" value="keyword" />
@@ -52,7 +52,7 @@
     </form>
     {% else %}
     <form hx-post="/watchlists" hx-swap="none"
-          hx-on::after-request="this.querySelector('button').textContent='&#10003; watching'; this.querySelector('button').disabled=true">
+          data-done="done-button" data-done-text="&#10003; watching">
       <input type="hidden" name="label" value="{{ profile.name }}" />
       <input type="hidden" name="pattern" value="{{ profile.name }}" />
       <input type="hidden" name="kind" value="keyword" />

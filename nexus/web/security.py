@@ -40,16 +40,18 @@ _ALLOWED_HOSTS = {"127.0.0.1", "localhost", "[::1]", "::1"}
 _UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 # Content-Security-Policy. Every script and stylesheet ships with the app
-# (no CDN), so only our own origin may serve them. 'unsafe-inline' remains for
-# a few inline <script>/onclick handlers and the self-contained pyvis graph
-# (rendered into a sandboxed srcdoc iframe); 'unsafe-eval' remains because
-# htmx compiles hx-on:: handlers with Function(). The high-value directives stay
-# locked down: no plugins (object-src), no other site may frame us
-# (frame-ancestors), forms only post back to us (form-action), and <base>
-# can't be hijacked.
+# (no CDN), so only our own origin may serve them, and no inline script or
+# eval runs at all: page code lives in nexus/web/static/js, markup uses
+# data-action / data-done attributes (static/js/actions.js) instead of on*= or
+# hx-on, and htmx is configured with allowEval=false. The relationship graph,
+# whose library emits inline script, is served as its own sandboxed document
+# with a narrower policy (nexus/web/graph_frames.py). Inline *styles* are still
+# allowed (Tailwind utilities are classes; a few style= attributes remain).
+# No plugins (object-src), no other site may frame us (frame-ancestors), forms
+# only post back to us (form-action), and <base> can't be hijacked.
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+    "script-src 'self'; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
     "font-src 'self' data:; "

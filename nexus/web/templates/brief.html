@@ -5,7 +5,7 @@
      must NOT try to swap its response into the Brief — instead reload /brief. #}
   <button hx-post="/scan" hx-swap="none"
           hx-indicator="#brief-spin"
-          hx-on::after-request="window.location.href='/brief'"
+          data-done="goto:/brief"
           title="Collect from every source (can take a minute or two)"
           class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold whitespace-nowrap">
     Scan now</button>
@@ -72,7 +72,7 @@
         <div class="flex items-center gap-2">
           <button hx-post="/cases/{{ b.case.id }}/scan" hx-swap="none"
                   hx-indicator="#case-scan-spin-{{ b.case.id }}"
-                  hx-on::after-request="if(typeof window.nexusBriefRefresh==='function')window.nexusBriefRefresh(); htmx.ajax('GET','/brief',{target:'#brief-body',select:'#brief-body',swap:'outerHTML'})"
+                  data-done="brief-reload"
                   class="text-xs text-slate-500 hover:text-amber-300 mono border border-slate-700 hover:border-amber-600 rounded px-2 py-0.5"
                   title="Scan new items for this case">&#128260; Scan now</button>
           <span id="case-scan-spin-{{ b.case.id }}" class="htmx-indicator text-[11px] mono text-amber-400">scanning…</span>
@@ -88,7 +88,7 @@
           </form>
           <form hx-post="/brief/mark-read"
                 hx-target="#read-all-{{ b.case.id }}" hx-swap="outerHTML"
-                hx-on::after-request="if(typeof window.nexusBriefRefresh==='function')window.nexusBriefRefresh()"
+                data-done="brief-refresh"
                 class="inline">
             {% for it in b.new_items %}
             <input type="hidden" name="item_ids" value="{{ it.id }}" />
@@ -119,10 +119,10 @@
                       hx-target="#item-drawer-content" hx-swap="innerHTML"
                       class="text-slate-500 hover:text-sky-400" title="View full details">&#8599;</button>
               <button hx-post="/cases/{{ b.case.id }}/items/{{ it.id }}/add" hx-swap="none"
-                      hx-on::after-request="this.textContent='✓ pinned'; this.disabled=true; this.className='text-emerald-400 cursor-default'"
+                      data-done="done" data-done-text="✓ pinned" data-done-class="text-emerald-400 cursor-default" data-done-disable
                       class="text-amber-400 hover:text-amber-300" title="Pin to this case">&#128204; pin</button>
               <button hx-post="/items/{{ it.id }}/read" hx-swap="none"
-                      hx-on::after-request="this.closest('li').style.opacity='0.4'; this.disabled=true"
+                      data-done="dim-closest:li"
                       class="text-slate-500 hover:text-emerald-400" title="Mark read">&#10003;</button>
             </div>
           </div>

@@ -86,6 +86,24 @@ external OSINT CLI tools the platform can orchestrate.
   restricts scripts/styles/connections to `self` only (every asset ships with
   the app; nothing is loaded from a CDN), with `object-src 'none'`, `base-uri 'self'`,
   `form-action 'self'`, and `frame-ancestors 'none'`.
+- **No inline script and no eval.** `script-src` is `'self'` only: every page
+  script lives in `nexus/web/static/js/`, buttons and forms use declarative
+  `data-action` / `data-change` / `data-done` attributes handled by
+  `static/js/actions.js` (a fixed list of named actions; attribute values are
+  never evaluated), and htmx runs with `allowEval: false`. An injected
+  `<script>` or `onerror=` attribute therefore does not run even if escaping
+  were bypassed. Inline *styles* remain allowed.
+- **The relationship graph** (whose library emits inline script) is served as
+  its own document from `/graph/frame/<random token>` (kept in memory for 30
+  minutes) with a narrower policy: inline script only inside that document,
+  `default-src 'none'` (no network at all), `frame-ancestors 'self'`. It is
+  embedded with `sandbox="allow-scripts"` and no same-origin, so it cannot
+  reach the app, its cookies or its storage.
+- `tests/test_csp.py` asserts the header and that no template contains inline
+  script, `on*=` handlers, `hx-on` or `javascript:` URLs.
+  `python scripts/csp_crawl.py` opens every page in a real browser (Playwright;
+  falls back to the installed Edge) against a throwaway demo database and fails
+  on any CSP violation.
 
 ### Injection protection
 - **SQL/FTS:** all queries use parameterized placeholders; the full-text search

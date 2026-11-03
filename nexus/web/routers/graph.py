@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Form, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 
 from nexus.db import get_connection
 from nexus.graph import render_entity_graph_html
@@ -170,3 +170,18 @@ def graph_delete_alias(
         delete_entity_alias(conn, alias_id)
     ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
     return TEMPLATES.TemplateResponse(request, "_entity_graph.html", ctx)
+
+
+@router.get("/graph/frame/{token}", include_in_schema=False)
+def graph_frame(token: str) -> Response:
+    """One rendered graph as its own document (own CSP; see graph_frames)."""
+    from nexus.web import graph_frames
+
+    html = graph_frames.get(token)
+    if html is None:
+        return HTMLResponse("This graph has expired: reload the page.", status_code=404)
+    return HTMLResponse(html, headers={
+        "Content-Security-Policy": graph_frames.FRAME_CSP,
+        "X-Frame-Options": "SAMEORIGIN",
+        "Cache-Control": "no-store",
+    })

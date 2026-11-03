@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 
 from nexus.textclean import markdown_to_plain
 
-_BASE = Path(__file__).resolve().parents[1] / "nexus" / "web" / "templates" / "base.html"
+# The assistant script moved out of base.html into a static file (strict CSP).
+_BASE = Path(__file__).resolve().parents[1] / "nexus" / "web" / "static" / "js" / "app.js"
 
 
 def test_bold_and_bullets_become_plain_text():
@@ -62,7 +63,7 @@ def test_bot_text_is_rendered_with_text_nodes_only():
     # The client must keep building bot bubbles from text nodes: renderBotText
     # may create <a> for "Item N" but never assigns innerHTML.
     src = _BASE.read_text(encoding="utf-8")
-    m = re.search(r"function renderBotText\(.*?\n      }\n", src, re.S)
+    m = re.search(r"function renderBotText\(.*?\n  }\n", src, re.S)
     assert m, "renderBotText not found"
     body = m.group(0)
     assert "createTextNode" in body
@@ -78,13 +79,13 @@ def test_chat_is_kept_for_the_tab_session_and_cleared_on_end():
     assert "window.sessionStorage.setItem(STORE_KEY" in src
     assert "localStorage.setItem(STORE_KEY" not in src  # per-tab only
     # End chat (resetChat) wipes the saved conversation.
-    reset = re.search(r"function resetChat\(\) \{.*?\n      }\n", src, re.S).group(0)
+    reset = re.search(r"function resetChat\(\) \{.*?\n  }\n", src, re.S).group(0)
     assert "transcript = []" in reset and "persist()" in reset
 
 
 def test_restored_messages_use_the_text_only_render_path():
     src = _script()
-    body = re.search(r"function restoreChat\(\) \{.*?\n      }\n", src, re.S).group(0)
+    body = re.search(r"function restoreChat\(\) \{.*?\n  }\n", src, re.S).group(0)
     assert "addBubble(" in body and "renderSources(" in body
     assert "replayableActions(" in body  # replayed actions never auto-open
     assert "innerHTML" not in body
@@ -94,6 +95,6 @@ def test_restored_messages_use_the_text_only_render_path():
 
 def test_action_links_only_accept_app_paths_and_http():
     src = _script()
-    body = re.search(r"function renderActions\(actions\) \{.*?\n      }\n", src, re.S).group(0)
+    body = re.search(r"function renderActions\(actions\) \{.*?\n  }\n", src, re.S).group(0)
     assert r"/^(\/(?!\/)|https?:\/\/)/i.test(a.url)" in body
     assert "a.url;" not in body and "window.open(url" in body

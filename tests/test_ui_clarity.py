@@ -238,7 +238,7 @@ def test_item_drawer_hides_aggregator_badge_like_feed_cards():
 def test_end_chat_hidden_without_ai(temp_db):
     with temp_db():
         html = _client().get("/cases").text
-    assert "nexusAssistantEnd()" not in html
+    assert "call:nexusAssistantEnd" not in html
 
 
 def test_end_chat_shown_with_ai(temp_db, monkeypatch):
@@ -248,4 +248,4 @@ def test_end_chat_shown_with_ai(temp_db, monkeypatch):
     get_settings.cache_clear()
     with temp_db():
         html = _client().get("/cases").text
-    assert "nexusAssistantEnd()" in html
+    assert "call:nexusAssistantEnd" in html

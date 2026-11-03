@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<script>
-  (function () {
-    var b = document.getElementById('watchlist-badge');
-    if (b) { b.textContent = ''; b.classList.add('hidden'); }
-  })();
-</script>
+<script src="/static/js/watchlists.js"></script>
 <section class="space-y-6">
   <div class="space-y-4">
     <div>
@@ -79,7 +74,7 @@
   </div>
 
   <form hx-post="/watchlists" hx-target="#watchlist-list" hx-swap="outerHTML"
-        hx-on::after-request="this.reset()"
+        data-done="reset"
         class="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] items-end
                bg-slate-900 border border-slate-800 rounded-lg p-4">
     <label class="block">
@@ -125,11 +120,11 @@
               hx-target="#item-drawer-content" hx-swap="innerHTML"
               class="text-slate-500 hover:text-sky-400">&#8599; Details</button>
           <button hx-post="/items/{{ h.item_id }}/read" hx-swap="none"
-              hx-on::after-request="this.closest('.wl-hit').style.opacity='0.4'; this.disabled=true"
+              data-done="dim-closest:.wl-hit"
               class="text-slate-500 hover:text-emerald-400">&#10003; Mark read</button>
           {% if active_case %}
           <button hx-post="/cases/{{ active_case.id }}/items/{{ h.item_id }}/add" hx-swap="none"
-              hx-on::after-request="this.textContent='✓ pinned'; this.disabled=true; this.className='text-emerald-400 cursor-default'"
+              data-done="done" data-done-text="✓ pinned" data-done-class="text-emerald-400 cursor-default" data-done-disable
               class="text-amber-400 hover:text-amber-300"
               title="Pin to active case: {{ active_case.name }}">&#128204; &rarr; {{ active_case.name }}</button>
           {% endif %}

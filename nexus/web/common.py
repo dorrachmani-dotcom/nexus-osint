@@ -113,6 +113,11 @@ def _linkify(value: str) -> Markup:
 
 TEMPLATES.env.filters["linkify"] = _linkify
 
+from nexus.web import graph_frames  # noqa: E402
+
+# {{ graph_html | graph_frame_url }} -> a sandboxed iframe URL (see graph_frames).
+TEMPLATES.env.filters["graph_frame_url"] = graph_frames.store
+
 
 THREAT_LEVELS = ["none", "low", "medium", "high", "critical"]
 

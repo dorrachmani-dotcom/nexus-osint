@@ -101,7 +101,7 @@
       <label class="block">
         <span class="text-xs text-slate-400">What to include</span>
         <select name="scope" id="export-scope"
-                onchange="document.getElementById('export-case-wrap').style.display = this.value === 'case' ? 'block' : 'none';"
+                data-change="show-if:case:#export-case-wrap"
                 class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
           <option value="all">Everything ({{ total_items }} item{{ '' if total_items == 1 else 's' }})</option>
           <option value="case">A single case</option>

@@ -26,7 +26,7 @@
   <div class="rounded-lg border border-slate-700 overflow-hidden">
     <iframe class="w-full bg-slate-950"
             style="height:560px;" sandbox="allow-scripts"
-            srcdoc="{{ graph_html|e }}"></iframe>
+            src="{{ graph_html | graph_frame_url }}" title="Relationship graph"></iframe>
   </div>
   {% else %}
   <div class="rounded-lg border border-dashed border-slate-700 px-6 py-4 text-xs text-slate-500">
@@ -40,45 +40,16 @@
     <span class="text-xs text-slate-500">Show:</span>
     {% for kind, icon, label in [('person','👤','People'),('organization','🏢','Orgs'),('location','📍','Places'),('identifier','🔑','Identifiers'),('','⬡','Other')] %}
     <button type="button" data-kind="{{ kind }}"
-            onclick="toggleKind(this)"
+            data-action="call:toggleKind" data-arg="this"
             class="kind-pill rounded-full border px-2.5 py-0.5 text-xs
                    bg-amber-500 text-slate-950 border-amber-500 font-semibold">
       {{ icon }} {{ label }}
     </button>
     {% endfor %}
-    <button type="button" onclick="resetKinds()"
+    <button type="button" data-action="call:resetKinds"
             class="ml-2 text-xs text-slate-600 hover:text-slate-300">Reset</button>
   </div>
-  <script>
-  (function () {
-    var hidden = new Set();
-    var ON  = ['bg-amber-500','text-slate-950','border-amber-500','font-semibold'];
-    var OFF = ['bg-slate-800','text-slate-400','border-slate-700'];
-    window.toggleKind = function (btn) {
-      var kind = btn.getAttribute('data-kind');
-      if (hidden.has(kind)) {
-        hidden.delete(kind);
-        OFF.forEach(function(c){btn.classList.remove(c);}); ON.forEach(function(c){btn.classList.add(c);});
-      } else {
-        hidden.add(kind);
-        ON.forEach(function(c){btn.classList.remove(c);}); OFF.forEach(function(c){btn.classList.add(c);});
-      }
-      applyFilter();
-    };
-    window.resetKinds = function () {
-      hidden.clear();
-      document.querySelectorAll('.kind-pill').forEach(function (b) {
-        OFF.forEach(function(c){b.classList.remove(c);}); ON.forEach(function(c){b.classList.add(c);});
-      });
-      applyFilter();
-    };
-    function applyFilter() {
-      document.querySelectorAll('[data-entity-kind]').forEach(function (el) {
-        el.style.display = hidden.has(el.getAttribute('data-entity-kind')) ? 'none' : '';
-      });
-    }
-  })();
-  </script>
+  <script src="/static/js/entity-graph.js"></script>
 
   {# ── Ranked tables ───────────────────────────────────────────────────────── #}
   <div class="grid gap-4 md:grid-cols-2">

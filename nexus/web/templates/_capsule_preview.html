@@ -25,7 +25,7 @@
     </div>
 
     <form hx-post="/topics/capsule" hx-target="#capsules" hx-swap="outerHTML"
-          hx-on::after-request="document.getElementById('capsule-preview').remove()"
+          data-done="remove:#capsule-preview"
           class="space-y-3">
       <input type="hidden" name="name" value="{{ name }}" />
 
@@ -50,7 +50,7 @@
           Create capsule
         </button>
         <button type="button"
-                onclick="document.getElementById('capsule-preview').remove()"
+                data-action="remove:#capsule-preview"
                 class="text-xs text-slate-400 hover:text-slate-200">
           Discard
         </button>

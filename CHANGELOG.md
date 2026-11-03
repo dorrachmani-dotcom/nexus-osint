@@ -33,6 +33,13 @@ to [Semantic Versioning](https://semver.org/).
   recorded. Rows older than a year are pruned.
 
 ### Changed
+- Stricter Content-Security-Policy: `script-src 'self'` with no
+  `'unsafe-inline'` or `'unsafe-eval'`. Inline scripts moved to
+  `nexus/web/static/js/`, `onclick=`/`hx-on` handlers replaced by declarative
+  `data-action`/`data-done` attributes, htmx eval disabled, and the relationship
+  graph served from its own sandboxed frame URL with a narrow, network-less
+  policy. `scripts/csp_crawl.py` checks every page in a real browser for
+  violations.
 - Image OCR (uploads and evidence) reads from memory instead of writing a
   temporary copy of the image.
 

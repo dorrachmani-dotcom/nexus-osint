@@ -42,14 +42,14 @@
         <span class="text-emerald-400">&#10003; Read</span>
         {% else %}
         <button hx-post="/items/{{ it.id }}/read" hx-swap="none"
-          hx-on::after-request="this.textContent='✓ read'; this.disabled=true; this.className='text-emerald-400 cursor-default'; this.closest('article').classList.add('opacity-60')"
+          data-done="done; fade-closest:article" data-done-text="✓ read" data-done-class="text-emerald-400 cursor-default" data-done-disable
           class="text-slate-500 hover:text-emerald-400">&#10003; Read</button>
         {% endif %}
         {% if it.is_bookmarked %}
         <span class="text-amber-400">&#9733; Saved</span>
         {% else %}
         <button hx-post="/items/{{ it.id }}/bookmark" hx-swap="none"
-          hx-on::after-request="this.textContent='★ saved'; this.disabled=true; this.className='text-amber-400 cursor-default'"
+          data-done="done" data-done-text="★ saved" data-done-class="text-amber-400 cursor-default" data-done-disable
           class="text-slate-500 hover:text-amber-400">&#9733; Bookmark</button>
         {% endif %}
       </div>
