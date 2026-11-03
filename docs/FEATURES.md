@@ -160,6 +160,23 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   (explicitly) no TLS verification can be set per connection. The token lives
   in `.env` (`CONFLUENCE_SOURCE_<id>_TOKEN`) only — never the database, the page
   or a log.
+- **Obsidian: import vault** (Sources › Obsidian) — point Nexus at a vault
+  folder on this computer. The folder is validated and only ever read; hidden
+  folders (`.obsidian/`, `.trash/`…) are skipped and a symlink never leads out of
+  the vault. Each note keeps its YAML frontmatter (parsed with `yaml.safe_load`
+  only), its tags (frontmatter and inline `#tags`, not inside code), its
+  `[[wikilinks]]` and `![[embeds]]` as metadata; embedded files (PDF, Office,
+  images…) found in the vault are read through the document readers, and long
+  notes are split at their headings. Title = note name (or frontmatter
+  `title`). Re-scans read a note only when its modification time or size
+  changed and store it only when its content changed (fresh text plus a "what
+  changed" item); deleted notes are removed. Optional include / exclude folders
+  and a required tag. Size limits per note and per scan. Notes go to a case or
+  the knowledge pool, with the same "no AI" option as uploads. A zipped vault
+  uploaded under Documents is recognised and parsed the same way.
+  *Link graph:* wikilinks are kept as note metadata and searchable "Linked
+  notes" text; they are not yet drawn in the entity graph (that graph is rebuilt
+  from AI-extracted entities, which would overwrite note-to-note links).
 - **Custom API sources (self-service + self-healing)** — point Nexus at any
   API; the AI planner reads its docs/sample response and writes the
   field mapping for you.
@@ -188,7 +205,7 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   JSON** of exactly the rows you're looking at (filters and search applied) — on
   the main feed, the relevance-ranked Intel view (with each item's score), and
   inside a case. The Security center adds a downloadable data-handling audit
-  report. A case also exports as an **Obsidian vault** (a Markdown folder with
+  report. A case also exports with **Obsidian: export case** (a Markdown vault with
   `[[wikilinks]]` to every entity) so Obsidian's graph view shows the case's web
   of people, organisations and places.
 - **Relationship graph** — a co-occurrence network of the people, organisations

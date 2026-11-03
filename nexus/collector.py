@@ -25,6 +25,7 @@ from nexus.sources.custom import CustomApiSource, load_custom_sources
 from nexus.sources.freesearch import GoogleNewsSource, RedditSearchSource
 from nexus.sources.gdelt import GdeltSource
 from nexus.sources.google_cse import GoogleCseSource
+from nexus.sources.obsidian import load_obsidian_sources
 from nexus.sources.reddit import RedditSource
 from nexus.sources.rss import RSSSource
 from nexus.sources.serpapi import SerpApiSource
@@ -74,7 +75,8 @@ class Collector:
         # picked up on the next scan without a restart.
         custom = load_custom_sources(self.settings)
         web = load_web_sources(self.settings)
-        connectors = load_confluence_sources(self.settings)
+        connectors = [*load_confluence_sources(self.settings),
+                      *load_obsidian_sources(self.settings)]
         return [s for s in (*self.sources, *custom, *web, *connectors) if s.is_available()]
 
     def scan(self) -> dict:

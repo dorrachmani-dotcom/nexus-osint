@@ -1,0 +1,12 @@
+{% if result.scanned %}
+<p class="text-xs {% if (result.status or '').startswith('error') %}text-rose-400{% else %}text-emerald-300{% endif %}">
+  Scanned: {{ result.status or 'done' }} &mdash; {{ result.new }} new item{{ '' if result.new == 1 else 's' }}.
+</p>
+{% elif result.ok %}
+<div class="text-xs space-y-0.5">
+  <p class="text-emerald-300">Readable: {{ result.notes }} note{{ '' if result.notes == 1 else 's' }} and {{ result.files }} other file{{ '' if result.files == 1 else 's' }}{% if not result.is_vault %} <span class="text-amber-300">(no .obsidian folder &mdash; read as a plain Markdown folder)</span>{% endif %}.</p>
+  {% for r in result.remarks %}<p class="text-slate-500">{{ r }}</p>{% endfor %}
+</div>
+{% else %}
+<p class="text-xs text-rose-400">{{ result.error }}</p>
+{% endif %}

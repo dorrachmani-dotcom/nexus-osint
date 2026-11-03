@@ -852,9 +852,13 @@ def _x_zip(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
     out: list[Section] = []
     with zf:
         members = check_zip(zf, ctx.limits)
+        is_vault = any(
+            any(part == ".obsidian" for part in m.filename.split("/")[:-1]) for m in members)
         members = [m for m in members
                    if not m.filename.startswith("__MACOSX/")
-                   and not posixpath.basename(m.filename).startswith(".")]
+                   and not posixpath.basename(m.filename).startswith(".")
+                   and not (is_vault and any(part.startswith(".")
+                                             for part in m.filename.split("/")[:-1]))]
         kinds = {m.filename: detect_kind(m.filename, b"") for m in members}
         is_site = sum(1 for k in kinds.values() if k in _PAGE_KINDS) >= 2
         page_paths = {safe_member_path(m.filename) for m in members
@@ -873,6 +877,9 @@ def _x_zip(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
             ctx.account(len(payload))
             if kind == "unknown":
                 kind = detect_kind(path, payload)
+            if is_vault and _ext(path) in ("md", "markdown"):
+                out.extend(_vault_note_sections(path, payload, ctx))
+                continue
             sub = _dispatch(kind, payload, path, ctx, depth + 1)
             for s in sub:
                 s.meta.setdefault("member", path)
@@ -896,6 +903,28 @@ def _x_zip(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
                      "fonts, site images) were skipped")
         if is_site:
             ctx.note(f"read as an exported web site ({len(page_paths)} pages)")
+        if is_vault:
+            ctx.note("read as an Obsidian vault (frontmatter, tags and [[links]] kept)")
+    return out
+
+
+def _vault_note_sections(path: str, payload: bytes, ctx: _Ctx) -> list[Section]:
+    """One Obsidian note from a zipped vault: frontmatter, tags and wikilinks
+    become metadata, long notes split at headings."""
+    from nexus.ingest.obsidian_notes import parse_note
+
+    title = posixpath.basename(path).rsplit(".", 1)[0]
+    note = parse_note(decode_text(payload), title)
+    meta = {"member": path, "note": note.title, "tags": note.tags[:50],
+            "links": note.links[:50], "embeds": note.embeds[:50]}
+    out: list[Section] = []
+    parts = note.sections or []
+    if note.links:
+        parts = [*parts, ("links", "Linked notes: " + ", ".join(note.links))]
+    for label, text in parts:
+        if not ctx.room():
+            break
+        ctx.add(out, f"{note.title} — {label}" if label else note.title, text, dict(meta))
     return out
 
 

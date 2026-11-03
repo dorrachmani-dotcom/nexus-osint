@@ -359,6 +359,24 @@ CREATE TABLE IF NOT EXISTS connector_docs (
     PRIMARY KEY (kind, source_id, doc_key)
 );
 
+-- Imported Obsidian vaults: a local folder each, read-only. Notes become
+-- documents (via connector_docs) in the chosen case and/or the knowledge pool.
+CREATE TABLE IF NOT EXISTS obsidian_vaults (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL,
+    enabled         INTEGER NOT NULL DEFAULT 1,
+    path            TEXT NOT NULL,                  -- the vault folder on this computer
+    include_folders TEXT NOT NULL DEFAULT '',       -- only these folders (comma-separated)
+    exclude_folders TEXT NOT NULL DEFAULT '',       -- never these folders
+    required_tag    TEXT NOT NULL DEFAULT '',       -- only notes with this tag
+    case_id         INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+    in_pool         INTEGER NOT NULL DEFAULT 1,
+    no_ai           INTEGER NOT NULL DEFAULT 0,
+    last_scan_at    TEXT,
+    last_status     TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Confluence connections (Cloud or Data Center / Server). The API token or
 -- Personal Access Token lives in .env as CONFLUENCE_SOURCE_<id>_TOKEN — never here.
 CREATE TABLE IF NOT EXISTS confluence_sources (
@@ -442,7 +460,7 @@ _KNOWN_TABLES = frozenset({
     "list_memberships", "meta", "case_terms", "requirements", "requirement_hits",
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
     "item_archives", "documents", "document_items", "web_sources", "web_pages",
-    "connector_docs", "confluence_sources",
+    "connector_docs", "confluence_sources", "obsidian_vaults",
 })
 
 

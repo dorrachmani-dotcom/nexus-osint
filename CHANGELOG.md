@@ -28,6 +28,15 @@ to [Semantic Versioning](https://semver.org/).
   internal connections show as "Internal network (allowed)" in the Security
   center.
 
+- Obsidian: import vault (Sources › Obsidian): read a local vault folder
+  (read-only; hidden folders skipped, symlinks never followed out of the
+  vault) into a case or the knowledge pool. Frontmatter (`yaml.safe_load`),
+  tags, `[[wikilinks]]` and `![[embeds]]` are kept; embedded PDFs/images/Office
+  files go through the document readers; long notes split at headings.
+  Re-scans pick up new, changed (with a "what changed" item) and deleted notes;
+  optional include/exclude folders and a required tag. A zipped vault uploaded
+  under Documents is parsed the same way. New dependency: PyYAML 6.0.3 (MIT),
+  optional at runtime.
 - Confluence connector (Sources › Confluence): Confluence Cloud (e-mail + API
   token) or Data Center / Server (Personal Access Token), also on closed
   networks through the internal allow-list and internal CA. Pick spaces after
@@ -60,6 +69,8 @@ to [Semantic Versioning](https://semver.org/).
   anthropic 1.15.0, pydantic-settings 2.16.0, networkx 3.6.1, ruff 0.17.1.
 
 ### Changed
+- The case export is now labelled "Obsidian: export case", matching
+  "Obsidian: import vault".
 - Development tools (pytest) moved out of `requirements.txt`; install
   `requirements-dev.txt` to run the test suite. The runtime install is unchanged.
 - README and `.env.example` explain that Reddit works keyless via its search feed, and that the official Reddit Data API is optional and needs approval from Reddit (since 2026).
