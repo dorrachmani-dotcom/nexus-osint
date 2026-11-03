@@ -321,3 +321,7 @@ def forget_source(conn: sqlite3.Connection, kind: str, source_id: int,
             remove_document(conn, kind, source_id, key, origin)
     conn.execute("DELETE FROM connector_docs WHERE kind = ? AND source_id = ?",
                  (kind, source_id))
+    if kind == "obsidian":
+        from nexus.storage.note_links import forget_vault
+
+        forget_vault(conn, source_id)

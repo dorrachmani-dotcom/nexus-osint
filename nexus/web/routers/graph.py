@@ -30,7 +30,7 @@ _EMPTY_GRAPH = {
 
 def _entity_graph_context(
     q: str | None, source: str | None, threat: str | None, window: str | None,
-    case_ids: list[int] | None = None,
+    case_ids: list[int] | None = None, notes: bool = False,
 ) -> dict:
     """Build the topic entity-graph payload (graph HTML + ranked tables).
 
@@ -81,8 +81,16 @@ def _entity_graph_context(
             data = topic_entity_graph(
                 conn, q=q, source=source, threat=threat, since_ts=since_ts
             )
+        if notes:
+            # Obsidian notes that name entities on the map, and their wikilinks.
+            from nexus.storage.note_links import note_graph
+
+            labels = [str(n["label"]) for n in data.get("nodes") or []]  # type: ignore[union-attr]
+            data["notes"] = note_graph(conn, labels)
         sources = distinct_sources(conn)
         aliases = get_entity_aliases(conn)
+        has_vaults = conn.execute(
+            "SELECT 1 FROM connector_docs WHERE kind = 'obsidian' LIMIT 1").fetchone() is not None
     graph_html = render_entity_graph_html(data)
     return {
         "data": data,
@@ -97,6 +105,8 @@ def _entity_graph_context(
         "all_cases": all_cases,
         "selected_ids": [c["id"] for c in cases],
         "aliases": aliases,
+        "show_notes": notes,
+        "has_vaults": has_vaults,
     }
 
 
@@ -115,11 +125,12 @@ def graph(
     threat: str | None = None,
     window: str | None = None,
     case: list[str] = Query(default=[]),
+    notes: bool = False,
 ) -> HTMLResponse:
     """Topic relationship graph — who is talked about the most, and who is most
     connected. Global by default; scope to one or more cases with repeated
     ``?case=ID`` (e.g. ``?case=3&case=7`` for two cases)."""
-    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
+    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case), notes=notes)
     return TEMPLATES.TemplateResponse(request, "graph.html", ctx)
 
 
@@ -131,9 +142,10 @@ def graph_build(
     threat: str | None = None,
     window: str | None = None,
     case: list[str] = Query(default=[]),
+    notes: bool = False,
 ) -> HTMLResponse:
     """htmx partial: just the graph + ranked tables, for live re-filtering."""
-    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
+    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case), notes=notes)
     return TEMPLATES.TemplateResponse(request, "_entity_graph.html", ctx)
 
 
@@ -147,11 +159,12 @@ def graph_add_alias(
     threat: str | None = Form(default=None),
     window: str | None = Form(default=None),
     case: list[str] = Form(default=[]),
+    notes: bool = Form(default=False),
 ) -> HTMLResponse:
     """Add an entity alias (e.g. 'Messi' → 'Lionel Messi') and redraw the graph."""
     with get_connection() as conn:
         add_entity_alias(conn, alias.strip(), canonical.strip())
-    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
+    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case), notes=notes)
     return TEMPLATES.TemplateResponse(request, "_entity_graph.html", ctx)
 
 
@@ -164,11 +177,12 @@ def graph_delete_alias(
     threat: str | None = Form(default=None),
     window: str | None = Form(default=None),
     case: list[str] = Form(default=[]),
+    notes: bool = Form(default=False),
 ) -> HTMLResponse:
     """Remove an entity alias and redraw the graph."""
     with get_connection() as conn:
         delete_entity_alias(conn, alias_id)
-    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case))
+    ctx = _entity_graph_context(q, source, threat, window, case_ids=_case_id_list(case), notes=notes)
     return TEMPLATES.TemplateResponse(request, "_entity_graph.html", ctx)
 
 

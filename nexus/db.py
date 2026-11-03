@@ -461,7 +461,7 @@ _KNOWN_TABLES = frozenset({
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
     "item_archives", "documents", "document_items", "web_sources", "web_pages",
     "connector_docs", "confluence_sources", "obsidian_vaults",
-    "item_edits", "writeups", "publications", "outbound_log",
+    "item_edits", "writeups", "publications", "outbound_log", "note_links",
 })
 
 
@@ -600,6 +600,7 @@ def init_db() -> None:
             )
         _migrate_publishing(conn)
         _migrate_capsules_to_cases(conn)
+        _backfill_note_links(conn)
         _backfill_entity_index(conn)
 
 
@@ -648,6 +649,16 @@ def _migrate_publishing(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_outbound_ts ON outbound_log(ts);
         CREATE INDEX IF NOT EXISTS idx_outbound_cat ON outbound_log(category, ts);
+        -- Obsidian [[wikilinks]] between notes of one vault (dst_key NULL when
+        -- the target note does not exist). See nexus/storage/note_links.py.
+        CREATE TABLE IF NOT EXISTS note_links (
+            source_id INTEGER NOT NULL,
+            src_key   TEXT NOT NULL,
+            target    TEXT NOT NULL,
+            dst_key   TEXT,
+            PRIMARY KEY (source_id, src_key, target)
+        );
+        CREATE INDEX IF NOT EXISTS idx_note_links_dst ON note_links(source_id, dst_key);
         CREATE TABLE IF NOT EXISTS publications (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             subject_kind TEXT NOT NULL CHECK (subject_kind IN ('item', 'writeup')),
@@ -722,6 +733,17 @@ def _backfill_entity_index(conn: sqlite3.Connection) -> None:
         "INSERT OR REPLACE INTO meta (key, value) VALUES "
         "('entity_index_backfilled', '1')"
     )
+
+
+def _backfill_note_links(conn: sqlite3.Connection) -> None:
+    """Fill note_links once for vaults scanned before the table existed."""
+    if conn.execute("SELECT 1 FROM note_links LIMIT 1").fetchone():
+        return
+    if not conn.execute("SELECT 1 FROM connector_docs WHERE kind = 'obsidian' LIMIT 1").fetchone():
+        return
+    from nexus.storage.note_links import refresh_note_links
+
+    refresh_note_links(conn)
 
 
 def _migrate_capsules_to_cases(conn: sqlite3.Connection) -> None:

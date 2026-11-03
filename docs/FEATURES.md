@@ -191,9 +191,14 @@ limits: [INGESTION.md](INGESTION.md).
   and a required tag. Size limits per note and per scan. Notes go to a case or
   the knowledge pool, with the same "no AI" option as uploads. A zipped vault
   uploaded under Documents is recognised and parsed the same way.
-  *Link graph:* wikilinks are kept as note metadata and searchable "Linked
-  notes" text; they are not yet drawn in the entity graph (that graph is rebuilt
-  from AI-extracted entities, which would overwrite note-to-note links).
+  *Link graph:* wikilinks are stored in their own `note_links` table (resolved
+  like Obsidian does: a folder path, or a bare note name with the shortest path
+  winning) and stay searchable as "Linked notes" text. On the Graph page, tick
+  **Show Obsidian notes** to add the notes that name entities on the map
+  (dashed note -> entity lines) and the wikilinks between them (arrows). With no
+  entities (e.g. no AI), the best-linked notes are shown so the vault's own
+  structure is visible. Kept separate from the AI-extracted entity data, so a
+  re-analysis never overwrites note links.
 - **Custom API sources (self-service + self-healing)** — point Nexus at any
   API; the AI planner reads its docs/sample response and writes the
   field mapping for you.
