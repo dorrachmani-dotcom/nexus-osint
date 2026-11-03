@@ -5,6 +5,10 @@ setup. For the short version see the [README](../README.md); for the conceptual
 walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
 [User Guide](USER_GUIDE.md).
 
+Step-by-step setup for every way your own data gets in (uploads, web pages,
+closed networks, custom APIs, Confluence, Obsidian), with the `.env` keys and
+limits: [INGESTION.md](INGESTION.md).
+
 ## Features
 
 - **Investigate across all sources** — enter one term (a name, alias, handle,
@@ -18,8 +22,9 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   Topics page and paste any API key on the Settings page; keys are written to
   `.env` only (never the database, never shown back) and take effect with no
   restart. No file editing required.
-- **Add any JSON API as a source** — on the Sources page, plug in any public REST
-  API without writing code. When an AI backend is connected it can read the API's
+- **Add any HTTP API as a source** — on **Sources › Custom APIs**, plug in any
+  API (JSON, NDJSON, XML, CSV, RSS/Atom or HTML) without writing code; details
+  under *Custom API sources* below. When an AI backend is connected it can read the API's
   docs and/or a sample response and auto-fill the configuration (base URL, auth,
   which field holds the text); with no AI you fill the same fields by hand. A
   per-source **Test** button does a live fetch so you can confirm it works before
