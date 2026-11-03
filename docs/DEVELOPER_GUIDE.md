@@ -142,7 +142,8 @@ uvicorn nexus.web.app:app --host 127.0.0.1 --port 8000 --reload
 - `--reload` picks up Python changes automatically. Template changes are loaded
   per request (no restart needed).
 - A dev run stores data under the project's `data/` folder; the packaged app uses
-  `%LOCALAPPDATA%\Nexus` (Windows). Both are git-ignored.
+  `%LOCALAPPDATA%\Nexus` (Windows), or the folder in `NEXUS_HOME` when that
+  variable is set and non-empty. Both are git-ignored.
 - Never commit `.env`, `data/`, or build artifacts — they are git-ignored; keep it
   that way.
 

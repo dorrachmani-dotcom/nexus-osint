@@ -9,7 +9,8 @@ fully offline, with no Python install.
 What it sets up before importing the app (order matters — the settings loader
 reads these on first import):
 
-  * NEXUS_HOME     -> %LOCALAPPDATA%\\Nexus            (writable app data root)
+  * NEXUS_HOME     -> as set (if non-empty), else %LOCALAPPDATA%\\Nexus
+                                                       (writable app data root)
   * DATA_DIR       -> %NEXUS_HOME%\\data               (SQLite, evidence, exports)
   * DATABASE_PATH  -> %NEXUS_HOME%\\data\\nexus.db
   * NEXUS_ENV_FILE -> %NEXUS_HOME%\\.env               (BYOK keys live here, OpSec)
@@ -57,9 +58,16 @@ def _bundle_dir() -> Path:
 def _app_home() -> Path:
     """User-writable application home.
 
-    Windows: %LOCALAPPDATA%\\Nexus.  Linux/macOS: $XDG_DATA_HOME/Nexus or
-    ~/.local/share/Nexus.  Falls back to ~/Nexus if nothing else is set.
+    ``NEXUS_HOME`` wins when it is set and non-empty (portable installs, a
+    second profile, tests). Otherwise: Windows %LOCALAPPDATA%\\Nexus;
+    Linux/macOS $XDG_DATA_HOME/Nexus or ~/.local/share/Nexus; ~/Nexus if
+    nothing else is set.
     """
+    override = (os.environ.get("NEXUS_HOME") or "").strip()
+    if override:
+        home = Path(os.path.expanduser(override))
+        home.mkdir(parents=True, exist_ok=True)
+        return home
     if sys.platform.startswith("win"):
         base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
     else:
@@ -77,7 +85,7 @@ def _configure_environment() -> Path:
     data_dir = home / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    os.environ.setdefault("NEXUS_HOME", str(home))
+    os.environ["NEXUS_HOME"] = str(home)
     # These override the defaults baked into nexus.config / nexus.envstore.
     os.environ["DATA_DIR"] = str(data_dir)
     os.environ["DATABASE_PATH"] = str(data_dir / "nexus.db")

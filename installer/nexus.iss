@@ -11,7 +11,8 @@
 ; The result is installer\Output\Nexus-Setup.exe — one file to hand someone on a
 ; USB stick. They double-click it; it installs to Program Files and adds Start
 ; Menu / Desktop shortcuts. All user data (database, evidence, API keys in .env)
-; is created later under %LOCALAPPDATA%\Nexus by the app itself, never here.
+; is created later under %LOCALAPPDATA%\Nexus (or %NEXUS_HOME% when that is set)
+; by the app itself, never here.
 
 #define AppName "Nexus"
 #define AppVersion "1.3.0"

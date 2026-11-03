@@ -17,9 +17,8 @@
         <textarea name="body" rows="18" class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-200">{{ w.body }}</textarea></label>
       <div class="flex items-center gap-2">
         <button class="px-3 py-1.5 rounded text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium">Save</button>
-        <button formaction="/writeups/{{ w.id }}/delete" formmethod="post"
-                onclick="return confirm('Delete this write-up? Pages or notes already published are not touched.')"
-                class="px-3 py-1.5 rounded text-sm bg-rose-900/70 hover:bg-rose-800 text-rose-100">Delete</button>
+        <a href="/writeups/{{ w.id }}/delete"
+           class="px-3 py-1.5 rounded text-sm bg-rose-900/70 hover:bg-rose-800 text-rose-100">Delete&hellip;</a>
       </div>
     </form>
 

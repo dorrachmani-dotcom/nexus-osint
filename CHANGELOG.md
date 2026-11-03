@@ -6,6 +6,19 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Deleting a write-up no longer leaves what was published from it behind
+  without asking. The delete dialog lists where it was published, with
+  checkboxes: the knowledge-pool document is removed; the Obsidian note is
+  removed only if Nexus created it in its own folder and nobody changed it
+  (otherwise it is left and the dialog says why); from Confluence only Nexus's
+  own section is removed, never the page, and only with publishing allowed.
+  The result is shown per target; anything left or unreachable keeps its
+  publish record.
+- The packaged app now honours `NEXUS_HOME` (when set and non-empty) as its
+  data folder, as its own documentation said; otherwise it still uses
+  `%LOCALAPPDATA%\Nexus`.
+
 ## [1.3.0] - 2026-11-03
 
 Bring your own data in, and send your analysis back out: uploads, watched pages,

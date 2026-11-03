@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-5 max-w-2xl">
+  <div>
+    <a href="/writeups/{{ w.id }}" class="text-xs text-slate-500 hover:text-amber-400">&larr; Back to the write-up</a>
+    <h1 class="mt-1 text-lg font-semibold text-slate-100">Delete &ldquo;{{ w.title }}&rdquo;?</h1>
+  </div>
+  <form method="post" action="/writeups/{{ w.id }}/delete" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3 text-sm" data-writeup-delete>
+    {% if rows %}
+    <p class="text-xs text-slate-400">This write-up was published to the places below. Tick what to remove together with it; anything left unticked stays where it is.</p>
+    <ul class="space-y-2">
+      {% for r in rows %}
+      <li>
+        <label class="flex items-start gap-2 {% if not r.allowed %}opacity-60{% endif %}">
+          <input type="checkbox" name="remove" value="{{ r.pub.id }}" class="mt-0.5"
+                 {% if r.default %}checked{% endif %} {% if not r.allowed %}disabled{% endif %} />
+          <span>
+            <span class="text-slate-200">{% if r.pub.target == 'confluence' %}Remove Nexus's section from the {{ r.what }}{% else %}Remove the {{ r.what }}{% endif %}</span>
+            <span class="block text-xs text-slate-500">{{ r.note }}</span>
+          </span>
+        </label>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-xs text-slate-400">This write-up was never published, so only the write-up itself is deleted.</p>
+    {% endif %}
+    <div class="flex items-center gap-2">
+      <button class="px-3 py-1.5 rounded text-sm bg-rose-900/70 hover:bg-rose-800 text-rose-100">Delete write-up</button>
+      <a href="/writeups/{{ w.id }}" class="px-3 py-1.5 rounded text-sm border border-slate-700 text-slate-300 hover:border-slate-500">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

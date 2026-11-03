@@ -811,3 +811,158 @@ def test_web_writeup_pages_and_vault_settings(temp_db, tmp_path):
     r = c.post(f"/sources/obsidian/{vid}/writing", data={"allow_write": "1",
                                                         "write_folder": "Nexus/Out"})
     assert "writes to Nexus/Out/" in r.text
+
+
+# ------------------------------------------------- deleting a write-up
+def _writeup(temp_db, title="Harbour summary") -> int:
+    from nexus.storage import add_bookmark, create_case
+    from nexus.storage.publishing import create_writeup
+
+    with temp_db() as conn:
+        cid = create_case(conn, f"Harbour watch {title}")
+        iid = _item(conn)
+        add_bookmark(conn, iid, cid)
+        return create_writeup(conn, case_id=cid, title=title, body="Ships were delayed.",
+                              item_ids=[iid])
+
+
+def _pubs(temp_db, wid) -> dict:
+    from nexus.storage.publishing import list_publications
+
+    with temp_db() as conn:
+        return {(p["target"], p["mode"]): p for p in list_publications(conn, "writeup", wid)}
+
+
+def _client():
+    from fastapi.testclient import TestClient
+
+    from nexus.web.app import app
+
+    return TestClient(app, base_url="http://127.0.0.1")
+
+
+def test_writeup_delete_cleans_up_every_target(temp_db, tmp_path, fake):
+    sid = _confluence(temp_db)
+    vid, root = _vault(temp_db, tmp_path)
+    wid = _writeup(temp_db)
+    for target, opts in (("pool", {}), ("obsidian", {"vault_id": vid}),
+                         ("confluence", {"source_id": sid, "mode": "create", "space": "ENG"}),
+                         ("confluence", {"source_id": sid, "mode": "append", "page_id": "500",
+                                         "page_title": "Weekly notes"})):
+        assert _publish(temp_db, "writeup", wid, target, opts)[1]["ok"]
+    pubs = _pubs(temp_db, wid)
+    note = root / pubs[("obsidian", "note")]["remote_id"]
+    new_page = pubs[("confluence", "create")]["remote_id"]
+    assert note.exists() and "nexus-writeup-" in fake.pages["500"]["body"]
+    # A colleague adds to the page Nexus created.
+    fake.pages[new_page]["body"] += "<p>Colleague addition.</p>"
+
+    c = _client()
+    dialog = c.get(f"/writeups/{wid}/delete").text
+    form = dialog.split("data-writeup-delete", 1)[1].split("</form>", 1)[0]
+    assert form.count('name="remove"') == 4 and form.count("checked ") == 4
+    assert "disabled" not in form
+    assert "never deleted" in dialog
+    fake.conflicts = 1   # someone saves the page meanwhile: re-read and retry once
+    r = c.post(f"/writeups/{wid}/delete",
+               data={"remove": [str(p["id"]) for p in pubs.values()]})
+    assert r.status_code == 200 and r.text.count('data-status="removed"') == 4, r.text
+    assert not note.exists() and (root / "Daily.md").exists()
+    assert fake.pages["500"]["body"] == "<p>Existing text.</p>"
+    assert fake.pages[new_page]["body"] == "<p>Colleague addition.</p>"
+    assert not [q for q in fake.requests if q.method == "DELETE"]
+    with temp_db() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM documents WHERE kind = 'analyst'"
+                            ).fetchone()[0] == 0
+        assert conn.execute("SELECT 1 FROM writeups WHERE id = ?", (wid,)).fetchone() is None
+    assert _pubs(temp_db, wid) == {}
+
+
+def test_writeup_delete_leaves_notes_nexus_does_not_own(temp_db, tmp_path):
+    from nexus.publish import retract as R
+    from nexus.publish.content import KEEP_LINE
+
+    vid, root = _vault(temp_db, tmp_path)
+    w_edited, w_marker, w_touched = (_writeup(temp_db, t) for t in ("Edited", "Gone", "Late"))
+    notes = {}
+    for wid in (w_edited, w_marker, w_touched):
+        assert _publish(temp_db, "writeup", wid, "obsidian", {"vault_id": vid})[1]["ok"]
+        notes[wid] = root / _pubs(temp_db, wid)[("obsidian", "note")]["remote_id"]
+    # User text below the Nexus line.
+    text = notes[w_edited].read_text(encoding="utf-8")
+    notes[w_edited].write_text(text.replace(KEEP_LINE, KEEP_LINE + "\nMy own follow-up."),
+                               encoding="utf-8")
+    # Marker removed by the user.
+    text = notes[w_marker].read_text(encoding="utf-8")
+    assert "generated_by: Nexus-OSINT" in text
+    notes[w_marker].write_text(text.replace("generated_by: Nexus-OSINT", "author: me"),
+                               encoding="utf-8")
+    # Changed in the vault well after Nexus wrote it.
+    later = notes[w_touched].stat().st_mtime + 3600
+    os.utime(notes[w_touched], (later, later))
+    for wid, reason in ((w_edited, "below the Nexus line"), (w_marker, "marker"),
+                        (w_touched, "changed after")):
+        with temp_db() as conn:
+            [row] = R.plan(conn, "writeup", wid)
+            assert not row["allowed"] and not row["default"] and reason in row["note"]
+            [res] = R.run(conn, "writeup", wid, {int(row["pub"]["id"])})  # forced: still kept
+        assert res["status"] == "kept" and reason in res["message"]
+        assert notes[wid].exists() and _pubs(temp_db, wid)
+
+
+def test_writeup_delete_respects_opt_ins_and_unreachable_targets(temp_db, tmp_path, fake,
+                                                                  monkeypatch):
+    import shutil
+
+    from nexus.publish import retract as R
+    from nexus.storage.publishing import set_confluence_publish, set_vault_write
+
+    sid = _confluence(temp_db)
+    vid, root = _vault(temp_db, tmp_path)
+    wid = _writeup(temp_db)
+    assert _publish(temp_db, "writeup", wid, "confluence",
+                    {"source_id": sid, "mode": "create", "space": "ENG"})[1]["ok"]
+    assert _publish(temp_db, "writeup", wid, "obsidian", {"vault_id": vid})[1]["ok"]
+    pubs = _pubs(temp_db, wid)
+    all_ids = {int(p["id"]) for p in pubs.values()}
+    page = pubs[("confluence", "create")]["remote_id"]
+    before = fake.pages[page]["body"]
+
+    # Opt-ins off: nothing offered, nothing written even if posted anyway.
+    with temp_db() as conn:
+        set_confluence_publish(conn, sid, False)
+        set_vault_write(conn, vid, False, "Nexus")
+    with temp_db() as conn:
+        rows = R.plan(conn, "writeup", wid)
+        assert not any(r["allowed"] for r in rows)
+        assert any("Allow publishing" in r["note"] for r in rows)
+        results = R.run(conn, "writeup", wid, all_ids)
+    assert {r["status"] for r in results} == {"kept"}
+    assert fake.pages[page]["body"] == before and len(_pubs(temp_db, wid)) == 2
+
+    # Opt-ins on, but Confluence is unreachable and the vault folder is gone.
+    with temp_db() as conn:
+        set_confluence_publish(conn, sid, True)
+        set_vault_write(conn, vid, True, "Nexus")
+
+    def down(*args, **kwargs):
+        raise httpx.ConnectError("unreachable")
+
+    monkeypatch.setattr(netguard.httpx, "Client", down)
+    shutil.rmtree(root)
+    r = _client().post(f"/writeups/{wid}/delete", data={"remove": [str(i) for i in all_ids]})
+    assert r.status_code == 200
+    assert 'data-status="failed"' in r.text and "record is kept" in r.text
+    assert "not reachable" in r.text
+    with temp_db() as conn:
+        assert conn.execute("SELECT 1 FROM writeups WHERE id = ?", (wid,)).fetchone() is None
+    assert len(_pubs(temp_db, wid)) == 2   # the record of where it still is
+
+
+def test_writeup_delete_without_publications_just_deletes(temp_db):
+    wid = _writeup(temp_db)
+    c = _client()
+    assert "never published" in c.get(f"/writeups/{wid}/delete").text
+    r = c.post(f"/writeups/{wid}/delete", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].endswith("/writeups")
+    assert c.get(f"/writeups/{wid}/delete").status_code == 404
