@@ -1,0 +1,74 @@
+{# Opt-in encryption at rest for stored files (uploaded originals, evidence). #}
+<div id="encryption" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+  <div>
+    <h2 class="text-sm font-semibold text-slate-200">&#128274; Encryption at rest</h2>
+    <p class="text-xs text-slate-400 mt-0.5">
+      Encrypts uploaded documents and evidence screenshots on disk (AES-256-GCM). The key is
+      protected by your passphrase and never stored in the database, <span class="mono">.env</span>,
+      logs or this page. Optional: unlock automatically for your Windows account.
+    </p>
+  </div>
+
+  {% if recovery_code %}
+    <div class="rounded border border-amber-500 bg-slate-950 p-3 space-y-2">
+      <p class="text-sm text-amber-400 font-semibold">Encryption is on. Write down this recovery code now.</p>
+      <p class="mono text-sm text-slate-100 break-all">{{ recovery_code }}</p>
+      <p class="text-xs text-slate-400">
+        It is shown only once. It unlocks Nexus if you forget the passphrase. Keep it somewhere
+        other than this computer. Without the passphrase <em>and</em> this code, encrypted files
+        cannot be recovered by anyone.
+      </p>
+    </div>
+  {% endif %}
+
+  {% if not enc.available %}
+    <p class="text-xs text-slate-500">Unavailable: the <span class="mono">cryptography</span> package is not installed.</p>
+  {% elif enc.status == "off" %}
+    <form hx-post="/settings/encryption" hx-target="#encryption" hx-swap="outerHTML" class="space-y-2">
+      <div>
+        <label class="text-xs text-slate-400">Passphrase <span class="text-slate-500">(at least {{ enc.min_passphrase }} characters)</span></label>
+        <input type="password" name="passphrase" autocomplete="new-password" minlength="{{ enc.min_passphrase }}" required
+               class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Repeat passphrase</label>
+        <input type="password" name="confirm" autocomplete="new-password" required
+               class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+      </div>
+      {% if enc.dpapi_available %}
+      <label class="flex items-start gap-2 text-xs text-slate-300">
+        <input type="checkbox" name="auto_unlock" value="1" checked />
+        <span>Unlock automatically when I am signed in to this Windows account. This protects
+          against a stolen disk or copied files, not against someone using your signed-in account.</span>
+      </label>
+      {% else %}
+      <p class="text-xs text-slate-500">On this system Nexus will ask for the passphrase each time it starts
+        (or set <span class="mono">NEXUS_ENCRYPTION_PASSPHRASE</span> for unattended use).</p>
+      {% endif %}
+      <label class="flex items-start gap-2 text-xs text-rose-400">
+        <input type="checkbox" name="understand" value="1" required />
+        <span>I understand that if I lose both the passphrase and the recovery code, my encrypted files are lost for good.</span>
+      </label>
+      <div class="flex items-center gap-2">
+        <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">Turn on encryption</button>
+        {% if error %}<span class="text-xs text-rose-400">{{ error }}</span>{% endif %}
+      </div>
+    </form>
+  {% else %}
+    <p class="text-xs text-emerald-400">
+      On since {{ enc.created_at }} &middot; {{ "unlocked" if enc.status == "unlocked" else "locked" }}
+      &middot; automatic unlock {{ "on" if enc.auto_unlock else "off" }}.
+    </p>
+    {% if enc.plaintext_files %}
+      <p class="text-xs text-slate-400">{{ enc.plaintext_files }} older file(s) are still being encrypted in the background.</p>
+    {% endif %}
+    {% if error %}<p class="text-xs text-rose-400">{{ error }}</p>{% endif %}
+  {% endif %}
+
+  <p class="text-xs text-slate-500">
+    Covers <span class="mono">data/uploads</span> and <span class="mono">data/evidence</span>. The database,
+    saved reports and Sherlock logs are not encrypted by this setting: use full-disk encryption
+    (BitLocker, FileVault, LUKS) for those. Back up <span class="mono">data/keystore.json</span>
+    together with your data. See SECURITY.md.
+  </p>
+</div>

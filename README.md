@@ -371,6 +371,11 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
   warning explains the trade-off): the item's URL is sent to archive.org and the
   resulting snapshot is public. Auto-archiving on pin is off unless you enable
   it for a case, and the whole feature can be switched off in Settings.
+- **Optional encryption at rest** (off by default, Settings): uploaded
+  documents and evidence screenshots are stored AES-256-GCM encrypted; the key
+  is wrapped by your passphrase (plus a one-time recovery code, and optionally
+  Windows DPAPI for automatic unlock) and never stored in the database, `.env`
+  or logs. See [SECURITY.md](SECURITY.md#encryption-at-rest).
 - Secrets live in `.env` only (git-ignored). They are never written to the
   database, shown back in the UI, or emitted in logs (a redaction filter scrubs
   configured keys).

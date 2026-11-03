@@ -51,8 +51,8 @@ vulnerability.
 | Supply chain | Known CVEs in dependencies | Pinned, `pip-audit`-clean dependency set |
 
 Out of scope for the current design (see *Known limitations*): multi-user
-authentication, encryption of data at rest, and the security of the external
-OSINT CLI tools the platform can orchestrate.
+authentication, encryption of the database itself, and the security of the
+external OSINT CLI tools the platform can orchestrate.
 
 ---
 
@@ -108,6 +108,40 @@ OSINT CLI tools the platform can orchestrate.
 - The entity-graph iframe is rendered with escaped `srcdoc` and a
   `sandbox="allow-scripts"` attribute, isolating it from the parent document.
 
+### Encryption at rest
+Optional and **off by default** (Settings › Encryption at rest, or
+`python -m nexus.security.atrest enable`).
+
+- **What is encrypted:** uploaded originals (`data/uploads/`) and evidence
+  screenshots (`data/evidence/`), including files imported from a transfer
+  bundle. Files that existed before you enabled it are converted in the
+  background (encrypt, verify by decrypting, then atomically replace).
+- **Format:** AES-256-GCM in 1 MiB chunks, a per-file key derived with HKDF
+  from a random 128-bit salt, and the chunk index plus a final-chunk flag bound
+  into each chunk, so modified, truncated or reordered files are rejected.
+- **Keys:** a random 256-bit data key, stored only wrapped in
+  `data/keystore.json` (written atomically, with a `.bak` twin): by your
+  passphrase (scrypt, N=2^17), by a one-time recovery code, and optionally
+  by Windows DPAPI for your Windows account. The key is never written to the
+  database, `.env`, logs or the UI; while Nexus runs it is held in memory only.
+- **Locked mode:** without DPAPI (or on Linux/macOS) Nexus starts locked and
+  every page redirects to `/unlock` until the passphrase or the recovery code
+  is entered (wrong attempts back off exponentially). For unattended use you
+  may set `NEXUS_ENCRYPTION_PASSPHRASE`, at the cost that anyone who can read
+  that environment can unlock the data.
+- **Evidence integrity:** the stored SHA-256 is always of the original image,
+  so chain of custody is unchanged. Reports embed encrypted evidence inline
+  and transfer bundles contain the decrypted files (protect exports yourself).
+- **If you lose both the passphrase and the recovery code, the encrypted files
+  cannot be recovered.** Back up `data/keystore.json` together with your data.
+
+Not covered by this setting, so use full-disk encryption for them: the SQLite
+database (`data/nexus.db`, which holds the extracted text of uploads), saved
+reports (`data/reports/`), Sherlock logs, and short-lived temporary files the
+OCR engine (Tesseract) and ClamAV need while they read a file. On SSDs, older
+plaintext copies of converted files may remain recoverable from free space
+until it is overwritten, so enable encryption before importing sensitive files.
+
 ### Denial-of-service guardrails
 - Analyst-authored watchlist regexes are bounded: the stored pattern is capped in
   length, and the text it runs against is capped, so catastrophic backtracking
@@ -129,9 +163,10 @@ who need a stronger posture should account for them:
 - **No authentication / authorization.** Anyone with access to the loopback
   interface on the host has full access to the application. This is by design for
   a single-user desktop tool. Do not expose the port to a network.
-- **Data at rest is not encrypted.** The SQLite database and captured evidence
-  screenshots are stored as plain files under `data/`. Use full-disk encryption
-  (BitLocker, FileVault, LUKS) if the host may be lost or shared.
+- **The database is not encrypted.** Optional encryption at rest covers
+  uploaded files and evidence screenshots only; the SQLite database (including
+  the text extracted from uploads) is a plain file under `data/`. Use full-disk
+  encryption (BitLocker, FileVault, LUKS) if the host may be lost or shared.
 - **Third-party OSINT CLI tools.** When you enable an adapter (Sherlock, Maigret,
   theHarvester, etc.), Nexus orchestrates code maintained by other projects. Their
   security and network behavior are outside our control; install only tools you

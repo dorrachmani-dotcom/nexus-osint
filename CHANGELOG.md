@@ -6,6 +6,20 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Opt-in encryption at rest for stored files (Settings › Encryption at rest, off
+  by default): uploaded originals and evidence screenshots are stored AES-256-GCM
+  encrypted (chunked, tamper-evident). The data key is wrapped by a passphrase
+  (scrypt), a one-time recovery code and, optionally, Windows DPAPI for automatic
+  unlock; it is never stored in the database, `.env`, logs or the UI. Without
+  automatic unlock the app starts locked and asks for the passphrase on `/unlock`
+  (rate-limited). Existing files are converted in the background; evidence
+  hashes stay those of the original images. CLI: `python -m nexus.security.atrest`.
+
+### Changed
+- Image OCR (uploads and evidence) reads from memory instead of writing a
+  temporary copy of the image.
+
 ### Fixed
 - Deleting a write-up no longer leaves what was published from it behind
   without asking. The delete dialog lists where it was published, with

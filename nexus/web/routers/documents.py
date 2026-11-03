@@ -9,6 +9,8 @@ and while reading, and the actual parsing runs in a worker thread.
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, Form, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse, Response
@@ -19,6 +21,7 @@ from nexus.db import get_connection
 from nexus.ingest.extract import format_support
 from nexus.ingest.safety import DEFAULT_LIMITS, MB, safe_display_name
 from nexus.ingest.upload import cloud_ai_active, ingest_upload, remove_original, uploads_dir
+from nexus.security.atrest import EncryptionError, LockedError, is_encrypted_file, read_protected
 from nexus.storage import get_case, list_cases
 from nexus.storage.documents import (
     delete_document,
@@ -151,6 +154,17 @@ def document_file(doc_id: int) -> Response:
     path = (base.parent / doc["stored_path"]).resolve()
     if path.parent != base or not path.is_file():
         return HTMLResponse("The stored file is missing.", status_code=404)
+    if is_encrypted_file(path):
+        try:
+            body = read_protected(path)
+        except EncryptionError as exc:
+            return HTMLResponse(str(exc), status_code=423 if isinstance(exc, LockedError) else 500)
+        name = safe_display_name(doc["filename"])
+        return Response(
+            body,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename*=utf-8''{quote(name)}"},
+        )
     return FileResponse(
         path,
         media_type="application/octet-stream",

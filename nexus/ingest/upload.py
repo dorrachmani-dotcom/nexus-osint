@@ -21,14 +21,13 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
-import tempfile
 from pathlib import Path
 
 from nexus.config import Settings, get_settings
 from nexus.ingest.extract import FORMAT_LABELS, Section, extract
 from nexus.ingest.safety import DEFAULT_LIMITS, Limits, UnsafeFileError, safe_display_name
 from nexus.models import RawItem
+from nexus.security.atrest import write_protected
 
 logger = logging.getLogger("nexus.ingest.upload")
 
@@ -59,20 +58,10 @@ def _store_original(data: bytes, sha: str, settings: Settings) -> str:
     folder = uploads_dir(settings)
     target = folder / name
     if not target.exists():
-        # A unique temp name: two concurrent uploads of the same file must not
-        # fight over one ".part" file. Identical content, so last rename wins.
-        fd, tmp = tempfile.mkstemp(dir=folder, prefix=f".{sha[:16]}-", suffix=".part")
-        try:
-            with os.fdopen(fd, "wb") as fh:
-                fh.write(data)
-            try:
-                os.replace(tmp, target)
-            except PermissionError:
-                if not target.exists():  # a concurrent writer holds it; else re-raise
-                    raise
-        finally:
-            if os.path.exists(tmp):
-                os.unlink(tmp)
+        # Atomic (unique temp name + replace; concurrent uploads of the same
+        # file are identical, so last rename wins) and encrypted at rest when
+        # the analyst enabled it — the temp file already holds ciphertext.
+        write_protected(target, data)
     return f"uploads/{name}"
 
 

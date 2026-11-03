@@ -21,6 +21,8 @@ from pathlib import Path
 from nexus.config import Settings, get_settings
 from nexus.db import get_connection
 from nexus.netguard import safe_http_url as _is_safe_capture_url
+from nexus.security import atrest
+from nexus.security.atrest import EncryptionError, write_protected
 
 logger = logging.getLogger("nexus.evidence")
 
@@ -35,14 +37,6 @@ def _evidence_dir(settings: Settings) -> Path:
     path = settings.data_path / "evidence"
     path.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _browsers_root() -> Path | None:
@@ -175,6 +169,9 @@ def capture_evidence(item_id: int, url: str | None, settings: Settings | None = 
         logger.warning("Refusing to capture unsafe URL for item %s: %s", item_id, reason)
         return {"ok": False, "error": reason}
 
+    if atrest.status() == "locked":
+        return {"ok": False, "error": "Nexus is locked: enter the passphrase first"}
+
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -182,6 +179,7 @@ def capture_evidence(item_id: int, url: str | None, settings: Settings | None = 
         return {"ok": False, "error": "playwright not installed"}
 
     captured_at = datetime.now(UTC)
+    png: bytes = b""
     fname = f"item{item_id}_{captured_at.strftime('%Y%m%d%H%M%S')}.png"
     out_path = _evidence_dir(settings) / fname
 
@@ -226,13 +224,13 @@ def capture_evidence(item_id: int, url: str | None, settings: Settings | None = 
                 # full_page can fail on pages with extreme/transformed layouts;
                 # fall back to the visible viewport so we still get evidence.
                 try:
-                    page.screenshot(path=str(out_path), full_page=True)
+                    png = page.screenshot(full_page=True)
                 except Exception as shot_exc:
                     logger.info(
                         "Full-page screenshot failed (%s); capturing viewport only.",
                         shot_exc,
                     )
-                    page.screenshot(path=str(out_path), full_page=False)
+                    png = page.screenshot(full_page=False)
             finally:
                 browser.close()
     except EvidenceError as exc:
@@ -242,18 +240,24 @@ def capture_evidence(item_id: int, url: str | None, settings: Settings | None = 
         logger.exception("Evidence capture failed for item %s", item_id)
         return {"ok": False, "error": str(exc)}
 
-    if not out_path.exists():
+    if not png:
         return {"ok": False, "error": "the page could not be rendered to an image"}
 
-    sha256 = _sha256_file(out_path)
+    # Chain of custody: the hash is always of the plaintext PNG, also when the
+    # stored file is encrypted at rest.
+    sha256 = hashlib.sha256(png).hexdigest()
     rel = f"evidence/{fname}"
+    try:
+        write_protected(out_path, png)
+    except EncryptionError as exc:
+        return {"ok": False, "error": str(exc)}
 
     # Best-effort OCR so the screenshot's visible text becomes searchable too.
     # Never let a missing engine / unreadable image break a successful capture.
     try:
-        from nexus.ocr import extract_text
+        from nexus.ocr import extract_text_from_bytes
 
-        ocr_text = extract_text(out_path)
+        ocr_text = extract_text_from_bytes(png)
     except Exception:
         logger.exception("OCR step failed for item %s; storing evidence without it", item_id)
         ocr_text = None

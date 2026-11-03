@@ -13,6 +13,7 @@ If every backend is unavailable the caller falls back to serving the HTML report
 
 from __future__ import annotations
 
+import base64
 import csv
 import io
 import json
@@ -26,6 +27,21 @@ from nexus.db import get_connection
 from nexus.storage import case_items, case_notes, enrich_feed_rows, get_case
 
 logger = logging.getLogger("nexus.reporting")
+
+
+def _evidence_src(path: Path) -> str:
+    """Image source for a report: a file:// URI for a plain file, or an inline
+    data: URI when the file is encrypted at rest (never a decrypted temp copy).
+    A locked or damaged file yields an empty source (the hash still shows)."""
+    from nexus.security.atrest import EncryptionError, is_encrypted_file, read_protected
+
+    if not is_encrypted_file(path):
+        return path.as_uri()
+    try:
+        data = read_protected(path)
+    except (OSError, EncryptionError):
+        return ""
+    return "data:image/png;base64," + base64.b64encode(data).decode("ascii")
 
 # A stable, human-meaningful column order for the machine-readable exports
 # (CSV/JSON). Analysts open these in Excel, a notebook, or another tool, so the
@@ -100,7 +116,7 @@ def _gather(case_id: int) -> dict | None:
             for ev in ev_rows:
                 evidence.append(
                     {
-                        "abs_path": (data_root / ev["screenshot"]).as_uri(),
+                        "abs_path": _evidence_src(data_root / ev["screenshot"]),
                         "sha256": ev["sha256"],
                         "captured_at": ev["captured_at"],
                         "ocr_text": ev["ocr_text"],
