@@ -184,6 +184,8 @@ class Settings(BaseSettings):
 
     # --- Storage ---
     data_dir: str = Field(default="data")
+    # Optional: unlock encryption at rest without asking (headless use).
+    nexus_encryption_passphrase: str = Field(default="", repr=False)
     database_path: str = Field(default="data/nexus.db")
 
     # ------------------------------------------------------------------ paths

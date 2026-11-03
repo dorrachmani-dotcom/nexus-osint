@@ -166,21 +166,21 @@ def test_web_locked_mode_and_unlock_flow(temp_db, tmp_path):
     (tmp_path / "evidence").mkdir(exist_ok=True)
     atrest.enable(PASS)
     atrest.write_protected(tmp_path / "evidence" / "item1_x.png", b"\x89PNG fake")
-    with TestClient(app, base_url="http://127.0.0.1") as client:
-        r = client.get("/data/evidence/item1_x.png")
-        assert r.status_code == 200 and r.content == b"\x89PNG fake"
-        atrest.lock()
-        r = client.get("/settings", follow_redirects=False)
-        assert r.status_code == 303 and r.headers["location"].startswith("/unlock?next=")
-        assert client.post("/scan/start").status_code == 423
-        assert client.get("/health").status_code == 200
-        assert client.get("/static/css/app.css").status_code == 200
-        r = client.post("/unlock", data={"passphrase": "wrong one", "next": "//evil.example"})
-        assert r.status_code == 401
-        r = client.post("/unlock", data={"passphrase": PASS, "next": "//evil.example"},
-                        follow_redirects=False)
-        assert r.status_code == 303 and r.headers["location"] == "/"
-        assert client.get("/settings").status_code == 200
+    client = TestClient(app, base_url="http://127.0.0.1")  # no lifespan: no daemon threads
+    r = client.get("/data/evidence/item1_x.png")
+    assert r.status_code == 200 and r.content == b"\x89PNG fake"
+    atrest.lock()
+    r = client.get("/settings", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/unlock"
+    assert client.post("/scan/start").status_code == 423
+    assert client.get("/health").status_code == 200
+    assert client.get("/static/css/app.css").status_code == 200
+    r = client.post("/unlock", data={"passphrase": "wrong one"})
+    assert r.status_code == 401
+    r = client.post("/unlock", data={"passphrase": PASS},
+                    follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/"
+    assert client.get("/settings").status_code == 200
 
 
 def test_unlock_throttled_after_repeated_failures(temp_db):
@@ -188,29 +188,29 @@ def test_unlock_throttled_after_repeated_failures(temp_db):
 
     atrest.enable(PASS)
     atrest.lock()
-    with TestClient(app, base_url="http://127.0.0.1") as client:
-        codes = [client.post("/unlock", data={"passphrase": f"bad {i}"}).status_code
-                 for i in range(6)]
+    client = TestClient(app, base_url="http://127.0.0.1")  # no lifespan: no daemon threads
+    codes = [client.post("/unlock", data={"passphrase": f"bad {i}"}).status_code
+             for i in range(6)]
     assert codes[:5] == [401] * 5 and codes[5] == 429
 
 
 def test_settings_panel_enable_shows_recovery_code_once(temp_db, tmp_path):
     from nexus.web.app import app
 
-    with TestClient(app, base_url="http://127.0.0.1") as client:
-        r = client.post("/settings/encryption",
-                        data={"passphrase": PASS, "confirm": PASS + "x", "understand": "1"})
-        assert "do not match" in r.text and atrest.status() == "off"
-        r = client.post("/settings/encryption", data={"passphrase": PASS, "confirm": PASS})
-        assert atrest.status() == "off"
-        r = client.post("/settings/encryption",
-                        data={"passphrase": PASS, "confirm": PASS, "understand": "1"})
-        assert "recovery code" in r.text.lower() and atrest.status() == "unlocked"
-        store = json.loads((tmp_path / "keystore.json").read_text())
-        assert store["dpapi"] is None
-        code = r.text.split('break-all">', 1)[1].split("<", 1)[0].strip()
-        assert len(code) > 20
-        assert code not in client.get("/settings/encryption").text
+    client = TestClient(app, base_url="http://127.0.0.1")  # no lifespan: no daemon threads
+    r = client.post("/settings/encryption",
+                    data={"passphrase": PASS, "confirm": PASS + "x", "understand": "1"})
+    assert "do not match" in r.text and atrest.status() == "off"
+    r = client.post("/settings/encryption", data={"passphrase": PASS, "confirm": PASS})
+    assert atrest.status() == "off"
+    r = client.post("/settings/encryption",
+                    data={"passphrase": PASS, "confirm": PASS, "understand": "1"})
+    assert "recovery code" in r.text.lower() and atrest.status() == "unlocked"
+    store = json.loads((tmp_path / "keystore.json").read_text())
+    assert store["dpapi"] is None
+    code = r.text.split('break-all">', 1)[1].split("<", 1)[0].strip()
+    assert len(code) > 20
+    assert code not in client.get("/settings/encryption").text
 
 
 def test_evidence_report_embeds_encrypted_image_inline(tmp_path):

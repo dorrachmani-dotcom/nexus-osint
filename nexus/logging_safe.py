@@ -31,7 +31,7 @@ def _secret_values() -> list[str]:
 
         settings = get_settings()
         values = []
-        for key in EDITABLE_KEYS:
+        for key in (*EDITABLE_KEYS, "NEXUS_ENCRYPTION_PASSPHRASE"):
             val = getattr(settings, key.lower(), None)
             if isinstance(val, str) and len(val) >= _MIN_REDACT_LEN:
                 values.append(val)

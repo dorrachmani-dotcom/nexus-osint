@@ -14,7 +14,6 @@
       Stored files are encrypted at rest. Enter your passphrase (or the recovery code) to continue.
     </p>
     <form method="post" action="/unlock" class="space-y-3">
-      <input type="hidden" name="next" value="{{ next }}" />
       <input type="password" name="passphrase" autocomplete="current-password" autofocus required
              aria-label="Passphrase or recovery code"
              class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />

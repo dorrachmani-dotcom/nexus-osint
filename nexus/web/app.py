@@ -31,7 +31,7 @@ from nexus.collector import Collector
 from nexus.config import get_settings
 from nexus.db import get_connection, init_db
 from nexus.security import atrest
-from nexus.security.atrest import EncryptionError, LockedError, is_encrypted_file, read_protected
+from nexus.security.atrest import EncryptionError, LockedError, needs_decrypt, read_protected
 from nexus.storage import fail_stale_archive_jobs, get_meta, set_meta
 from nexus.web.common import (
     FEED_PAGE_SIZE,
@@ -257,13 +257,13 @@ def evidence_file(name: str) -> Response:
         match = None
     if match is None:
         return PlainTextResponse("Not found", status_code=404)
-    if is_encrypted_file(match):
+    if needs_decrypt(match):
         try:
             body = read_protected(match)
         except LockedError:
             return PlainTextResponse("Locked", status_code=423)
         except EncryptionError:
-            logger.warning("Evidence file %s failed integrity check", name)
+            logger.warning("An evidence file failed its integrity check")
             return PlainTextResponse("Evidence file is damaged", status_code=500)
         media = mimetypes.guess_type(name)[0] or "application/octet-stream"
         return Response(body, media_type=media, headers={"X-Content-Type-Options": "nosniff"})

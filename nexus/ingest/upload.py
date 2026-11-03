@@ -61,7 +61,7 @@ def _store_original(data: bytes, sha: str, settings: Settings) -> str:
         # Atomic (unique temp name + replace; concurrent uploads of the same
         # file are identical, so last rename wins) and encrypted at rest when
         # the analyst enabled it — the temp file already holds ciphertext.
-        write_protected(target, data)
+        write_protected(target, data, content_addressed=True)
     return f"uploads/{name}"
 
 

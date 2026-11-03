@@ -24,7 +24,13 @@
   {% if not enc.available %}
     <p class="text-xs text-slate-500">Unavailable: the <span class="mono">cryptography</span> package is not installed.</p>
   {% elif enc.status == "off" %}
-    <form hx-post="/settings/encryption" hx-target="#encryption" hx-swap="outerHTML" class="space-y-2">
+    {% if enc.orphaned_files %}
+    <p class="text-xs text-rose-400">{{ enc.orphaned_files }} encrypted file(s) were found but
+      <span class="mono">data/keystore.json</span> is missing. Restore it from your backup;
+      turning encryption on again would create a new key that cannot read them.</p>
+    {% endif %}
+    <form hx-post="/settings/encryption" hx-target="#encryption" hx-swap="outerHTML"
+          hx-disabled-elt="find button" class="space-y-2">
       <div>
         <label class="text-xs text-slate-400">Passphrase <span class="text-slate-500">(at least {{ enc.min_passphrase }} characters)</span></label>
         <input type="password" name="passphrase" autocomplete="new-password" minlength="{{ enc.min_passphrase }}" required

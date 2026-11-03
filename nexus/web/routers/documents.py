@@ -21,7 +21,7 @@ from nexus.db import get_connection
 from nexus.ingest.extract import format_support
 from nexus.ingest.safety import DEFAULT_LIMITS, MB, safe_display_name
 from nexus.ingest.upload import cloud_ai_active, ingest_upload, remove_original, uploads_dir
-from nexus.security.atrest import EncryptionError, LockedError, is_encrypted_file, read_protected
+from nexus.security.atrest import EncryptionError, LockedError, needs_decrypt, read_protected
 from nexus.storage import get_case, list_cases
 from nexus.storage.documents import (
     delete_document,
@@ -154,11 +154,13 @@ def document_file(doc_id: int) -> Response:
     path = (base.parent / doc["stored_path"]).resolve()
     if path.parent != base or not path.is_file():
         return HTMLResponse("The stored file is missing.", status_code=404)
-    if is_encrypted_file(path):
+    if needs_decrypt(path):
         try:
             body = read_protected(path)
-        except EncryptionError as exc:
-            return HTMLResponse(str(exc), status_code=423 if isinstance(exc, LockedError) else 500)
+        except LockedError:
+            return HTMLResponse("Nexus is locked: unlock it first.", status_code=423)
+        except EncryptionError:
+            return HTMLResponse("The stored file could not be decrypted.", status_code=500)
         name = safe_display_name(doc["filename"])
         return Response(
             body,

@@ -33,15 +33,18 @@ def _evidence_src(path: Path) -> str:
     """Image source for a report: a file:// URI for a plain file, or an inline
     data: URI when the file is encrypted at rest (never a decrypted temp copy).
     A locked or damaged file yields an empty source (the hash still shows)."""
-    from nexus.security.atrest import EncryptionError, is_encrypted_file, read_protected
+    import mimetypes
 
-    if not is_encrypted_file(path):
+    from nexus.security.atrest import EncryptionError, needs_decrypt, read_protected
+
+    if not needs_decrypt(path):
         return path.as_uri()
     try:
         data = read_protected(path)
     except (OSError, EncryptionError):
         return ""
-    return "data:image/png;base64," + base64.b64encode(data).decode("ascii")
+    media = mimetypes.guess_type(path.name)[0] or "image/png"
+    return f"data:{media};base64," + base64.b64encode(data).decode("ascii")
 
 # A stable, human-meaningful column order for the machine-readable exports
 # (CSV/JSON). Analysts open these in Excel, a notebook, or another tool, so the

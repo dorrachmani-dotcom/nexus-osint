@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from urllib.parse import urlsplit
+import threading
 
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
@@ -14,6 +14,9 @@ from nexus.web.common import TEMPLATES
 
 logger = logging.getLogger("nexus")
 router = APIRouter()
+# One unlock attempt at a time: parallel guesses can neither skip the back-off
+# nor run many 128 MiB scrypt derivations at once.
+_UNLOCK_GATE = threading.Lock()
 
 
 def _panel(request: Request, **extra) -> HTMLResponse:
@@ -47,46 +50,41 @@ async def encryption_enable(request: Request) -> HTMLResponse:
     return _panel(request, recovery_code=result.recovery_code)
 
 
-def _safe_next(raw: str) -> str:
-    """Only a local path may be the post-unlock destination (no open redirect)."""
-    parts = urlsplit(raw or "/")
-    if parts.scheme or parts.netloc or not raw.startswith("/") or raw.startswith("//"):
-        return "/"
-    return raw
-
-
 @router.get("/unlock", response_class=HTMLResponse)
-def unlock_page(request: Request, next: str = "/") -> Response:
+def unlock_page(request: Request) -> Response:
     if atrest.status() != "locked":
-        return RedirectResponse(_safe_next(next), status_code=303)
-    return TEMPLATES.TemplateResponse(
-        request, "unlock.html", {"next": _safe_next(next), "error": None, "wait": 0}
-    )
+        return RedirectResponse("/", status_code=303)
+    return TEMPLATES.TemplateResponse(request, "unlock.html", {"error": None, "wait": 0})
 
 
 @router.post("/unlock", response_class=HTMLResponse)
 async def unlock_submit(request: Request) -> Response:
     form = await request.form()
-    nxt = _safe_next(str(form.get("next") or "/"))
     if atrest.status() != "locked":
-        return RedirectResponse(nxt, status_code=303)
+        return RedirectResponse("/", status_code=303)
+    ok, error, wait = await run_in_threadpool(_attempt, str(form.get("passphrase") or ""))
+    if ok:
+        atrest.start_background_conversion()
+        return RedirectResponse("/", status_code=303)
     throttle = atrest.THROTTLE
-    wait = throttle.wait_seconds()
-    error: str | None
-    if wait:
-        error = f"Too many wrong attempts. Try again in {wait} s."
-    else:
+    return TEMPLATES.TemplateResponse(
+        request, "unlock.html", {"error": error, "wait": throttle.wait_seconds()},
+        status_code=429 if wait else 401,
+    )
+
+
+def _attempt(secret: str) -> tuple[bool, str | None, int]:
+    """One unlock attempt, serialised; returns (ok, error, wait-before)."""
+    throttle = atrest.THROTTLE
+    with _UNLOCK_GATE:
+        wait = throttle.wait_seconds()
+        if wait:
+            return False, f"Too many wrong attempts. Try again in {wait} s.", wait
         try:
-            await run_in_threadpool(atrest.unlock, str(form.get("passphrase") or ""))
+            atrest.unlock(secret)
         except atrest.WrongPassphraseError:
             throttle.failed()
             logger.warning("Unlock attempt with a wrong passphrase")
-            error = "That passphrase (or recovery code) is not correct."
-        else:
-            throttle.succeeded()
-            atrest.start_background_conversion()
-            return RedirectResponse(nxt, status_code=303)
-    return TEMPLATES.TemplateResponse(
-        request, "unlock.html", {"next": nxt, "error": error, "wait": throttle.wait_seconds()},
-        status_code=429 if wait else 401,
-    )
+            return False, "That passphrase (or recovery code) is not correct.", 0
+        throttle.succeeded()
+        return True, None, 0

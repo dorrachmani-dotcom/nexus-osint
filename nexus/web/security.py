@@ -23,7 +23,7 @@ MIME-sniffing, referrer leakage, a CSP) to every response.
 from __future__ import annotations
 
 import logging
-from urllib.parse import quote, urlsplit
+from urllib.parse import urlsplit
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -128,8 +128,7 @@ class LockedModeMiddleware(BaseHTTPMiddleware):
                 or status() != "locked"):
             return await call_next(request)
         if request.method == "GET" and "hx-request" not in request.headers:
-            target = path + (f"?{request.url.query}" if request.url.query else "")
-            return RedirectResponse(f"/unlock?next={quote(target, safe='')}", status_code=303)
+            return RedirectResponse("/unlock", status_code=303)
         return PlainTextResponse("Nexus is locked", status_code=423,
                                  headers={"HX-Redirect": "/unlock"})
 

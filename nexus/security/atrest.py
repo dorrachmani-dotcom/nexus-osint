@@ -90,6 +90,8 @@ def dpapi_available() -> bool:
 
 # ----------------------------------------------------------------- key state
 _lock = threading.Lock()
+_enable_lock = threading.Lock()
+_convert_lock = threading.Lock()
 # path of the keystore the in-memory key belongs to -> DEK. Keyed by path so a
 # different data folder (tests, a second profile) never sees another's key.
 _keys: dict[str, bytes] = {}
@@ -127,9 +129,22 @@ def load_keystore(path: Path | None = None) -> dict[str, Any] | None:
     return None
 
 
-def _write_keystore(data: dict[str, Any], path: Path) -> None:
-    """Atomic write (tmp + fsync + replace) and a ``.bak`` twin."""
+def _write_keystore(data: dict[str, Any], path: Path, *, exclusive: bool = False) -> None:
+    """Atomic write (tmp + fsync + replace) and a ``.bak`` twin.
+
+    ``exclusive``: first creation — fail if another process created the
+    keystore meanwhile, so two key generations can never overwrite each other.
+    """
     raw = json.dumps(data, indent=2, sort_keys=True).encode("utf-8")
+    if exclusive:
+        try:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+        except FileExistsError as exc:
+            raise EncryptionError("encryption is already enabled") from exc
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(raw)
+            fh.flush()
+            os.fsync(fh.fileno())
     for target in (path, path.with_name(path.name + ".bak")):
         fd, tmp = tempfile.mkstemp(dir=target.parent, prefix=".keystore-", suffix=".tmp")
         try:
@@ -268,9 +283,19 @@ def enable(passphrase: str, *, use_dpapi: bool = False) -> EnableResult:
         raise EncryptionError("the 'cryptography' package is not installed")
     if len(passphrase) < MIN_PASSPHRASE:
         raise EncryptionError(f"use a passphrase of at least {MIN_PASSPHRASE} characters")
+    with _enable_lock:
+        return _enable_locked(passphrase, use_dpapi)
+
+
+def _enable_locked(passphrase: str, use_dpapi: bool) -> EnableResult:
     path = keystore_path()
     if load_keystore(path) is not None:
         raise EncryptionError("encryption is already enabled")
+    if orphaned_file_count():
+        raise EncryptionError(
+            "encrypted files exist but data/keystore.json is missing: restore the "
+            "keystore from your backup instead of creating a new key"
+        )
     dek = secrets.token_bytes(32)
     salt = secrets.token_bytes(16)
     code = _new_recovery_code()
@@ -290,7 +315,7 @@ def enable(passphrase: str, *, use_dpapi: bool = False) -> EnableResult:
             dpapi_ok = True
         except EncryptionError:
             logger.warning("DPAPI unavailable; the app will ask for the passphrase on start")
-    _write_keystore(store, path)
+    _write_keystore(store, path, exclusive=True)
     _set_key(dek)
     logger.info("Encryption at rest enabled (auto-unlock: %s)", "on" if dpapi_ok else "off")
     return EnableResult(recovery_code=code, dpapi=dpapi_ok)
@@ -327,18 +352,22 @@ def try_auto_unlock() -> bool:
             return True
         except EncryptionError:
             logger.warning("Automatic unlock through Windows failed; passphrase needed")
-    env = os.environ.get(_PASSPHRASE_ENV, "")
+    env = os.environ.get(_PASSPHRASE_ENV, "") or get_settings().nexus_encryption_passphrase
     if env:
         try:
             unlock(env)
             return True
         except WrongPassphraseError:
-            logger.warning("%s is set but does not unlock the keystore", _PASSPHRASE_ENV)
+            logger.warning("The configured unlock passphrase does not open the keystore")
     return False
 
 
 def _file_master() -> bytes:
     dek = _current_key()
+    if dek is None and load_keystore() is None:
+        raise EncryptionError(
+            "this file is encrypted but data/keystore.json is missing: restore it from your backup"
+        )
     if dek is None:
         raise LockedError("Nexus is locked: enter the passphrase to read encrypted files")
     return _hkdf(dek, b"nexus-files-v1")
@@ -416,12 +445,18 @@ def is_encrypted_file(path: Path | str) -> bool:
         return False
 
 
+def needs_decrypt(path: Path | str) -> bool:
+    """True when ``path`` is an NXE1 file *and* encryption is enabled. With
+    encryption off, a file that merely starts with ``NXE1`` is just data."""
+    return is_encrypted_file(path) and is_enabled()
+
+
 def read_protected(path: Path | str) -> bytes:
     """Plaintext of a stored file, decrypting it when it is NXE1-encrypted."""
     with open(path, "rb") as fh:
         head = fh.read(len(MAGIC))
         fh.seek(0)
-        if head != MAGIC:
+        if head != MAGIC or not is_enabled():
             return fh.read()
         import io
 
@@ -430,7 +465,7 @@ def read_protected(path: Path | str) -> bytes:
         return out.getvalue()
 
 
-def write_protected(path: Path | str, data: bytes) -> None:
+def write_protected(path: Path | str, data: bytes, *, content_addressed: bool = False) -> None:
     """Atomically write ``data``, encrypted when encryption is enabled.
 
     The temporary file lives next to the target and already holds ciphertext,
@@ -449,11 +484,14 @@ def write_protected(path: Path | str, data: bytes) -> None:
                 encrypt_stream(io.BytesIO(data), fh)
             else:
                 fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
         try:
             os.replace(tmp, target)
         except PermissionError:
-            # Windows: a concurrent writer of identical content holds the file.
-            if not target.exists():
+            # Windows: a concurrent writer holds the file. Only harmless when
+            # the name is the content hash (same bytes); otherwise surface it.
+            if not (content_addressed and target.exists()):
                 raise
     finally:
         if os.path.exists(tmp):
@@ -480,6 +518,19 @@ def plaintext_file_count() -> int:
     return len(_plaintext_files())
 
 
+def orphaned_file_count() -> int:
+    """Encrypted files present while no keystore exists (keystore lost)."""
+    if load_keystore() is not None:
+        return 0
+    base = get_settings().data_path
+    count = 0
+    for name in PROTECTED_DIRS:
+        folder = base / name
+        if folder.is_dir():
+            count += sum(1 for p in folder.iterdir() if p.is_file() and is_encrypted_file(p))
+    return count
+
+
 def encrypt_existing_files() -> dict[str, int]:
     """Encrypt every plaintext upload/evidence file in place (idempotent).
 
@@ -487,11 +538,67 @@ def encrypt_existing_files() -> dict[str, int]:
     then atomically replace. A file another process holds open is skipped and
     retried on the next start.
     """
-    done = skipped = 0
     if _current_key() is None:
         return {"encrypted": 0, "skipped": 0}
+    if not _convert_lock.acquire(blocking=False):
+        return {"encrypted": 0, "skipped": 0}
+    try:
+        with _ConversionFileLock(get_settings().data_path / ".atrest-convert.lock") as owned:
+            if not owned:
+                return {"encrypted": 0, "skipped": 0}
+            return _convert_all()
+    finally:
+        _convert_lock.release()
+
+
+class _ConversionFileLock:
+    """Advisory OS lock (released automatically if the process dies), so the
+    app and the CLI never convert the same folder at the same time."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.fh: Any = None
+        self.owned = False
+
+    def __enter__(self) -> bool:
+        self.fh = open(self.path, "a+b")
+        try:
+            if sys.platform == "win32":
+                import msvcrt
+
+                self.fh.seek(0)
+                msvcrt.locking(self.fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self.fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.owned = True
+        except OSError:
+            self.owned = False
+        return self.owned
+
+    def __exit__(self, *exc: object) -> None:
+        try:
+            if self.owned:
+                if sys.platform == "win32":
+                    import msvcrt
+
+                    self.fh.seek(0)
+                    msvcrt.locking(self.fh.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(self.fh.fileno(), fcntl.LOCK_UN)
+        finally:
+            self.fh.close()
+
+
+def _convert_all() -> dict[str, int]:
+    done = skipped = 0
     for path in _plaintext_files():
         try:
+            if is_encrypted_file(path):  # converted meanwhile: never encrypt twice
+                continue
             plain = path.read_bytes()
             sealed = encrypt_bytes(plain)
             if hashlib.sha256(decrypt_bytes(sealed)).digest() != hashlib.sha256(plain).digest():
@@ -557,6 +664,7 @@ def describe() -> dict[str, Any]:
         "auto_unlock": bool(store and store.get("dpapi")),
         "created_at": (store or {}).get("created_at"),
         "plaintext_files": plaintext_file_count() if store else 0,
+        "orphaned_files": 0 if store else orphaned_file_count(),
         "min_passphrase": MIN_PASSPHRASE,
     }
 
