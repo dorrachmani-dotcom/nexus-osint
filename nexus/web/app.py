@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import threading
 import time
@@ -234,11 +235,18 @@ def evidence_file(name: str) -> Response:
     Sub-paths, traversal, dot-files and any non-image file are a plain 404."""
     if not _EVIDENCE_NAME.match(name) or ".." in name:
         return PlainTextResponse("Not found", status_code=404)
-    base = (Path(get_settings().data_dir) / "evidence").resolve()
-    target = (base / name).resolve()
-    if target.parent != base or not target.is_file():
+    base = Path(get_settings().data_dir) / "evidence"
+    # The served path comes from the directory listing, never from the request:
+    # the requested name only selects an existing regular file in that folder.
+    try:
+        with os.scandir(base) as entries:
+            match = next((e.path for e in entries
+                          if e.name == name and e.is_file(follow_symlinks=False)), None)
+    except OSError:
+        match = None
+    if match is None:
         return PlainTextResponse("Not found", status_code=404)
-    return FileResponse(target, headers={"X-Content-Type-Options": "nosniff"})
+    return FileResponse(match, headers={"X-Content-Type-Options": "nosniff"})
 
 
 # Domain routers. Starlette matches routes first-come-first-served, so this
