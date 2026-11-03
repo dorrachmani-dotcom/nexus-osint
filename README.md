@@ -387,7 +387,9 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
   Content-Security-Policy only allows the app's own origin. A test asserts that
   no page loads a remote asset.
 - The Security center lists every outbound destination the app has contacted and
-  flags any that is not a configured source or AI provider.
+  flags any that is not a configured source or AI provider. Its **activity log**
+  records each AI call, publish, e-mail, archive request and source fetch (metadata
+  only, never content or keys), with filters and CSV export.
 - **Server-side fetches are SSRF-guarded.** Only http(s) to public addresses,
   re-checked on every redirect hop. Internal hosts are reachable only when you
   list them explicitly (they then show as "Internal network (allowed)" in the

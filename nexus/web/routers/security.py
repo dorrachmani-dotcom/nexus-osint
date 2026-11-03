@@ -76,3 +76,49 @@ def security_audit_report() -> Response:
         media_type="text/plain; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# --- Outbound activity log: everything that left the machine ---------------
+_DAYS = (1, 7, 30, 90, 0)
+
+
+def _outbound_filters(category: str, days: int, status: str) -> tuple[str, int, str]:
+    from nexus.security.outbound import CATEGORIES
+
+    return (category if category in CATEGORIES else "",
+            days if days in _DAYS else 30,
+            status if status in ("ok", "failed") else "")
+
+
+@router.get("/security/outbound", response_class=HTMLResponse)
+def outbound_activity(request: Request, category: str = "", days: int = 30,
+                      status: str = "") -> HTMLResponse:
+    """What left this machine: AI calls, publishes, e-mail, archive, look-ups."""
+    from nexus.db import get_connection
+    from nexus.security.outbound import CATEGORIES, query, summary
+
+    category, days, status = _outbound_filters(category, days, status)
+    with get_connection() as conn:
+        rows = query(conn, category=category, days=days, status=status, limit=500)
+        totals = summary(conn, days=days)
+    return TEMPLATES.TemplateResponse(request, "outbound.html", {
+        "rows": rows, "totals": totals, "categories": CATEGORIES,
+        "category": category, "days": days, "status": status, "day_options": _DAYS,
+    })
+
+
+@router.get("/security/outbound.csv")
+def outbound_activity_csv(category: str = "", days: int = 30, status: str = "") -> Response:
+    from datetime import datetime
+
+    from nexus.db import get_connection
+    from nexus.security.outbound import query, to_csv
+
+    category, days, status = _outbound_filters(category, days, status)
+    with get_connection() as conn:
+        rows = query(conn, category=category, days=days, status=status, limit=200_000)
+    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M")
+    return Response(
+        content=to_csv(rows), media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="nexus_outbound_{stamp}.csv"'},
+    )

@@ -460,6 +460,11 @@ def send_email(
             result = _send_smtp(cfg, _build_message(cfg, subject, text, html, kept))
         else:
             result = _send_api(cfg, subject, text, html, kept)
+        from nexus.security.outbound import record
+
+        record("email", cfg.label, "send", items=len(cfg.recipients),
+               bytes_out=len(text.encode("utf-8")) + len((html or "").encode("utf-8")) + total,
+               ok=result.ok, detail=f"{len(kept)} attachment(s)" if kept else "")
         if result.ok:
             logger.info("Email sent via %s to %d recipient(s).", cfg.label, len(cfg.recipients))
             if dropped:

@@ -461,7 +461,7 @@ _KNOWN_TABLES = frozenset({
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
     "item_archives", "documents", "document_items", "web_sources", "web_pages",
     "connector_docs", "confluence_sources", "obsidian_vaults",
-    "item_edits", "writeups", "publications",
+    "item_edits", "writeups", "publications", "outbound_log",
 })
 
 
@@ -632,6 +632,22 @@ def _migrate_publishing(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             edited_at  TEXT NOT NULL DEFAULT (datetime('now'))
         );
+        -- Outbound activity log: what left the machine (metadata only: never
+        -- content or secrets). See nexus/security/outbound.py.
+        CREATE TABLE IF NOT EXISTS outbound_log (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts        TEXT NOT NULL,
+            category  TEXT NOT NULL,
+            target    TEXT NOT NULL DEFAULT '',
+            action    TEXT NOT NULL DEFAULT '',
+            items     INTEGER NOT NULL DEFAULT 0,
+            bytes_out INTEGER NOT NULL DEFAULT 0,
+            bytes_in  INTEGER NOT NULL DEFAULT 0,
+            ok        INTEGER NOT NULL DEFAULT 1,
+            detail    TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_outbound_ts ON outbound_log(ts);
+        CREATE INDEX IF NOT EXISTS idx_outbound_cat ON outbound_log(category, ts);
         CREATE TABLE IF NOT EXISTS publications (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             subject_kind TEXT NOT NULL CHECK (subject_kind IN ('item', 'writeup')),

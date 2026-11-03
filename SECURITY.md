@@ -142,6 +142,20 @@ OCR engine (Tesseract) and ClamAV need while they read a file. On SSDs, older
 plaintext copies of converted files may remain recoverable from free space
 until it is overwritten, so enable encryption before importing sensitive files.
 
+### Outbound activity log
+- `/security/outbound` lists actions that sent data off the machine, recorded
+  at the point where they happen: every AI provider call (through the single
+  provider abstraction), Confluence and Obsidian publishes and removals, e-mail,
+  Internet Archive save/lookup, VirusTotal hash look-ups, and a per-source
+  summary of each scan.
+- Each row holds only the type, a destination host or service name, the
+  action, counts, byte sizes and success. Prompts, item text, titles, item URLs,
+  e-mail bodies and error messages are never stored; strings are additionally
+  clipped and anything that looks like `key=`/`token=` or a URL query is
+  scrubbed. The CSV export neutralises spreadsheet formulas.
+- It complements, and does not replace, the connection-level egress monitor:
+  the log shows *what* was done; the monitor shows *where* the process connected.
+
 ### Backup & restore
 - A backup holds the database, uploads, evidence, saved reports, the
   encryption keystore (wrapped keys only) and `settings.env`: the `.env` lines
