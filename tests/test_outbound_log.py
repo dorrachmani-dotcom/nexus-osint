@@ -136,13 +136,13 @@ def test_csv_neutralises_formulas():
 def test_page_and_csv_routes(temp_db):
     from nexus.web.app import app
 
-    outbound.record("virustotal", "virustotal.com", "hash lookup", items=1)
+    outbound.record("virustotal", "vt-test-destination", "hash lookup", items=1)
     client = TestClient(app, base_url="http://127.0.0.1")
     r = client.get("/security/outbound?category=virustotal&days=7")
-    assert r.status_code == 200 and "virustotal.com" in r.text
+    assert r.status_code == 200 and "vt-test-destination" in r.text
     r = client.get("/security/outbound?category=<b>zz</b>&days=-5&status=x")
     assert r.status_code == 200 and "<b>zz</b>" not in r.text
     r = client.get("/security/outbound.csv")
     assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
-    assert "virustotal.com" in r.text
+    assert "vt-test-destination" in r.text
     assert "/security/outbound" in client.get("/security").text
