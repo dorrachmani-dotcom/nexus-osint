@@ -545,8 +545,8 @@ class CustomApiSource(Source):
                 # parsed response so Auto-Adapt can re-map fields on drift.
                 self.responded = True
                 self.last_sample = api_formats.to_sample(data)
-                records = self._extract_list(data)[:_MAX_ITEMS]
-                for raw in records:
+                all_records = self._extract_list(data)
+                for raw in all_records[:_MAX_ITEMS]:
                     item = self._map_item(raw, query)
                     if item is None:
                         continue
@@ -558,7 +558,7 @@ class CustomApiSource(Source):
                     break
                 current = page or self._first_page()
                 current_url = current.url or self._build_url(query)
-                page = self._next_page(current, data, current_url, len(records))
+                page = self._next_page(current, data, current_url, len(all_records))
                 if page is None:
                     break
                 data = self._request(query, page)
