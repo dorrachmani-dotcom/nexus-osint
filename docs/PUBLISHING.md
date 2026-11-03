@@ -130,6 +130,25 @@ Every publish is recorded on the item or write-up: the target, the page or
 note, a link and the time. The drawer and the write-up page list them under
 **Published to**. Obsidian notes open through an `obsidian://` link.
 
+### Deleting a write-up
+
+**Delete…** on the write-up page opens a dialog that lists every place the
+write-up was published, each with a checkbox:
+
+- **Knowledge pool**: the analyst document is removed (ticked by default).
+- **Obsidian**: the note is removed (ticked by default) only if Nexus created
+  it inside its own vault folder, it still carries the Nexus marker, nothing
+  was typed below the `%% nexus:end %%` line and it was not changed after
+  Nexus wrote it. Otherwise it is left alone and the dialog says why. Needs
+  **Allow writing to the vault**.
+- **Confluence**: only Nexus's own section is removed from the page; the page
+  itself is never deleted and colleagues' additions stay. Needs **Allow
+  publishing to Confluence**; version conflicts (409) and rate limits (429)
+  are handled as when publishing.
+
+After the delete, a result is shown per target. Anything left in place, or
+not reachable (vault missing, Confluence down), keeps its publish record.
+
 ## 5. Sherlock
 
 You can ask Sherlock, for example "publish item 42 to Confluence", "append

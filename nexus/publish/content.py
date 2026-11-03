@@ -274,6 +274,18 @@ def replace_section(page_body: str, doc: PublishDoc, section: str) -> tuple[str,
     return page_body + section, False
 
 
+def remove_section(page_body: str, doc: PublishDoc) -> tuple[str, bool]:
+    """Cut Nexus's anchored part for ``doc`` out of ``page_body`` (``True``),
+    or return the body unchanged (``False``) when it is not there."""
+    begin, end = section_markers(doc)
+    b = re.search(_anchor_re(begin), page_body)
+    if b:
+        e = re.search(_anchor_re(end), page_body[b.end():])
+        if e:
+            return page_body[:b.start()] + page_body[b.end() + e.end():], True
+    return page_body, False
+
+
 # ------------------------------------------------------------- Markdown
 def _md_escape(text: str) -> str:
     # Our end-of-note marker is an Obsidian comment; content may never fake it.

@@ -131,9 +131,10 @@ def update_writeup(conn: sqlite3.Connection, writeup_id: int, *, title: str, bod
 
 
 def delete_writeup(conn: sqlite3.Connection, writeup_id: int) -> None:
+    """Delete the write-up itself. Its publish records stay: whatever was not
+    cleaned up (see :mod:`nexus.publish.retract`) keeps a record of where it
+    still is. Write-up ids are never reused (AUTOINCREMENT)."""
     conn.execute("DELETE FROM writeups WHERE id = ?", (writeup_id,))
-    conn.execute("DELETE FROM publications WHERE subject_kind = 'writeup' AND subject_id = ?",
-                 (writeup_id,))
 
 
 def list_writeups(conn: sqlite3.Connection, case_id: int | None = None) -> list[dict]:

@@ -504,5 +504,6 @@ the desktop installer; for a local dev run, `playwright install chromium-headles
 
 **Where is my data stored?**
 In a single local SQLite database under the app's data directory (the desktop app
-uses `%LOCALAPPDATA%\Nexus`; a dev run uses the project's `data/` folder). Back up
+uses `%LOCALAPPDATA%\Nexus`, or the folder named by the `NEXUS_HOME` environment
+variable if you set one; a dev run uses the project's `data/` folder). Back up
 that file to back up everything.

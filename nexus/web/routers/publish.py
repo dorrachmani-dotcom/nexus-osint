@@ -213,14 +213,43 @@ def writeup_save(writeup_id: int, title: str = Form(default=""),
     return RedirectResponse(url=f"/writeups/{writeup_id}?saved=1", status_code=303)
 
 
-@router.post("/writeups/{writeup_id}/delete")
-def writeup_delete(writeup_id: int):
-    from nexus.storage.publishing import delete_writeup, get_writeup
+@router.get("/writeups/{writeup_id}/delete", response_class=HTMLResponse)
+def writeup_delete_confirm(request: Request, writeup_id: int) -> HTMLResponse:
+    """The delete dialog: where this write-up was published, with what to remove."""
+    from nexus.publish.retract import plan
+    from nexus.storage.publishing import get_writeup
 
     with get_connection() as conn:
         w = get_writeup(conn, writeup_id)
         if w is None:
-            return RedirectResponse(url="/cases", status_code=303)
-        delete_writeup(conn, writeup_id)
-    dest = f"/cases/{w['case_id']}/writeups" if w.get("case_id") else "/cases"
-    return RedirectResponse(url=dest, status_code=303)
+            return HTMLResponse("Write-up not found", status_code=404)
+        rows = plan(conn, "writeup", writeup_id)
+    return TEMPLATES.TemplateResponse(request, "writeup_delete.html", {"w": w, "rows": rows})
+
+
+@router.post("/writeups/{writeup_id}/delete", response_class=HTMLResponse)
+async def writeup_delete(request: Request, writeup_id: int):
+    """Remove the ticked published copies, then the write-up; show what happened."""
+    from nexus.publish.retract import run
+    from nexus.storage.publishing import delete_writeup, get_writeup
+
+    form = await request.form()
+    selected = {int(str(v)) for v in form.getlist("remove") if str(v).isdigit()}
+
+    def work() -> tuple[dict | None, list[dict]]:
+        with get_connection() as conn:
+            w = get_writeup(conn, writeup_id)
+            if w is None:
+                return None, []
+            results = run(conn, "writeup", writeup_id, selected)
+            delete_writeup(conn, writeup_id)
+        return w, results
+
+    w, results = await run_in_threadpool(work)
+    if w is None:
+        return RedirectResponse(url="/cases", status_code=303)
+    back = f"/cases/{w['case_id']}/writeups" if w.get("case_id") else "/cases"
+    if not results:
+        return RedirectResponse(url=back, status_code=303)
+    return TEMPLATES.TemplateResponse(request, "writeup_deleted.html",
+                                      {"w": w, "results": results, "back": back})
