@@ -226,6 +226,15 @@ def run(conn, kind: str, subject_id: int, selected: set[int]) -> list[dict]:
                 res = {"status": "failed", "message": "failed unexpectedly; the record is kept"}
         if res.pop("forget", False):
             forget_publication(conn, int(pub["id"]))
+        if pub["target"] in ("confluence", "obsidian") and res["status"] != "kept":
+            from nexus.security.outbound import host_of, record
+
+            if pub["target"] == "confluence":
+                dest = host_of(pub.get("url")) or "Confluence"
+            else:
+                dest = "Obsidian vault"
+            record("publish", dest, f"{pub['target']}: remove", items=1,
+                   ok=res["status"] == "removed", conn=conn)
         logger.info("Write-up cleanup: %s %s -> %s", pub["target"], pub["id"], res["status"])
         out.append({"what": what, "target": pub["target"], "url": pub.get("url"), **res})
     return out

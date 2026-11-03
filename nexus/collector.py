@@ -43,6 +43,18 @@ from nexus.storage import (
 logger = logging.getLogger("nexus.collector")
 
 
+
+def _log_fetches(stats: dict) -> None:
+    """One outbound-activity row per source per scan: name, items, success.
+    Error text is not logged (it may contain a URL)."""
+    from nexus.security.outbound import record
+
+    for name, st in stats.items():
+        if name.startswith("_") or not isinstance(st, dict):
+            continue
+        items = int(st.get("fetched") or st.get("found") or st.get("new") or 0)
+        record("source", name, "fetch", items=items, ok="error" not in st)
+
 class Collector:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
@@ -159,6 +171,8 @@ class Collector:
                     self._adapt_custom(source, len(items), stats)
                 except Exception:
                     logger.exception("Auto-Adapt handling failed for '%s'", source.name)
+
+        _log_fetches(stats)
 
         # Enrich freshly collected items. No-op (and harmless) without a provider.
         try:

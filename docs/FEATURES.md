@@ -247,6 +247,12 @@ limits: [INGESTION.md](INGESTION.md).
   intelligence requirement, write a case note, or open a page. By design it only
   ever performs **constructive, local** actions — it cannot delete anything,
   change settings/keys/the AI provider, or send your data anywhere.
+- **Outbound activity log** — Security center › Activity log lists every
+  action that sent something off this machine: each AI call (provider, model,
+  bytes), each publish to Confluence or an Obsidian vault, each e-mail, Internet
+  Archive and VirusTotal request, and one line per source per scan. Filter by
+  type, period and result, and export to CSV. Only metadata is kept: never the
+  text sent, the item URLs, or any key.
 - **Backup & restore** — Settings › Backup & restore writes one archive
   (`data/backups/`) with the database, uploads, evidence, saved reports and
   non-secret settings, optionally passphrase-protected. Restore (upload a file

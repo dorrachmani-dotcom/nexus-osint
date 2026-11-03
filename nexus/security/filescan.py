@@ -216,9 +216,16 @@ def _scan_virustotal(sha256: str, findings: list[dict], scanners: list[str]) -> 
             f"https://www.virustotal.com/api/v3/files/{sha256}",
             headers={"x-apikey": api_key},
         )
+        from nexus.security.outbound import record
+
         # Fixed https:// VirusTotal endpoint; only the hash is interpolated.
-        with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
-            payload = json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310
+                payload = json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            record("virustotal", "virustotal.com", "hash lookup", items=1, bytes_out=64, ok=False)
+            raise
+        record("virustotal", "virustotal.com", "hash lookup", items=1, bytes_out=64)
         stats = (
             payload.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
         )

@@ -176,6 +176,13 @@ def _url_variants(url: str) -> list[str]:
 
 
 def lookup(url: str, *, client: httpx.Client | None = None) -> dict:
+    """Newest existing snapshot of ``url`` (see :func:`_lookup`); logged."""
+    res = _lookup(url, client=client)
+    _log("lookup", res)
+    return res
+
+
+def _lookup(url: str, *, client: httpx.Client | None = None) -> dict:
     """Newest existing snapshot of ``url``. Never raises.
 
     Returns ``{"ok", "archive_url", "archived_at", "error"}``; ``ok`` is False
@@ -296,6 +303,24 @@ def _save_spn2(url: str, creds: tuple[str, str], client: httpx.Client,
 def save(url: str, *, settings=None, client: httpx.Client | None = None,
          sleep: Callable[[float], None] = time.sleep,
          poll_timeout: float = SPN2_POLL_TIMEOUT) -> dict:
+    """Request a fresh capture of ``url`` (see :func:`_save`); logged as
+    outbound activity (the archived URL itself is not logged)."""
+    res = _save(url, settings=settings, client=client, sleep=sleep, poll_timeout=poll_timeout)
+    _log("save", res)
+    return res
+
+
+def _log(action: str, res: dict) -> None:
+    if res.get("error") and not res.get("ok") and "not allowed" in str(res.get("error")):
+        return  # refused locally, nothing left the machine
+    from nexus.security.outbound import record
+
+    record("archive", "web.archive.org", action, items=1, ok=bool(res.get("ok")))
+
+
+def _save(url: str, *, settings=None, client: httpx.Client | None = None,
+          sleep: Callable[[float], None] = time.sleep,
+          poll_timeout: float = SPN2_POLL_TIMEOUT) -> dict:
     """Request a fresh Wayback capture of ``url``. Never raises.
 
     Uses authenticated SPN2 when archive.org keys are configured, otherwise the

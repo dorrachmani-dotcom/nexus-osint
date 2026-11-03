@@ -297,6 +297,20 @@ def _do_pool(conn, p: Prepared) -> dict:
             "label": "Added to the knowledge pool (Sherlock can answer from it)"}
 
 
+def _log_publish(conn, p: Prepared, mode: str, *, ok: bool, url: str = "") -> None:
+    """Outbound activity: Confluence leaves the machine; an Obsidian vault may
+    be synced elsewhere. The knowledge pool is local and not logged."""
+    from nexus.security.outbound import host_of, record
+
+    if p.target == "confluence":
+        target = host_of(url) or "Confluence"
+    elif p.target == "obsidian":
+        target = "Obsidian vault"
+    else:
+        return
+    record("publish", target, f"{p.target}: {mode}", items=1, ok=ok, conn=conn)
+
+
 def confirm(conn, token: str) -> dict:
     """Execute a prepared publish. Returns ``{ok, label, url}`` (never raises)."""
     from nexus.storage.publishing import record_publication
@@ -316,8 +330,10 @@ def confirm(conn, token: str) -> dict:
                            target=p.target, target_id=p.target_id, mode=res["mode"],
                            remote_id=res["remote_id"], location=res["location"],
                            url=res["url"], title=res["title"])
+        _log_publish(conn, p, res["mode"], ok=True, url=res.get("url") or "")
         conn.commit()
     except PublishError as exc:
+        _log_publish(None, p, "publish", ok=False)
         return {"ok": False, "label": str(exc)}
     except Exception:
         logger.exception("Publishing to %s failed", p.target)

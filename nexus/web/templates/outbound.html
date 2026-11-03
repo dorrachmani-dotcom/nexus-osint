@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Outbound activity</h1>
+    <p class="text-sm text-slate-400">
+      Everything Nexus sent off this machine: AI calls (cloud or local), publishing, e-mail,
+      Internet Archive requests, VirusTotal hash look-ups and source fetches. Only the destination,
+      the action, counts and sizes are recorded &mdash; never the content and never a key or password.
+      The live connection view is in the <a class="text-amber-400 hover:underline" href="/security">Security center</a>.
+    </p>
+  </div>
+
+  <form method="get" action="/security/outbound" class="flex flex-wrap items-end gap-2 text-sm">
+    <label class="text-xs text-slate-400">Type
+      <select name="category" class="block bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+        <option value="">All</option>
+        {% for key, label in categories.items() %}
+          <option value="{{ key }}" {% if key == category %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="text-xs text-slate-400">Period
+      <select name="days" class="block bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+        {% for d in day_options %}
+          <option value="{{ d }}" {% if d == days %}selected{% endif %}>{{ "All time" if d == 0 else ("Last " ~ d ~ " day" ~ ("s" if d > 1 else "")) }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="text-xs text-slate-400">Result
+      <select name="status" class="block bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+        <option value="">Any</option>
+        <option value="ok" {% if status == "ok" %}selected{% endif %}>Succeeded</option>
+        <option value="failed" {% if status == "failed" %}selected{% endif %}>Failed</option>
+      </select>
+    </label>
+    <button class="rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 border border-slate-600">Filter</button>
+    <a class="text-xs rounded px-3 py-1.5 border border-slate-700 text-slate-300 hover:bg-slate-800"
+       href="/security/outbound.csv?category={{ category }}&amp;days={{ days }}&amp;status={{ status }}">&#11015; Export CSV</a>
+  </form>
+
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+    <h2 class="text-sm font-medium text-slate-200">By destination</h2>
+    {% if totals %}
+    <table class="w-full text-xs text-slate-300">
+      <thead class="text-slate-500 text-left"><tr><th class="py-1">Type</th><th>Destination</th><th>Events</th><th>Items</th><th>Sent</th><th>Failed</th><th>Last</th></tr></thead>
+      <tbody>
+      {% for t in totals %}
+        <tr class="border-t border-slate-800">
+          <td class="py-1">{{ categories.get(t.category, t.category) }}</td><td class="mono">{{ t.target }}</td>
+          <td>{{ t.events }}</td><td>{{ t['items'] }}</td><td>{{ ((t.bytes_out or 0) / 1024) | round(1) }} KB</td>
+          <td>{% if t.failed %}<span class="text-rose-400">{{ t.failed }}</span>{% else %}0{% endif %}</td><td>{{ t.last }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="text-xs text-slate-500">Nothing has left this machine in this period.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+    <h2 class="text-sm font-medium text-slate-200">Events {% if rows|length == 500 %}<span class="text-xs text-slate-500">(newest 500; export CSV for all)</span>{% endif %}</h2>
+    {% if rows %}
+    <table class="w-full text-xs text-slate-300">
+      <thead class="text-slate-500 text-left"><tr><th class="py-1">Time (UTC)</th><th>Type</th><th>Destination</th><th>Action</th><th>Items</th><th>Sent</th><th>Received</th><th>Result</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr class="border-t border-slate-800">
+          <td class="py-1 mono">{{ r.ts }}</td><td>{{ categories.get(r.category, r.category) }}</td>
+          <td class="mono">{{ r.target }}</td><td>{{ r.action }}{% if r.detail %} <span class="text-slate-500">({{ r.detail }})</span>{% endif %}</td>
+          <td>{{ r['items'] }}</td><td>{{ r.bytes_out }} B</td><td>{{ r.bytes_in }} B</td>
+          <td>{% if r.ok %}<span class="text-emerald-400">ok</span>{% else %}<span class="text-rose-400">failed</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="text-xs text-slate-500">No events match these filters.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

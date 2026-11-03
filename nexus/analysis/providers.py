@@ -19,13 +19,46 @@ machine (no network calls leave it).
 
 from __future__ import annotations
 
+import functools
 import logging
+import threading
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import Any
 
 from nexus.config import Settings
 
 logger = logging.getLogger("nexus.analysis")
+
+
+_LOCAL_AI = {"ollama", "local_openai"}
+_in_call = threading.local()
+
+
+def _logged_call(fn: Callable[..., str], method: str) -> Callable[..., str]:
+    @functools.wraps(fn)
+    def wrapper(self: LLMProvider, system_prompt: str, user_prompt: str,
+                max_tokens: int = 1024) -> str:
+        if getattr(_in_call, "active", False):  # chat() -> complete(): log once
+            return fn(self, system_prompt, user_prompt, max_tokens)
+        from nexus.security.outbound import record
+
+        _in_call.active = True
+        sent = len((system_prompt or "").encode("utf-8")) + len((user_prompt or "").encode("utf-8"))
+        reply = ""
+        ok = False
+        try:
+            reply = fn(self, system_prompt, user_prompt, max_tokens)
+            ok = True
+            return reply
+        finally:
+            _in_call.active = False
+            local = self.name in _LOCAL_AI
+            record("ai", f"{self.name} ({self.model})", f"{method}{' (local)' if local else ''}",
+                   items=1, bytes_out=sent, bytes_in=len((reply or "").encode("utf-8")), ok=ok)
+
+    wrapper._nexus_logged = True  # type: ignore[attr-defined]
+    return wrapper
 
 
 class LLMProvider(ABC):
@@ -35,6 +68,15 @@ class LLMProvider(ABC):
 
     def __init__(self, model: str) -> None:
         self.model = model
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        # Record every call of every backend in the outbound activity log
+        # (provider, model, bytes; never the prompt or the reply).
+        super().__init_subclass__(**kwargs)
+        for method in ("complete", "chat"):
+            fn = cls.__dict__.get(method)
+            if fn is not None and not getattr(fn, "_nexus_logged", False):
+                setattr(cls, method, _logged_call(fn, method))
 
     @abstractmethod
     def complete(self, system_prompt: str, user_prompt: str, max_tokens: int = 1024) -> str:

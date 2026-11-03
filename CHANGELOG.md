@@ -24,6 +24,14 @@ to [Semantic Versioning](https://semver.org/).
   (format and version check, zip-slip and ZIP-bomb safe, per-file SHA-256,
   database integrity check), saves a pre-restore backup, then swaps the data in.
 
+- Outbound activity log (Security center › Activity log, `/security/outbound`):
+  one durable list of everything that left the machine: AI calls (provider,
+  model, bytes sent and received), Confluence/Obsidian publishes and removals,
+  e-mail (service and recipient count), Internet Archive requests, VirusTotal
+  hash look-ups and a per-source summary of each scan. Filters by type, period
+  and result; CSV export (formula-safe). Content, item URLs and secrets are never
+  recorded. Rows older than a year are pruned.
+
 ### Changed
 - Image OCR (uploads and evidence) reads from memory instead of writing a
   temporary copy of the image.
