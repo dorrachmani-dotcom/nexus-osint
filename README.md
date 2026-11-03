@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)
 
-[Quickstart](#quickstart) · [Tour](#a-guided-tour) · [Features](docs/FEATURES.md) · [Overview](docs/OVERVIEW.md) · [User Guide](docs/USER_GUIDE.md) · [Developer Guide](docs/DEVELOPER_GUIDE.md) · [Roadmap](docs/ROADMAP.md) · [Security](SECURITY.md)
+[Quickstart](#quickstart) · [Tour](#a-guided-tour) · [Features](docs/FEATURES.md) · [Ingestion](docs/INGESTION.md) · [Overview](docs/OVERVIEW.md) · [User Guide](docs/USER_GUIDE.md) · [Developer Guide](docs/DEVELOPER_GUIDE.md) · [Roadmap](docs/ROADMAP.md) · [Security](SECURITY.md)
 
 </div>
 
@@ -37,12 +37,16 @@ one SQLite file you own, and every outbound connection can be audited.
 ## What it does
 
 - **Collects** from RSS, Google News, Reddit and GDELT with no API keys, plus
-  optional Twitter/X, Telegram, SERPAPI and Google CSE, any user-defined API
-  (JSON, NDJSON, XML, CSV, RSS/Atom or HTML; paging, Basic/bearer/OAuth2
-  client-credentials auth), and wrapped OSINT CLI tools. Reddit works keyless through its public search
+  optional Twitter/X, Telegram, SERPAPI and Google CSE, and wrapped OSINT CLI
+  tools. Reddit works keyless through its public search
   feed; the official Reddit Data API (`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`,
   for steady per-subreddit pulls) is optional and, since 2026, needs approval
   from Reddit before keys work. Commercial use needs a separate agreement with Reddit.
+- **Connects any HTTP API** without code: JSON, NDJSON, XML, CSV, RSS/Atom or
+  HTML (auto-detected); page/offset/cursor/next-link paging; header, query,
+  bearer, Basic or OAuth2 client-credentials auth; POST templates. An AI planner
+  drafts the configuration from the API's docs or a sample, and Auto-Adapt
+  re-maps fields when the response shape drifts.
 - **Ingests your own documents**: upload PDFs, Word, Excel, PowerPoint, CSV, HTML,
   saved pages (MHTML), Markdown/text, JSON, XML, e-mails, images (OCR) or a ZIP
   (including an exported wiki or docs site) into a case or a shared knowledge
@@ -91,6 +95,17 @@ one SQLite file you own, and every outbound connection can be audited.
   file scanner vets anything you import.
 
 The full catalogue is in [docs/FEATURES.md](docs/FEATURES.md).
+
+## Bring your own data
+
+Open sources are only half the picture. Under **Sources** you can upload files
+or ZIPs, watch intranet pages and documentation sites, plug in any HTTP API,
+connect Confluence (Cloud or Data Center) and import an Obsidian vault. Each
+one goes into the feed, a case, or a shared knowledge pool that Sherlock
+answers from. Intranet hosts are reached only after you allow-list them, and
+secrets stay in `.env`. With a cloud AI provider, your material is kept away
+from it unless you tick "Allow cloud AI". Step-by-step setup, `.env` keys and
+limits: **[docs/INGESTION.md](docs/INGESTION.md)**.
 
 ## Quickstart
 

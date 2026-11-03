@@ -27,7 +27,6 @@ to [Semantic Versioning](https://semver.org/).
   verification; Basic/bearer/header/cookie logins kept in `.env`. Allowed
   internal connections show as "Internal network (allowed)" in the Security
   center.
-
 - Obsidian: import vault (Sources › Obsidian): read a local vault folder
   (read-only; hidden folders skipped, symlinks never followed out of the
   vault) into a case or the knowledge pool. Frontmatter (`yaml.safe_load`),
@@ -69,6 +68,11 @@ to [Semantic Versioning](https://semver.org/).
   anthropic 1.15.0, pydantic-settings 2.16.0, networkx 3.6.1, ruff 0.17.1.
 
 ### Changed
+- New guide `docs/INGESTION.md`: every way to bring your own data in (uploads,
+  watched pages, closed networks, custom APIs, Confluence, Obsidian), with
+  step-by-step setup, the `.env` keys, the case vs knowledge-pool choice, the
+  cloud-AI / "no AI" privacy note and the security limits. README gains a
+  "Bring your own data" section and lists API sources as their own feature.
 - The case export is now labelled "Obsidian: export case", matching
   "Obsidian: import vault".
 - Development tools (pytest) moved out of `requirements.txt`; install
