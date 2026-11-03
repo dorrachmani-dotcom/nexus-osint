@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -36,16 +37,51 @@ def test_csp_header_forbids_inline_script_and_eval(temp_db):
         assert d["object-src"] == ["'none'"] and d["frame-ancestors"] == ["'none'"]
 
 
+class _ScriptFinder(HTMLParser):
+    """Collect (attributes, body) of every <script> using the stdlib parser."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.found: list[tuple[dict[str, str], str]] = []
+        self._current: dict[str, str] | None = None
+        self._body: list[str] = []
+
+    def handle_starttag(self, tag, attrs):  # type: ignore[no-untyped-def]
+        if tag == "script":
+            self._current = {k: v or "" for k, v in attrs}
+            self._body = []
+
+    def handle_data(self, data):  # type: ignore[no-untyped-def]
+        if self._current is not None:
+            self._body.append(data)
+
+    def handle_endtag(self, tag):  # type: ignore[no-untyped-def]
+        if tag == "script" and self._current is not None:
+            self.found.append((self._current, "".join(self._body)))
+            self._current = None
+
+
+def _scripts(text: str) -> list[tuple[dict[str, str], str]]:
+    finder = _ScriptFinder()
+    finder.feed(text)
+    finder.close()
+    return finder.found
+
+
+def test_script_finder_sees_every_script():
+    found = _scripts('<SCRIPT src="/a.js"></SCRIPT >x<script>run()</script\n>')
+    assert [(a.get("src"), b) for a, b in found] == [("/a.js", ""), (None, "run()")]
+
+
 def test_templates_have_no_inline_code():
     bad = []
     for f in TEMPLATES:
         text = f.read_text(encoding="utf-8")
         text = re.sub(r"\{#.*?#\}", "", text, flags=re.S)  # Jinja comments
-        for m in re.finditer(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script\s*>", text, re.S | re.I):
-            attrs, body = m.group("attrs"), m.group("body").strip()
-            if 'type="application/json"' in attrs:
+        for attrs, body in _scripts(text):
+            if attrs.get("type") == "application/json":
                 continue
-            if "src=" not in attrs or body:
+            if not attrs.get("src") or body.strip():
                 bad.append(f"{f.name}: inline <script>")
         for pat, why in ((r"\son[a-z]+\s*=", "on* handler"), (r"hx-on", "hx-on"),
                          (r"javascript:", "javascript: URL"), (r"\bsrcdoc=", "srcdoc iframe")):
