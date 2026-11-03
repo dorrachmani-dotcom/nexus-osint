@@ -141,18 +141,23 @@ def delete_document(conn: sqlite3.Connection, doc_id: int) -> str | None:
     doc = get_document(conn, doc_id)
     if doc is None:
         return None
+    # Uploads created items with source 'upload'; a connector (Confluence,
+    # Obsidian) with its own source name, recorded as the document's origin.
+    origin = doc.get("origin") or "upload"
     conn.execute(
         """
-        DELETE FROM items WHERE source = 'upload' AND id IN (
+        DELETE FROM items WHERE source = ? AND id IN (
             SELECT di.item_id FROM document_items di
             WHERE di.document_id = ?
               AND NOT EXISTS (SELECT 1 FROM document_items o
                               WHERE o.item_id = di.item_id AND o.document_id != ?)
         )
         """,
-        (doc_id, doc_id),
+        (origin, doc_id, doc_id),
     )
     conn.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+    if not doc["stored_path"]:
+        return None  # connector documents keep no original file
     still_used = conn.execute(
         "SELECT 1 FROM documents WHERE stored_path = ? LIMIT 1", (doc["stored_path"],)
     ).fetchone()

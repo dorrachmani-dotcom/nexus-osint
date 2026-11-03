@@ -143,6 +143,23 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   holehe, GHunt, PhoneInfoga, theHarvester, SpiderFoot, Toutatis, OnionSearch)
   and pulls their findings into a local entity graph (a lightweight
   link-analysis alternative built on networkx + pyvis).
+- **Confluence connector** (Sources › Confluence) — Confluence Cloud (site URL
+  + account e-mail + API token, sent as Basic auth) or Data Center / Server
+  (base URL incl. context path + Personal Access Token, sent as Bearer).
+  "Test connection" lists the spaces the account can read so you can tick the
+  ones to pull; a CQL query can narrow or replace the space list. Each page
+  (optionally blog posts, footer comments and attachments, which go through the
+  document readers) becomes a document in the chosen case or the knowledge pool
+  with its title, space, labels, author, version, last-modified time, web link
+  and breadcrumb. Cloud spaces are read with REST v2 (cursor paging); Data
+  Center, and any CQL query, with REST v1 content search. Incremental: a
+  per-connection watermark on the last-modified time plus the stored version
+  number skip unchanged pages; a changed page gets its new text and a short
+  "what changed" item, like watched web pages. HTTP 429 is retried after
+  `Retry-After`. Intranet hosts need the internal allow-list; an internal CA or
+  (explicitly) no TLS verification can be set per connection. The token lives
+  in `.env` (`CONFLUENCE_SOURCE_<id>_TOKEN`) only — never the database, the page
+  or a log.
 - **Custom API sources (self-service + self-healing)** — point Nexus at any
   API; the AI planner reads its docs/sample response and writes the
   field mapping for you.

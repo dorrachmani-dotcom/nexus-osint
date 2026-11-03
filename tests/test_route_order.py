@@ -199,6 +199,13 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
     ('POST', '/sources/web/{source_id}/scan'),
     ('GET', '/settings/internal-network'),
     ('POST', '/settings/internal-network'),
+    ('GET', '/sources/confluence'),
+    ('POST', '/sources/confluence'),
+    ('POST', '/sources/confluence/{source_id}/toggle'),
+    ('POST', '/sources/confluence/{source_id}/delete'),
+    ('POST', '/sources/confluence/{source_id}/test'),
+    ('POST', '/sources/confluence/{source_id}/spaces'),
+    ('POST', '/sources/confluence/{source_id}/scan'),
 ]
 
 

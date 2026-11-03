@@ -20,6 +20,7 @@ from nexus.config import Settings, get_settings
 from nexus.db import get_connection
 from nexus.sources.auto_adapt import maybe_adapt
 from nexus.sources.base import Source
+from nexus.sources.confluence import load_confluence_sources
 from nexus.sources.custom import CustomApiSource, load_custom_sources
 from nexus.sources.freesearch import GoogleNewsSource, RedditSearchSource
 from nexus.sources.gdelt import GdeltSource
@@ -73,7 +74,8 @@ class Collector:
         # picked up on the next scan without a restart.
         custom = load_custom_sources(self.settings)
         web = load_web_sources(self.settings)
-        return [s for s in (*self.sources, *custom, *web) if s.is_available()]
+        connectors = load_confluence_sources(self.settings)
+        return [s for s in (*self.sources, *custom, *web, *connectors) if s.is_available()]
 
     def scan(self) -> dict:
         """Fetch from every available source and persist. Returns per-source stats."""
@@ -97,6 +99,20 @@ class Collector:
         total_new = 0
 
         for source in available:
+            # Knowledge connectors (Confluence...) store their own documents and
+            # keep their own per-source watermark: run them as one unit.
+            ingest = getattr(source, "ingest", None)
+            if callable(ingest):
+                try:
+                    result = ingest()
+                except Exception as exc:
+                    logger.exception("Source '%s' failed", source.name)
+                    stats[source.name] = {"error": str(exc)}
+                    continue
+                total_new += int(result.get("new") or 0)
+                stats[source.name] = result
+                continue
+
             # First run for this source -> watermark is None -> full pull.
             try:
                 with get_connection() as conn:

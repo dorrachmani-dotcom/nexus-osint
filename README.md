@@ -54,6 +54,10 @@ one SQLite file you own, and every outbound connection can be audited.
   Works on closed networks too: intranet hosts are blocked unless you allow-list
   them (`INTERNAL_ALLOWED_HOSTS` / `INTERNAL_ALLOWED_CIDRS`), with optional
   internal-CA trust and Basic/token/header/cookie logins kept in `.env`.
+- **Connects Confluence** (Cloud or Data Center / Server, also on a closed
+  network): pick spaces and/or a CQL query and its pages (optionally blog posts,
+  comments and attachments) land in a case or the knowledge pool; later scans
+  read only new and changed pages. The token stays in `.env`.
 - **Deduplicates and searches**: exact re-fetches are no-ops, near-duplicates
   collapse into one row with an "echoed N times" badge, and the whole history is
   searchable through SQLite FTS5.

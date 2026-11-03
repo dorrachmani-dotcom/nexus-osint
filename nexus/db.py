@@ -339,6 +339,51 @@ CREATE TABLE IF NOT EXISTS web_pages (
     PRIMARY KEY (source_id, url)
 );
 
+-- Knowledge connectors (Confluence spaces, Obsidian vaults): per page / note,
+-- the document it was stored as, and what it looked like last time (hash,
+-- version, capped text for change summaries). See nexus/ingest/connector.py.
+CREATE TABLE IF NOT EXISTS connector_docs (
+    kind          TEXT NOT NULL,                     -- confluence | obsidian
+    source_id     INTEGER NOT NULL,
+    doc_key       TEXT NOT NULL,                     -- page id / vault-relative path
+    document_id   INTEGER REFERENCES documents(id) ON DELETE SET NULL,
+    content_hash  TEXT NOT NULL,
+    version       TEXT,
+    modified      TEXT,
+    title         TEXT,
+    text          TEXT NOT NULL DEFAULT '',
+    meta          TEXT NOT NULL DEFAULT '{}',
+    first_seen    TEXT NOT NULL DEFAULT (datetime('now')),
+    last_changed  TEXT NOT NULL DEFAULT (datetime('now')),
+    last_seen     TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (kind, source_id, doc_key)
+);
+
+-- Confluence connections (Cloud or Data Center / Server). The API token or
+-- Personal Access Token lives in .env as CONFLUENCE_SOURCE_<id>_TOKEN — never here.
+CREATE TABLE IF NOT EXISTS confluence_sources (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    name                TEXT NOT NULL,
+    enabled             INTEGER NOT NULL DEFAULT 1,
+    deployment          TEXT NOT NULL DEFAULT 'cloud',  -- cloud | dc
+    base_url            TEXT NOT NULL,                  -- site URL (Cloud) / base URL (DC)
+    email               TEXT,                           -- Cloud account e-mail (Basic user)
+    spaces              TEXT NOT NULL DEFAULT '',       -- space keys, comma-separated
+    cql                 TEXT NOT NULL DEFAULT '',       -- optional CQL filter
+    include_blogposts   INTEGER NOT NULL DEFAULT 0,
+    include_comments    INTEGER NOT NULL DEFAULT 0,
+    include_attachments INTEGER NOT NULL DEFAULT 0,
+    max_items           INTEGER NOT NULL DEFAULT 200,   -- pages per scan
+    tls_mode            TEXT NOT NULL DEFAULT 'verify', -- verify | ca_bundle | insecure
+    case_id             INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+    in_pool             INTEGER NOT NULL DEFAULT 1,
+    no_ai               INTEGER NOT NULL DEFAULT 0,
+    watermark           TEXT,                           -- newest lastModified stored
+    last_scan_at        TEXT,
+    last_status         TEXT,
+    created_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Full-text search over items (external content).
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     title, content, summary,
@@ -397,6 +442,7 @@ _KNOWN_TABLES = frozenset({
     "list_memberships", "meta", "case_terms", "requirements", "requirement_hits",
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
     "item_archives", "documents", "document_items", "web_sources", "web_pages",
+    "connector_docs", "confluence_sources",
 })
 
 
@@ -462,6 +508,11 @@ def init_db() -> None:
         # Flexible API sources: response format, pagination, more auth schemes,
         # POST body template, headers and TLS. Defaults keep old rows behaving
         # exactly as before (auto-detect only changes non-JSON responses).
+        if not _column_exists(conn, "documents", "origin"):
+            # Which source produced a document: 'upload', or a connector's name.
+            conn.execute(
+                "ALTER TABLE documents ADD COLUMN origin TEXT NOT NULL DEFAULT 'upload'"
+            )
         for col, decl in _CUSTOM_SOURCE_V2_COLUMNS:
             if not _column_exists(conn, "custom_sources", col):
                 conn.execute(f"ALTER TABLE custom_sources ADD COLUMN {col} {decl}")
