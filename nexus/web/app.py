@@ -3,7 +3,7 @@
 Creates the app and wires the cross-cutting pieces: logging (with secret
 redaction), the background daemons (auto-scan, daily jobs) and Boot Sync in the
 lifespan, web hardening and the egress monitor, the friendly last-resort error
-page, the static/data mounts, and the domain routers in ``nexus/web/routers/``.
+page, the static mount, the evidence-screenshot route, and the domain routers in ``nexus/web/routers/``.
 
 The routes themselves live in the routers; shared web helpers (templates,
 filters, feed paging, card renderers) live in ``nexus/web/common.py``.
@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import re
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -20,7 +22,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from nexus import __version__
@@ -217,23 +219,34 @@ async def _friendly_error_handler(request: Request, exc: Exception) -> HTMLRespo
 _STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
-# Serve stored evidence screenshots (and any other data assets) read-only.
+# Evidence screenshots are served read-only by one explicit route -- and nothing
+# else from the data folder is reachable over HTTP. The data folder also holds
+# the SQLite database, uploaded originals, logs and backups, so it is never
+# mounted wholesale. Uploaded originals are only ever served by
+# /documents/{id}/file as a download.
 _DATA_DIR = Path(get_settings().data_dir)
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
+_EVIDENCE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,200}\.(?:png|jpe?g|webp)$", re.I)
 
 
-class _DataFiles(StaticFiles):
-    """The data mount, minus uploaded originals: those are untrusted files (an
-    uploaded .html could run script in this origin), so they are only ever
-    served by /documents/{id}/file as a download."""
-
-    async def get_response(self, path: str, scope):
-        if path.replace("\\", "/").lstrip("/").lower().startswith("uploads"):
-            return PlainTextResponse("Not found", status_code=404)
-        return await super().get_response(path, scope)
-
-
-app.mount("/data", _DataFiles(directory=str(_DATA_DIR)), name="data")
+@app.get("/data/evidence/{name}", include_in_schema=False)
+def evidence_file(name: str) -> Response:
+    """One evidence screenshot: a flat image file name inside data/evidence.
+    Sub-paths, traversal, dot-files and any non-image file are a plain 404."""
+    if not _EVIDENCE_NAME.match(name) or ".." in name:
+        return PlainTextResponse("Not found", status_code=404)
+    base = Path(get_settings().data_dir) / "evidence"
+    # The served path comes from the directory listing, never from the request:
+    # the requested name only selects an existing regular file in that folder.
+    try:
+        with os.scandir(base) as entries:
+            match = next((e.path for e in entries
+                          if e.name == name and e.is_file(follow_symlinks=False)), None)
+    except OSError:
+        match = None
+    if match is None:
+        return PlainTextResponse("Not found", status_code=404)
+    return FileResponse(match, headers={"X-Content-Type-Options": "nosniff"})
 
 
 # Domain routers. Starlette matches routes first-come-first-served, so this

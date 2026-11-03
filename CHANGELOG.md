@@ -29,6 +29,11 @@ to [Semantic Versioning](https://semver.org/).
   center.
 
 ### Security
+- The web app no longer serves the whole data folder under `/data`. Before,
+  anyone who could reach the local port could download the SQLite database,
+  logs and backups. Now only evidence screenshots are served, by one explicit
+  route (`/data/evidence/<image>`) that accepts a flat image file name and
+  rejects sub-paths, traversal and every other file type.
 - RSS / search-feed fetches now re-check every redirect hop with the SSRF guard,
   so a public feed URL can no longer redirect the request to a loopback,
   private or link-local address.
