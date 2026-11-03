@@ -20,7 +20,7 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
     ('GET,HEAD', '/docs/oauth2-redirect'),
     ('GET,HEAD', '/redoc'),
     ('Mount', '/static'),
-    ('Mount', '/data'),
+    ('GET', '/data/evidence/{name}'),
     ('GET', '/health'),
     ('GET', '/favicon.ico'),
     ('GET', '/api/status'),
@@ -248,7 +248,7 @@ def test_route_set_unchanged():
     assert len(current) == len(set(current)), "duplicate route registered"
 
 
-@pytest.mark.parametrize("mount", ["/static", "/data"])
+@pytest.mark.parametrize("mount", ["/static"])
 def test_static_mounts_precede_app_routes(mount):
     current = _current_routes()
     assert current.index(("Mount", mount)) < current.index(("GET", "/health"))
