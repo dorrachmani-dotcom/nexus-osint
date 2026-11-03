@@ -177,11 +177,13 @@ def graph_frame(token: str) -> Response:
     """One rendered graph as its own document (own CSP; see graph_frames)."""
     from nexus.web import graph_frames
 
-    html = graph_frames.get(token)
-    if html is None:
-        return HTMLResponse("This graph has expired: reload the page.", status_code=404)
-    return HTMLResponse(html, headers={
+    headers = {
         "Content-Security-Policy": graph_frames.FRAME_CSP,
         "X-Frame-Options": "SAMEORIGIN",
         "Cache-Control": "no-store",
-    })
+    }
+    html = graph_frames.get(token)
+    if html is None:
+        # Framable too, so the message shows inside the iframe.
+        return HTMLResponse("This graph has expired: reload the page.", status_code=404, headers=headers)
+    return HTMLResponse(html, headers=headers)

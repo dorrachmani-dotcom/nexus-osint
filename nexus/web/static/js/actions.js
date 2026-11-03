@@ -168,7 +168,10 @@
     if (el && el.getAttribute && el.getAttribute('data-toggled')) run(el, el.getAttribute('data-toggled'), e);
   }, true);
   // Same semantics as hx-on::after-request: the handler on an element runs
-  // for its own requests and those of its descendants.
+  // for its own requests and those of its descendants. Note: when a request's
+  // swap removes the element itself, its htmx:afterRequest no longer reaches
+  // this document listener, so data-done must not be relied on for an
+  // element that replaces itself (none does today).
   document.addEventListener('htmx:afterRequest', function (e) {
     var el = e.target;
     while (el && el.closest) {

@@ -59,6 +59,50 @@ def _serve(port: int) -> None:
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
 
 
+def _interactions(page, base: str) -> list[str]:
+    """Exercise converted handlers end to end (data-action / data-done)."""
+    failed: list[str] = []
+
+    def check(name: str, ok: bool) -> None:
+        print(f"    {'ok' if ok else 'FAIL':4} {name}")
+        if not ok:
+            failed.append(f"interaction: {name}")
+
+    print("\nInteractions:")
+    # Theme toggle (data-action="call:nexusToggleTheme").
+    page.goto(base + "/")
+    page.wait_for_load_state("networkidle")
+    before = page.evaluate("document.documentElement.className")
+    page.evaluate("document.getElementById('theme-toggle').click()")  # may sit in a menu
+    check("theme toggle", page.evaluate("document.documentElement.className") != before)
+    # Item drawer opens and "Mark read" turns into "Read" (data-done="done").
+    page.locator("[hx-get$='/detail']").first.click()
+    page.wait_for_selector("#item-drawer-content [hx-post$='/read']", timeout=5000)
+    btn = page.locator("#item-drawer-content [hx-post$='/read']").first
+    btn.click()
+    page.wait_for_timeout(800)
+    check("drawer mark-read feedback", "Mark read" not in btn.inner_text())
+    # Case rename (data-done="case-rename"): heading updates, popover closes.
+    page.goto(base + "/cases/1")
+    page.wait_for_load_state("networkidle")
+    page.locator("#case-rename-details summary").click()
+    page.fill("#case-rename-details input[name=name]", "Renamed by crawl")
+    page.locator("#case-rename-details button").click()
+    page.wait_for_timeout(800)
+    check("case rename", page.inner_text("#case-name-text") == "Renamed by crawl"
+          and not page.evaluate("document.getElementById('case-rename-details').open"))
+    # The graph renders inside its sandboxed frame.
+    page.goto(base + "/graph?case=1&case=2")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2000)
+    frames = [f for f in page.frames if "/graph/frame/" in f.url]
+    check("graph frame renders",
+          bool(frames) and frames[0].evaluate("document.querySelectorAll('canvas').length") > 0)
+    for v in page.evaluate("window.__csp || []"):
+        failed.append(f"interactions: {v}")
+    return failed
+
+
 def main() -> int:
     work = Path(tempfile.mkdtemp(prefix="nexus-csp-"))
     env_file = work / "empty.env"
@@ -131,8 +175,9 @@ def main() -> int:
                 print("    ", v)
             for o in other[:3]:
                 print("     console:", o[:200])
+        problems += _interactions(page, base)
         browser.close()
-    print(f"\n{len(PAGES)} pages crawled, {len(problems)} CSP violation(s).")
+    print(f"\n{len(PAGES)} pages crawled, {len(problems)} problem(s).")
     return 1 if problems else 0
 
 

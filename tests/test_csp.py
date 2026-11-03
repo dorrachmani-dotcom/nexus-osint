@@ -89,9 +89,11 @@ def test_graph_frame_has_own_narrow_policy(temp_db):
     assert r.status_code == 200 and "var x = 1" in r.text
     d = _directives(r.headers["content-security-policy"])
     assert d["default-src"] == ["'none'"] and d["frame-ancestors"] == ["'self'"]
+    assert d["sandbox"] == ["allow-scripts"]  # opaque origin even when opened directly
     assert "connect-src" not in d  # falls back to default-src 'none': no network
     assert r.headers["x-frame-options"] == "SAMEORIGIN"
-    assert client.get("/graph/frame/not-a-token").status_code == 404
+    gone = client.get("/graph/frame/not-a-token")
+    assert gone.status_code == 404 and gone.headers["x-frame-options"] == "SAMEORIGIN"
     assert graph_frames.store(None) == ""
 
 
