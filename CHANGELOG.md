@@ -12,7 +12,8 @@ to [Semantic Versioning](https://semver.org/).
   checkboxes: the knowledge-pool document is removed; the Obsidian note is
   removed only if Nexus created it in its own folder and nobody changed it
   (otherwise it is left and the dialog says why); from Confluence only Nexus's
-  own section is removed, never the page, and only with publishing allowed.
+  own section is removed, never the page, only with publishing allowed and
+  only when ticked (it is not ticked by default).
   The result is shown per target; anything left or unreachable keeps its
   publish record.
 - The packaged app now honours `NEXUS_HOME` (when set and non-empty) as its

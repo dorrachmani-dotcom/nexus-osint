@@ -142,7 +142,8 @@ write-up was published, each with a checkbox:
   Nexus wrote it. Otherwise it is left alone and the dialog says why. Needs
   **Allow writing to the vault**.
 - **Confluence**: only Nexus's own section is removed from the page; the page
-  itself is never deleted and colleagues' additions stay. Needs **Allow
+  itself is never deleted and colleagues' additions stay. Not ticked by
+  default, so a shared page changes only when you tick it. Needs **Allow
   publishing to Confluence**; version conflicts (409) and rate limits (429)
   are handled as when publishing.
 
