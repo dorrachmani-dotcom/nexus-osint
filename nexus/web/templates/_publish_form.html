@@ -1,0 +1,72 @@
+{# Publish dialog for one item / write-up and one target. Nothing is sent from
+   here: "Preview" renders exactly what would go out; a second click confirms. #}
+<div class="rounded-lg border border-sky-900/60 bg-slate-900/60 p-3 space-y-2 text-xs" data-publish-form>
+  <div class="flex items-center justify-between">
+    <p class="text-[10px] uppercase tracking-wide text-sky-300 font-semibold">
+      Publish {{ 'this item' if kind == 'item' else 'this write-up' }} &rarr;
+      {% if target == 'confluence' %}Confluence{% elif target == 'obsidian' %}Obsidian vault{% else %}Knowledge pool{% endif %}</p>
+    <button type="button" onclick="this.closest('[data-publish-form]').remove()" class="text-slate-500 hover:text-slate-300" aria-label="Close">&times;</button>
+  </div>
+  {% if target == 'confluence' %}
+    {% set ready = t.confluence | selectattr('ready') | list %}
+    {% if not ready %}
+    <p class="text-slate-400">No Confluence connection may publish yet. Connect one under
+      <a href="/sources/confluence" class="text-amber-400 hover:underline">Sources &rsaquo; Confluence</a>
+      (a token with write rights), then turn on <span class="text-slate-200">&ldquo;Allow publishing to Confluence&rdquo;</span> for it.
+      New here? See <a href="/setup" class="text-amber-400 hover:underline">Setup</a>.</p>
+    {% else %}
+    <form hx-post="/publish/{{ kind }}/{{ subject_id }}/preview" hx-target="#publish-out-{{ kind }}-{{ subject_id }}" hx-swap="innerHTML" class="space-y-2">
+      <input type="hidden" name="target" value="confluence" />
+      <label class="block text-slate-400">Connection
+        <select name="source_id" class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-200">
+          {% for c in ready %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select></label>
+      <div class="flex flex-wrap gap-3 text-slate-300">
+        <label class="flex items-center gap-1"><input type="radio" name="mode" value="create" checked class="accent-amber-500" /> New page</label>
+        <label class="flex items-center gap-1"><input type="radio" name="mode" value="append" class="accent-amber-500" /> Append a section to an existing page</label>
+      </div>
+      <label class="block text-slate-400">Space (for a new page)
+        <input name="space" list="publish-spaces-{{ kind }}-{{ subject_id }}" placeholder="space key, e.g. ENG"
+               class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-200 mono" />
+        <datalist id="publish-spaces-{{ kind }}-{{ subject_id }}">
+          {% for c in ready %}{% for sp in c.spaces %}<option value="{{ sp }}">{% endfor %}{% endfor %}
+        </datalist></label>
+      <label class="block text-slate-400">Page title (new page)
+        <input name="title" maxlength="255" placeholder="defaults to the {{ 'item' if kind == 'item' else 'write-up' }} title"
+               class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-200" /></label>
+      <div class="space-y-1">
+        <label class="block text-slate-400">Find a page (to append to, or as the parent of a new page)
+          <input name="q" placeholder="title words" hx-get="/publish/confluence/pages" hx-trigger="keyup changed delay:500ms"
+                 hx-include="closest form" hx-target="#publish-pages-{{ kind }}-{{ subject_id }}" hx-swap="innerHTML"
+                 class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-200" /></label>
+        <div id="publish-pages-{{ kind }}-{{ subject_id }}"></div>
+      </div>
+      <button class="px-2 py-1 rounded text-xs bg-sky-800 hover:bg-sky-700 text-sky-100">Preview</button>
+    </form>
+    {% endif %}
+  {% elif target == 'obsidian' %}
+    {% set ready = t.vaults | selectattr('ready') | list %}
+    {% if not ready %}
+    <p class="text-slate-400">No vault accepts notes yet. Add your vault under
+      <a href="/sources/obsidian" class="text-amber-400 hover:underline">Sources &rsaquo; Obsidian</a>
+      and turn on <span class="text-slate-200">&ldquo;Allow writing to the vault&rdquo;</span>. Nexus writes only inside its own
+      subfolder (default <span class="mono">Nexus/</span>) and never overwrites your notes.</p>
+    {% else %}
+    <form hx-post="/publish/{{ kind }}/{{ subject_id }}/preview" hx-target="#publish-out-{{ kind }}-{{ subject_id }}" hx-swap="innerHTML" class="space-y-2">
+      <input type="hidden" name="target" value="obsidian" />
+      <label class="block text-slate-400">Vault
+        <select name="vault_id" class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-200">
+          {% for v in ready %}<option value="{{ v.id }}">{{ v.name }} &rarr; {{ v.folder }}/</option>{% endfor %}
+        </select></label>
+      <button class="px-2 py-1 rounded text-xs bg-sky-800 hover:bg-sky-700 text-sky-100">Preview</button>
+    </form>
+    {% endif %}
+  {% else %}
+    <form hx-post="/publish/{{ kind }}/{{ subject_id }}/preview" hx-target="#publish-out-{{ kind }}-{{ subject_id }}" hx-swap="innerHTML" class="space-y-2">
+      <input type="hidden" name="target" value="pool" />
+      <p class="text-slate-400">Adds the {{ 'edited item' if kind == 'item' else 'write-up' }} to the knowledge pool as a document, so Sherlock can answer from your version. Stays on this computer.</p>
+      <button class="px-2 py-1 rounded text-xs bg-sky-800 hover:bg-sky-700 text-sky-100">Preview</button>
+    </form>
+  {% endif %}
+  <div id="publish-out-{{ kind }}-{{ subject_id }}"></div>
+</div>

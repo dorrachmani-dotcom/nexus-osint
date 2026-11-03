@@ -53,6 +53,9 @@
     <div class="absolute right-0 z-30 mt-1 w-60 rounded border border-slate-700 bg-slate-900 p-1.5 shadow-xl text-sm">
       <a href="/cases/{{ case.id }}?tab=reports"
          class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#128197; Daily report for this case&hellip;</a>
+      <a href="/cases/{{ case.id }}/writeups"
+         class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800"
+         title="Compose a write-up from pinned items and publish it to Confluence, Obsidian or the knowledge pool">&#9998; Write-ups &amp; publish&hellip;</a>
       {% if not case.parent_id %}
       <a href="/cases/{{ case.id }}?tab=subcases"
          class="block px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#128193; Sub-cases</a>

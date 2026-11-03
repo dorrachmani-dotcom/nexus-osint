@@ -915,6 +915,11 @@ def _vault_note_sections(path: str, payload: bytes, ctx: _Ctx) -> list[Section]:
 
     title = posixpath.basename(path).rsplit(".", 1)[0]
     note = parse_note(decode_text(payload), title)
+    from nexus.sources.obsidian import is_nexus_written
+
+    if is_nexus_written(note.frontmatter):
+        ctx.note(f"skipped {path}: a note Nexus wrote itself (already in Nexus)")
+        return []
     meta = {"member": path, "note": note.title, "tags": note.tags[:50],
             "links": note.links[:50], "embeds": note.embeds[:50]}
     out: list[Section] = []

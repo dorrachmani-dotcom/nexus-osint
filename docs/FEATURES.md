@@ -165,6 +165,18 @@ limits: [INGESTION.md](INGESTION.md).
   (explicitly) no TLS verification can be set per connection. The token lives
   in `.env` (`CONFLUENCE_SOURCE_<id>_TOKEN`) only — never the database, the page
   or a log.
+- **Edit and publish (write-back)** — edit an item's title, summary and an
+  analyst note (stored as a layer beside the untouched original, with an
+  "edited" badge), or compose a write-up from several pinned items (case ⋯ menu
+  → Write-ups & publish). Publish either to **Confluence** (new page in a space,
+  optionally under a parent, or a section appended to an existing page; fully
+  escaped storage format; republish updates the same page or section; 409 and
+  429 handled), to the **Obsidian vault** (only inside a `Nexus/` subfolder,
+  frontmatter via `yaml.safe_dump`, entity `[[wikilinks]]`, never overwrites
+  your notes) or to the **knowledge pool**. Every publish shows an exact
+  preview and needs a click; Confluence and vault writing each have an opt-in
+  switch, off by default. Sherlock can prepare a publish as a confirmation
+  card but cannot send it. See [PUBLISHING.md](PUBLISHING.md).
 - **Obsidian: import vault** (Sources › Obsidian) — point Nexus at a vault
   folder on this computer. The folder is validated and only ever read; hidden
   folders (`.obsidian/`, `.trash/`…) are skipped and a symlink never leads out of

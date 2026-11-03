@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-5">
+  <div>
+    {% if w.case_id %}<a href="/cases/{{ w.case_id }}/writeups" class="text-xs text-slate-500 hover:text-amber-400">&larr; Write-ups{% if w.case_name %} &middot; {{ w.case_name }}{% endif %}</a>{% endif %}
+    <h1 class="mt-1 text-lg font-semibold text-slate-100">{{ w.title }}</h1>
+    <p class="text-xs text-slate-500 mono">edited {{ (w.edited_at or '')[:16] }} &middot; {{ w.item_ids|length }} source item{{ '' if w.item_ids|length == 1 else 's' }}</p>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <form method="post" action="/writeups/{{ w.id }}" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+      {% if saved %}<p class="text-xs text-emerald-300">&#10003; Saved.</p>{% endif %}
+      <label class="block text-xs text-slate-400">Title
+        <input name="title" maxlength="300" value="{{ w.title }}"
+               class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-200" /></label>
+      <label class="block text-xs text-slate-400">Text <span class="text-slate-600">(blank line = new paragraph; lines starting with &ldquo;- &rdquo; become a list)</span>
+        <textarea name="body" rows="18" class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-200">{{ w.body }}</textarea></label>
+      <div class="flex items-center gap-2">
+        <button class="px-3 py-1.5 rounded text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium">Save</button>
+        <button formaction="/writeups/{{ w.id }}/delete" formmethod="post"
+                onclick="return confirm('Delete this write-up? Pages or notes already published are not touched.')"
+                class="px-3 py-1.5 rounded text-sm bg-rose-900/70 hover:bg-rose-800 text-rose-100">Delete</button>
+      </div>
+    </form>
+
+    <div class="space-y-4">
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2 text-sm">
+        <h2 class="text-sm font-semibold text-slate-200">Publish</h2>
+        <p class="text-xs text-slate-500">Save first: the saved version is what gets published. You always see a preview before anything is sent.</p>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <button hx-get="/publish/writeup/{{ w.id }}/form?target=confluence" hx-target="#publish-panel-w{{ w.id }}" hx-swap="innerHTML"
+                  class="rounded border border-slate-700 hover:border-sky-500 hover:text-sky-300 text-slate-300 px-2.5 py-1">Confluence page&hellip;</button>
+          <button hx-get="/publish/writeup/{{ w.id }}/form?target=obsidian" hx-target="#publish-panel-w{{ w.id }}" hx-swap="innerHTML"
+                  class="rounded border border-slate-700 hover:border-sky-500 hover:text-sky-300 text-slate-300 px-2.5 py-1">Obsidian vault note&hellip;</button>
+          <button hx-get="/publish/writeup/{{ w.id }}/form?target=pool" hx-target="#publish-panel-w{{ w.id }}" hx-swap="innerHTML"
+                  class="rounded border border-slate-700 hover:border-sky-500 hover:text-sky-300 text-slate-300 px-2.5 py-1">Add to knowledge pool&hellip;</button>
+        </div>
+        <div id="publish-panel-w{{ w.id }}"></div>
+        {% if pubs %}{% include "_publications.html" %}{% endif %}
+      </div>
+      {% if doc and doc.sources %}
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-1 text-sm">
+        <h2 class="text-sm font-semibold text-slate-200">Sources</h2>
+        <ul class="space-y-0.5 text-xs">
+          {% for s in doc.sources %}
+          <li class="text-slate-300">{% if s.url %}<a href="{{ s.url | safe_url }}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">{{ s.title }}</a>{% else %}{{ s.title }}{% endif %}
+            {% if s.collected_at %}<span class="mono text-slate-500">{{ s.collected_at[:10] }}</span>{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

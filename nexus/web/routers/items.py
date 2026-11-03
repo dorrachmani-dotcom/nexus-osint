@@ -159,6 +159,12 @@ def item_detail(request: Request, item_id: int) -> HTMLResponse:
             "SELECT id, name FROM cases WHERE status = 'open' ORDER BY priority DESC, name",
         ).fetchall()
         archive_ctx = _item_archive_ctx(conn, item_id, item.get("url") or "")
+        from nexus.publish import publish_targets
+        from nexus.storage.publishing import get_item_edit, list_publications
+
+        edit = get_item_edit(conn, item_id)
+        pubs = list_publications(conn, "item", item_id)
+        targets = publish_targets(conn)
     return TEMPLATES.TemplateResponse(
         request,
         "_item_detail.html",
@@ -170,6 +176,9 @@ def item_detail(request: Request, item_id: int) -> HTMLResponse:
             "open_cases": [dict(r) for r in open_cases],
             "pinned_case_ids": pinned_case_ids,
             "ar": archive_ctx,
+            "edit": edit,
+            "pubs": pubs,
+            "t": targets,
         },
     )
 

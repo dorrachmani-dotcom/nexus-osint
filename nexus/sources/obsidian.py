@@ -55,6 +55,14 @@ def _folders(raw: str | None) -> list[str]:
     return out
 
 
+def is_nexus_written(frontmatter: dict) -> bool:
+    """A note Nexus wrote itself (frontmatter ``generated_by: Nexus-OSINT`` + ``nexus_id``)."""
+    from nexus.publish.content import ID_KEY, MARKER_KEY, MARKER_VALUE
+
+    fm = frontmatter if isinstance(frontmatter, dict) else {}
+    return str(fm.get(MARKER_KEY) or "") == MARKER_VALUE and bool(fm.get(ID_KEY))
+
+
 def _under(rel: str, folders: list[str]) -> bool:
     low = rel.lower()
     return any(low == f or low.startswith(f + "/") for f in folders)
@@ -187,7 +195,7 @@ class ObsidianSource(Source):
             return {"fetched": 0, "new": 0, "status": self.status}
         target = Target.from_row(self.cfg)
         need_tag = self._required_tag()
-        checked = stored = changed = new_items = skipped = 0
+        checked = stored = changed = new_items = skipped = own = 0
         total_bytes = 0
         complete = True
         present: set[str] = set()
@@ -220,6 +228,11 @@ class ObsidianSource(Source):
                 total_bytes += len(raw)
                 title = vf.rel.rsplit("/", 1)[-1].rsplit(".", 1)[0]
                 note = parse_note(decode_text(raw), title)
+                if is_nexus_written(note.frontmatter):
+                    # Written by Nexus ("publish to Obsidian"): its content is
+                    # already in Nexus, so never re-import it as a duplicate.
+                    own += 1
+                    continue
                 if need_tag and need_tag not in {t.lower() for t in note.tags}:
                     continue  # filtered out (and removed if it was stored before)
                 present.add(vf.rel)
@@ -264,6 +277,8 @@ class ObsidianSource(Source):
             parts.append(f"{removed} removed")
         if skipped:
             parts.append(f"{skipped} skipped (too large or unreadable)")
+        if own:
+            parts.append(f"{own} written by Nexus (not re-imported)")
         self.status = ", ".join(parts) + ("; " + "; ".join(remarks) if remarks else "")
         self._save(save_obsidian_scan)
         logger.info("Obsidian vault '%s': %s", self.name, self.status)

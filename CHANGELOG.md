@@ -7,6 +7,27 @@ to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Edit and publish (write-back). Edit an item's title, summary and an analyst
+  note; the edit is a separate layer (with an "edited" badge) and the collected
+  original stays unchanged and visible. Compose a write-up from several pinned
+  items (case ⋯ menu → Write-ups & publish). Publish an item or write-up to:
+  Confluence (new page in a space, optionally under a parent page, or a section
+  appended to an existing page; storage format fully escaped; source link,
+  collected date, case and a "Collected by Nexus-OSINT" footer; republish
+  updates the same page or only its own section; version conflicts retried
+  once, HTTP 429 after `Retry-After`); an Obsidian vault (only inside a
+  configurable `Nexus/` subfolder, path-validated with no traversal, symlink or
+  junction escape, frontmatter via `yaml.safe_dump`, entity `[[wikilinks]]`,
+  user notes never overwritten, text below the end marker kept on republish);
+  or the knowledge pool, so Sherlock answers from the edited version. Every
+  publish shows an exact preview and needs a click, and is recorded as
+  "Published to …". Confluence ("Allow publishing to Confluence") and the vault
+  ("Allow writing to the vault") each need an explicit opt-in, off by default;
+  Test connection reports write permission per space. The vault importer and
+  zipped-vault uploads skip notes Nexus wrote. Sherlock can prepare a publish
+  (to Confluence, Obsidian or the knowledge pool) only as a confirmation card
+  the analyst clicks, and only when the analyst asked for it. See
+  `docs/PUBLISHING.md`.
 - Upload documents into a case or a shared knowledge pool (Sources › Documents,
   or a case's Documents tab): PDF, Word, Excel, PowerPoint, OpenDocument, CSV,
   HTML, saved pages (MHTML), Markdown/text, JSON/NDJSON, XML, e-mail, RTF,

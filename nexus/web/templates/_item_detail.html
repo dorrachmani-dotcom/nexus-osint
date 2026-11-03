@@ -1,5 +1,5 @@
 {% set threat = item.threat_level or 'none' %}
-<div class="space-y-5">
+<div class="space-y-5" data-item-detail>
 
   {# ── Header ── #}
   <div class="space-y-1">
@@ -25,8 +25,15 @@
       <span class="ml-auto text-slate-500">{{ (item.published_at or item.fetched_at or '')[:16] }}</span>
     </div>
 
-    {% if item.title %}
-    <h3 class="text-base font-semibold text-slate-100 leading-snug">{{ item.title }}</h3>
+    {% if edit and edit.title %}
+    <h3 class="text-base font-semibold text-slate-100 leading-snug">{{ edit.title }}
+      <span class="ml-1 align-middle px-1.5 py-0.5 rounded text-[10px] mono bg-violet-950 text-violet-300 border border-violet-800"
+            title="Edited by the analyst {{ edit.edited_at }}; the collected original is kept below">edited</span></h3>
+    {% if item.title %}<p class="text-xs text-slate-500">Original title: {{ item.title }}</p>{% endif %}
+    {% elif item.title %}
+    <h3 class="text-base font-semibold text-slate-100 leading-snug">{{ item.title }}
+      {% if edit %}<span class="ml-1 align-middle px-1.5 py-0.5 rounded text-[10px] mono bg-violet-950 text-violet-300 border border-violet-800"
+            title="Edited by the analyst {{ edit.edited_at }}">edited</span>{% endif %}</h3>
     {% endif %}
 
     {% if item.author %}
@@ -108,16 +115,66 @@
       hx-indicator="#similar-spin"
       class="rounded border border-slate-700 hover:border-sky-600 hover:text-sky-300 text-slate-300 px-2.5 py-1"
       title="Find items with similar meaning (local Ollama embeddings)">&#129518; Similar</button>
+    <span class="mx-1 h-4 w-px bg-slate-700/70" aria-hidden="true"></span>
+    <button type="button" onclick="var d=document.getElementById('item-edit-{{ item.id }}'); d.open=!d.open; if(d.open){d.scrollIntoView({block:'nearest'});}"
+      class="rounded border border-slate-700 hover:border-violet-500 hover:text-violet-300 text-slate-300 px-2.5 py-1"
+      title="Edit the title, summary or add an analyst note (the collected original is kept)">&#9998; Edit</button>
+    <details class="relative">
+      <summary class="cursor-pointer list-none rounded border border-slate-700
+                       hover:border-sky-500 hover:text-sky-300 text-slate-300 px-2.5 py-1"
+               title="Send this item (with your edits) to Confluence, Obsidian or the knowledge pool">&#8679; Publish</summary>
+      <div class="absolute left-0 z-30 mt-1 w-56 rounded border border-slate-700 bg-slate-950 p-1.5 shadow-xl">
+        <button hx-get="/publish/item/{{ item.id }}/form?target=confluence" hx-target="#publish-panel-{{ item.id }}" hx-swap="innerHTML"
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Confluence page&hellip;</button>
+        <button hx-get="/publish/item/{{ item.id }}/form?target=obsidian" hx-target="#publish-panel-{{ item.id }}" hx-swap="innerHTML"
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Obsidian vault note&hellip;</button>
+        <button hx-get="/publish/item/{{ item.id }}/form?target=pool" hx-target="#publish-panel-{{ item.id }}" hx-swap="innerHTML"
+          class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">Add to knowledge pool&hellip;</button>
+      </div>
+    </details>
     <span id="similar-spin" class="htmx-indicator text-sky-300">searching&hellip;</span>
     <span id="verify-spin" class="htmx-indicator text-emerald-300">checking&hellip;</span>
   </div>
+  <div id="publish-panel-{{ item.id }}"></div>
+  {% if pubs %}{% include "_publications.html" %}{% endif %}
+
+  {# -- Analyst edit (an editable layer; the collected item never changes) -- #}
+  <details id="item-edit-{{ item.id }}" class="rounded-lg border border-violet-900/60 bg-slate-900/40 p-3">
+    <summary class="cursor-pointer text-[10px] uppercase tracking-wide text-violet-300 font-semibold">
+      Analyst edit{% if edit %} &middot; <span class="normal-case text-slate-500">edited {{ (edit.edited_at or '')[:16] }}</span>{% endif %}</summary>
+    <form hx-post="/items/{{ item.id }}/edit" hx-target="closest [data-item-detail]" hx-swap="outerHTML" class="mt-2 space-y-2 text-xs">
+      <label class="block text-slate-400">Title
+        <input name="title" maxlength="300" value="{{ (edit.title if edit and edit.title else item.title) or '' }}"
+               class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-200" /></label>
+      <label class="block text-slate-400">Summary
+        <textarea name="summary" rows="4" class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-200">{{ (edit.summary if edit and edit.summary else item.summary) or '' }}</textarea></label>
+      <label class="block text-slate-400">Analyst note
+        <textarea name="note" rows="3" placeholder="Your assessment, context, next steps&hellip;" class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-200">{{ edit.note if edit and edit.note else '' }}</textarea></label>
+      <div class="flex items-center gap-2">
+        <button class="px-2 py-1 rounded text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium">Save edit</button>
+        <span class="text-slate-500">The collected original stays as it was. Clear every field to remove the edit.</span>
+      </div>
+    </form>
+  </details>
+  {% if edit and edit.note %}
+  <div class="rounded-lg border border-violet-900/60 bg-slate-900/60 p-3 space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-violet-300 font-semibold">Analyst note</p>
+    <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{{ edit.note }}</p>
+  </div>
+  {% endif %}
+  {% if edit and edit.summary %}
+  <div class="rounded-lg border border-violet-900/60 bg-slate-900/60 p-3 space-y-1">
+    <p class="text-[10px] uppercase tracking-wide text-violet-300 font-semibold">Summary (edited by the analyst)</p>
+    <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{{ edit.summary }}</p>
+  </div>
+  {% endif %}
   <div id="verify-result"></div>
   <div id="similar-result"></div>
 
   {# ── AI summary ── #}
   {% if item.summary %}
   <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1">
-    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">AI summary</p>
+    <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">AI summary{% if edit and edit.summary %} (original){% endif %}</p>
     <p class="text-sm text-slate-200 leading-relaxed">{{ item.summary }}</p>
     {% if item.rationale %}
     <p class="text-xs text-slate-500 border-t border-slate-800 pt-2 mt-2">{{ item.rationale }}</p>
@@ -139,7 +196,7 @@
   {# ── Full content ── #}
   <div class="space-y-1">
     <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
-      Full content
+      Full content{% if edit %} (as collected){% endif %}
       {% if item.language %}<span class="normal-case text-slate-600 text-[10px]">[{{ item.language }}]</span>{% endif %}
     </p>
     <div class="rounded-lg border border-slate-800 bg-slate-900/40 p-3

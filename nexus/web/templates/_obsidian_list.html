@@ -17,6 +17,8 @@
           {% if v.in_pool %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-sky-950/60 text-sky-300 border border-sky-800">knowledge pool</span>{% endif %}
           {% if v.case_name %}<a href="/cases/{{ v.case_id }}" class="px-1.5 py-0.5 rounded text-[10px] mono bg-amber-950/50 text-amber-300 border border-amber-800 hover:text-amber-200">case: {{ v.case_name }}</a>{% endif %}
           {% if v.no_ai %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-300 border border-slate-700" title="Kept away from AI enrichment">no AI</span>{% endif %}
+          {% if v.allow_write %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-amber-950/50 text-amber-300 border border-amber-800"
+                title="Nexus may write notes into {{ v.write_folder }}/ (never over your notes)">writes to {{ v.write_folder }}/</span>{% endif %}
           {% if v.required_tag %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-300">#{{ v.required_tag }}</span>{% endif %}
         </div>
         <div class="text-xs text-slate-500 mono truncate mt-0.5">{{ v.path }}</div>
@@ -41,6 +43,16 @@
                 class="px-2 py-1 rounded text-xs bg-rose-900/70 hover:bg-rose-800 text-rose-100">Delete</button>
       </div>
     </div>
+    <form hx-post="/sources/obsidian/{{ v.id }}/writing" hx-target="#obsidian-list" hx-swap="outerHTML"
+          class="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+      <label class="flex items-center gap-1"><input type="checkbox" name="allow_write" value="1" {% if v.allow_write %}checked{% endif %} class="accent-amber-500" />
+        Allow writing to the vault</label>
+      <label class="flex items-center gap-1">only inside
+        <input name="write_folder" value="{{ v.write_folder or 'Nexus' }}" maxlength="200"
+               class="w-32 rounded bg-slate-950 border border-slate-700 px-2 py-0.5 text-slate-200 mono" />/</label>
+      <button class="px-2 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-200">Save</button>
+      <span class="text-slate-500">Off by default. Notes Nexus writes there are skipped by this importer.</span>
+    </form>
     <div id="obsidian-test-{{ v.id }}" class="mt-1"></div>
   </div>
   {% endfor %}

@@ -1,0 +1,8 @@
+<div class="space-y-2">
+  {% if r.ok %}
+  <p class="text-emerald-300">&#10003; {{ r.label }}{% if r.url and (r.url.startswith('http://') or r.url.startswith('https://')) %} &mdash; <a href="{{ r.url | safe_url }}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">open</a>{% endif %}</p>
+  {% else %}
+  <p class="text-rose-400">{{ r.label }}</p>
+  {% endif %}
+  {% if pubs %}{% include "_publications.html" %}{% endif %}
+</div>

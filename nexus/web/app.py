@@ -54,6 +54,7 @@ from nexus.web.routers import (
     lists,
     llm,
     notifications,
+    publish,
     scan,
     security,
     settings,
@@ -283,6 +284,7 @@ ROUTERS = (
     documents,
     web_sources,
     connectors,
+    publish,
 )
 for _module in ROUTERS:
     app.include_router(_module.router)
