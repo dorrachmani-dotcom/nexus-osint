@@ -461,6 +461,7 @@ _KNOWN_TABLES = frozenset({
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
     "item_archives", "documents", "document_items", "web_sources", "web_pages",
     "connector_docs", "confluence_sources", "obsidian_vaults",
+    "item_edits", "writeups", "publications",
 })
 
 
@@ -597,8 +598,67 @@ def init_db() -> None:
             conn.execute(
                 "ALTER TABLE cases ADD COLUMN auto_archive INTEGER NOT NULL DEFAULT 0"
             )
+        _migrate_publishing(conn)
         _migrate_capsules_to_cases(conn)
         _backfill_entity_index(conn)
+
+
+def _migrate_publishing(conn: sqlite3.Connection) -> None:
+    """Edit -> publish (write-back): the analyst layer and publish records.
+
+    * ``item_edits``: the analyst's title / summary / note for an item. The
+      collected row in ``items`` is never changed by an edit.
+    * ``writeups``: a short analyst write-up composed from several pinned items.
+    * ``publications``: every publish of an item or write-up (Confluence page,
+      Obsidian note, knowledge-pool document), so a republish updates the same
+      page or note and the UI can show "Published to ...".
+    * Opt-in switches, all OFF by default: ``confluence_sources.allow_publish``
+      and ``obsidian_vaults.allow_write`` (+ the vault subfolder Nexus may write).
+    """
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS item_edits (
+            item_id    INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+            title      TEXT,
+            summary    TEXT,
+            note       TEXT,
+            edited_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS writeups (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            case_id    INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+            title      TEXT NOT NULL,
+            body       TEXT NOT NULL DEFAULT '',
+            item_ids   TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            edited_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS publications (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_kind TEXT NOT NULL CHECK (subject_kind IN ('item', 'writeup')),
+            subject_id   INTEGER NOT NULL,
+            target       TEXT NOT NULL CHECK (target IN ('confluence', 'obsidian', 'pool')),
+            target_id    INTEGER NOT NULL DEFAULT 0,
+            mode         TEXT NOT NULL DEFAULT 'create',
+            remote_id    TEXT NOT NULL,
+            location     TEXT,
+            url          TEXT,
+            title        TEXT,
+            first_published_at TEXT NOT NULL DEFAULT (datetime('now')),
+            published_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (subject_kind, subject_id, target, target_id, remote_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_publications_subject
+            ON publications(subject_kind, subject_id);
+    """)
+    if not _column_exists(conn, "confluence_sources", "allow_publish"):
+        conn.execute("ALTER TABLE confluence_sources ADD COLUMN "
+                     "allow_publish INTEGER NOT NULL DEFAULT 0")
+    if not _column_exists(conn, "obsidian_vaults", "allow_write"):
+        conn.execute("ALTER TABLE obsidian_vaults ADD COLUMN "
+                     "allow_write INTEGER NOT NULL DEFAULT 0")
+    if not _column_exists(conn, "obsidian_vaults", "write_folder"):
+        conn.execute("ALTER TABLE obsidian_vaults ADD COLUMN "
+                     "write_folder TEXT NOT NULL DEFAULT 'Nexus'")
 
 
 def _backfill_entity_index(conn: sqlite3.Connection) -> None:

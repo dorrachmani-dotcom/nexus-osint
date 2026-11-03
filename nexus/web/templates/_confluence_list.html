@@ -23,6 +23,10 @@
           {% if s.in_pool %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-sky-950/60 text-sky-300 border border-sky-800">knowledge pool</span>{% endif %}
           {% if s.case_name %}<a href="/cases/{{ s.case_id }}" class="px-1.5 py-0.5 rounded text-[10px] mono bg-amber-950/50 text-amber-300 border border-amber-800 hover:text-amber-200">case: {{ s.case_name }}</a>{% endif %}
           {% if s.no_ai %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-300 border border-slate-700" title="Kept away from AI enrichment">no AI</span>{% endif %}
+          {% if s.allow_publish %}
+          <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-amber-950/50 text-amber-300 border border-amber-800"
+                title="Analysts may publish items and write-ups to this Confluence (always after a preview)">publishing on</span>
+          {% endif %}
           {% if s.tls_mode == 'insecure' %}
           <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-rose-950/60 text-rose-300 border border-rose-800"
                 title="TLS certificates are NOT verified for this connection">TLS not verified</span>
@@ -46,6 +50,10 @@
         <button hx-post="/sources/confluence/{{ s.id }}/scan" hx-target="#confluence-test-{{ s.id }}" hx-swap="innerHTML"
                 hx-indicator="#confluence-spin-{{ s.id }}"
                 class="px-2 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-200">Scan now<span id="confluence-spin-{{ s.id }}" class="htmx-indicator">&hellip;</span></button>
+        <button hx-post="/sources/confluence/{{ s.id }}/publishing" hx-target="#confluence-list" hx-swap="outerHTML"
+                {% if not s.allow_publish %}hx-confirm="Allow publishing to '{{ s.name }}'? Analysts can then create or update pages there (each publish shows a preview and needs a click). The token needs write rights."{% endif %}
+                title="Allow publishing to Confluence (off by default)"
+                class="px-2 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-200">{% if s.allow_publish %}Stop publishing{% else %}Allow publishing to Confluence{% endif %}</button>
         <button hx-post="/sources/confluence/{{ s.id }}/toggle" hx-target="#confluence-list" hx-swap="outerHTML"
                 class="px-2 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-200">{% if s.enabled %}Disable{% else %}Enable{% endif %}</button>
         <button hx-post="/sources/confluence/{{ s.id }}/delete" hx-target="#confluence-list" hx-swap="outerHTML"

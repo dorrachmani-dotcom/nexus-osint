@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-5">
+  <div>
+    <a href="/cases/{{ case.id }}" class="text-xs text-slate-500 hover:text-amber-400">&larr; {{ case.name }}</a>
+    <h1 class="mt-1 text-lg font-semibold text-slate-100">Write-ups</h1>
+    <p class="text-sm text-slate-400">Compose a short write-up from several pinned items, edit it, then publish it to
+      Confluence, your Obsidian vault or the knowledge pool (always with a preview first).</p>
+  </div>
+
+  {% if writeups %}
+  <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-1">
+    {% for w in writeups %}
+    <a href="/writeups/{{ w.id }}" class="flex items-center justify-between rounded px-2 py-1 text-sm text-slate-200 hover:bg-slate-800">
+      <span class="truncate">{{ w.title }}</span>
+      <span class="mono text-[11px] text-slate-500">{{ (w.edited_at or '')[:16] }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/cases/{{ case.id }}/writeups" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+    <h2 class="text-sm font-semibold text-slate-200">New write-up</h2>
+    {% if request.query_params.get('error') %}<p class="text-xs text-rose-400">Select at least one pinned item.</p>{% endif %}
+    <label class="block text-xs text-slate-400">Title
+      <input name="title" maxlength="300" placeholder="{{ case.name }}: write-up"
+             class="mt-0.5 w-full rounded bg-slate-950 border border-slate-700 px-2 py-1 text-sm text-slate-200" /></label>
+    {% if items %}
+    <div class="max-h-96 overflow-y-auto rounded border border-slate-800 p-2 space-y-1">
+      {% for it in items %}
+      <label class="flex items-start gap-2 text-sm text-slate-300">
+        <input type="checkbox" name="item" value="{{ it.id }}" class="mt-1 accent-amber-500" />
+        <span><span class="mono text-[11px] text-slate-500">#{{ it.id }}</span> {{ it.title or (it.summary or it.content or '')[:120] }}
+          {% if it.id in edited %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-violet-950 text-violet-300 border border-violet-800">edited</span>{% endif %}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button class="px-3 py-1.5 rounded text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium">Create draft from selected items</button>
+    <p class="text-xs text-slate-500">The draft lists each item with its (edited) summary; you edit the text before publishing.</p>
+    {% else %}
+    <p class="text-sm text-slate-500">No items pinned to this case yet.</p>
+    {% endif %}
+  </form>
+</section>
+{% endblock %}

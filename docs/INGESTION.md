@@ -249,7 +249,9 @@ How it reads:
    them.
 
 How the vault is read:
-- The folder is **only read, never changed**.
+- The import **only reads** the folder. (Writing notes back is a separate,
+  opt-in feature limited to one subfolder; see [PUBLISHING.md](PUBLISHING.md).
+  Notes Nexus wrote itself are skipped by the import.)
 - Hidden folders (`.obsidian/`, `.trash/`, `.git/`…) are skipped, and a
   symlink never leads out of the vault.
 - Frontmatter is parsed with `yaml.safe_load` only.
@@ -275,7 +277,9 @@ Documents**. A ZIP with an `.obsidian/` folder is recognised and parsed the
 same way.
 
 **Export the other way:** on a case page, **"Obsidian: export case (.zip)"**
-writes the case as a vault you can open in Obsidian.
+writes the case as a vault you can open in Obsidian. To write single items or
+write-ups straight into your vault (or to Confluence), see
+[PUBLISHING.md](PUBLISHING.md).
 
 *Link graph:* wikilinks are searchable ("Linked notes") and kept as metadata,
 but they are not drawn in the entity graph yet. That graph is rebuilt from

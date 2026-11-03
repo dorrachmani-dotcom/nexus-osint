@@ -1,0 +1,18 @@
+<div class="space-y-1" data-publications>
+  <p class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Published to</p>
+  <ul class="space-y-0.5 text-xs">
+    {% for p in pubs %}
+    <li class="text-slate-400">
+      {% if p.target == 'confluence' %}Confluence{% elif p.target == 'obsidian' %}Obsidian{% else %}Knowledge pool{% endif %}:
+      {% if p.url and (p.url.startswith('http://') or p.url.startswith('https://')) %}
+      <a href="{{ p.url | safe_url }}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300">{{ p.title or p.remote_id }}</a>
+      {% elif p.url and p.url.startswith('obsidian://') %}
+      <a href="{{ p.url }}" class="text-violet-300 hover:text-violet-200" title="Open in Obsidian">{{ p.location or p.remote_id }}</a>
+      {% elif p.url and p.url.startswith('/') and not p.url.startswith('//') %}
+      <a href="{{ p.url }}" class="text-sky-400 hover:text-sky-300">{{ p.title or 'document' }}</a>
+      {% else %}<span class="text-slate-300">{{ p.location or p.title or p.remote_id }}</span>{% endif %}
+      <span class="mono text-slate-600">{{ (p.published_at or '')[:16] }}{% if p.mode == 'append' %} &middot; section{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>

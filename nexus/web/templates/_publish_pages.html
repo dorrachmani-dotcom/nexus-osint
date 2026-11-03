@@ -1,0 +1,12 @@
+{% if pages %}
+<div class="max-h-40 overflow-y-auto rounded border border-slate-800 p-1.5 space-y-0.5">
+  {% for pg in pages %}
+  <label class="flex items-center gap-2 text-slate-300 truncate">
+    <input type="radio" name="page" value="{{ pg.id }}|{{ pg.title }}" class="accent-amber-500" />
+    <span class="truncate">{{ pg.title }} <span class="mono text-slate-500">{{ pg.space }}</span></span>
+  </label>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-slate-500">No pages found.</p>
+{% endif %}

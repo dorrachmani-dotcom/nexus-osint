@@ -1,0 +1,12 @@
+<div class="space-y-2" data-publish-preview>
+  <p class="text-slate-300"><span class="text-slate-500">Destination:</span> {{ p.destination }}</p>
+  {% if p.target == 'confluence' %}<p class="text-slate-500">Exactly this Confluence storage-format XHTML will be sent{% if p.mode == 'append' %} (as a section at the end of the page; republishing replaces only this section){% endif %}:</p>
+  {% elif p.target == 'obsidian' %}<p class="text-slate-500">Exactly this note will be written (anything you add below the <span class="mono">%% nexus:end %%</span> line is kept on republish):</p>
+  {% else %}<p class="text-slate-500">Exactly this text will be added to the knowledge pool:</p>{% endif %}
+  <pre class="max-h-72 overflow-auto rounded border border-slate-800 bg-slate-950 p-2 text-[11px] text-slate-300 whitespace-pre-wrap mono">{{ p.payload }}</pre>
+  <form hx-post="/publish/confirm" hx-target="closest [data-publish-preview]" hx-swap="outerHTML" class="flex items-center gap-2">
+    <input type="hidden" name="token" value="{{ p.token }}" />
+    <button class="px-2 py-1 rounded text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium">Confirm &amp; publish</button>
+    <span class="text-slate-500">Nothing has been sent yet. The preview expires in 15 minutes.</span>
+  </form>
+</div>

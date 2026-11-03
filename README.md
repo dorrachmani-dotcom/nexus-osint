@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)
 
-[Quickstart](#quickstart) · [Tour](#a-guided-tour) · [Features](docs/FEATURES.md) · [Ingestion](docs/INGESTION.md) · [Overview](docs/OVERVIEW.md) · [User Guide](docs/USER_GUIDE.md) · [Developer Guide](docs/DEVELOPER_GUIDE.md) · [Roadmap](docs/ROADMAP.md) · [Security](SECURITY.md)
+[Quickstart](#quickstart) · [Tour](#a-guided-tour) · [Features](docs/FEATURES.md) · [Ingestion](docs/INGESTION.md) · [Publishing](docs/PUBLISHING.md) · [Overview](docs/OVERVIEW.md) · [User Guide](docs/USER_GUIDE.md) · [Developer Guide](docs/DEVELOPER_GUIDE.md) · [Roadmap](docs/ROADMAP.md) · [Security](SECURITY.md)
 
 </div>
 
@@ -106,6 +106,11 @@ answers from. Intranet hosts are reached only after you allow-list them, and
 secrets stay in `.env`. With a cloud AI provider, your material is kept away
 from it unless you tick "Allow cloud AI". Step-by-step setup, `.env` keys and
 limits: **[docs/INGESTION.md](docs/INGESTION.md)**.
+
+The other way works too: edit an item or compose a write-up from pinned items,
+then publish it to Confluence, a note in your Obsidian vault or the knowledge
+pool, always after a preview and a click, with writing off until you allow it:
+**[docs/PUBLISHING.md](docs/PUBLISHING.md)**.
 
 ## Quickstart
 

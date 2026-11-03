@@ -5,6 +5,12 @@
 {% elif result.ok %}
 <div class="text-xs space-y-1.5">
   <p class="text-emerald-300">Connected. {{ result.spaces|length }} space{{ '' if result.spaces|length == 1 else 's' }} readable with this account.</p>
+  {% if result.write %}
+  <p class="text-slate-400">Write permission (create pages):
+    {% for w in result.write %}<span class="mono">{{ w.key }}</span>
+      {% if w.write is none %}<span class="text-slate-500">unknown</span>{% elif w.write %}<span class="text-emerald-300">yes</span>{% else %}<span class="text-rose-400">no</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+    &middot; publishing is {% if result.allow_publish %}<span class="text-amber-300">allowed</span>{% else %}<span class="text-slate-300">off</span>{% endif %} for this connection.</p>
+  {% endif %}
   {% if result.spaces %}
   <form hx-post="/sources/confluence/{{ source.id }}/spaces" hx-target="#confluence-list" hx-swap="outerHTML" class="space-y-1.5">
     <div class="max-h-48 overflow-y-auto rounded border border-slate-800 p-2 grid grid-cols-2 gap-1">

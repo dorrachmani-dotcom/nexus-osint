@@ -115,14 +115,29 @@ def confluence_delete(request: Request, source_id: int) -> HTMLResponse:
 @router.post("/sources/confluence/{source_id}/test", response_class=HTMLResponse)
 async def confluence_test(request: Request, source_id: int) -> HTMLResponse:
     """Connect, list the spaces this account can read, and offer them to pick."""
+    from nexus.publish.confluence import ConfluencePublisher
+
     src = _source(source_id)
     if src is None:
         return HTMLResponse('<span class="text-rose-400">Connection not found.</span>')
-    result = await run_in_threadpool(src.test_connection)
+    # Also reports whether the token may write (create pages) in the chosen spaces.
+    result = await run_in_threadpool(ConfluencePublisher(src.cfg, get_settings()).test_write)
     return TEMPLATES.TemplateResponse(
         request, "_confluence_test.html",
         {"result": result, "source": src.cfg, "chosen": set(src.spaces())},
     )
+
+
+@router.post("/sources/confluence/{source_id}/publishing", response_class=HTMLResponse)
+def confluence_publishing(request: Request, source_id: int) -> HTMLResponse:
+    """The explicit opt-in "Allow publishing to Confluence" (off by default)."""
+    from nexus.storage.publishing import set_confluence_publish
+
+    with get_connection() as conn:
+        row = get_confluence_source(conn, source_id)
+        if row:
+            set_confluence_publish(conn, source_id, not row.get("allow_publish"))
+    return TEMPLATES.TemplateResponse(request, "_confluence_list.html", _context())
 
 
 @router.post("/sources/confluence/{source_id}/spaces", response_class=HTMLResponse)
@@ -226,6 +241,30 @@ def obsidian_delete(request: Request, vault_id: int) -> HTMLResponse:
             forget_source(conn, "obsidian", vault_id, row["name"])
         delete_obsidian_vault(conn, vault_id)
     return TEMPLATES.TemplateResponse(request, "_obsidian_list.html", _obsidian_context())
+
+
+@router.post("/sources/obsidian/{vault_id}/writing", response_class=HTMLResponse)
+async def obsidian_writing(request: Request, vault_id: int) -> HTMLResponse:
+    """The explicit opt-in "Allow writing to the vault" and Nexus's subfolder."""
+    from nexus.publish.vault import clean_folder
+    from nexus.storage.obsidian_vaults import get_obsidian_vault
+    from nexus.storage.publishing import set_vault_write
+
+    form = await request.form()
+    error = None
+    folder = clean_folder(form.get("write_folder"))
+    with get_connection() as conn:
+        row = get_obsidian_vault(conn, vault_id)
+        if row is None:
+            error = "Vault not found."
+        elif folder is None:
+            error = ("Write folder not saved: use a plain relative folder inside the vault "
+                     "(like Nexus or Nexus/Notes), no '..' or hidden folders.")
+        else:
+            set_vault_write(conn, vault_id, bool(form.get("allow_write")), folder)
+    ctx = _obsidian_context()
+    ctx["error"] = error
+    return TEMPLATES.TemplateResponse(request, "_obsidian_list.html", ctx)
 
 
 @router.post("/sources/obsidian/{vault_id}/test", response_class=HTMLResponse)
