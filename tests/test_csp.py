@@ -41,7 +41,7 @@ def test_templates_have_no_inline_code():
     for f in TEMPLATES:
         text = f.read_text(encoding="utf-8")
         text = re.sub(r"\{#.*?#\}", "", text, flags=re.S)  # Jinja comments
-        for m in re.finditer(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>", text, re.S):
+        for m in re.finditer(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script\s*>", text, re.S | re.I):
             attrs, body = m.group("attrs"), m.group("body").strip()
             if 'type="application/json"' in attrs:
                 continue

@@ -29,6 +29,9 @@
     closeItemDrawer: 1, nexusToggleTerms: 1, toggleKind: 1, resetKinds: 1
   };
 
+  // Destinations for the 'goto' action.
+  var GOTO = { brief: '/brief' };
+
   function briefRefresh() {
     if (typeof window.nexusBriefRefresh === 'function') window.nexusBriefRefresh();
   }
@@ -116,7 +119,8 @@
     'fade-closest': function (el, sel) { var t = el.closest(sel); if (t) t.classList.add('opacity-60'); },
     'hide-closest': function (el, sel) { var t = el.closest(sel); if (t) t.style.display = 'none'; },
     'close-closest': function (el, sel) { var t = el.closest(sel); if (t) t.open = false; },
-    'goto': function (el, url) { if (url.charAt(0) === '/' && url.charAt(1) !== '/') window.location.href = url; },
+    // Navigate to one of a fixed set of app pages (never a URL from markup).
+    'goto': function (el, name) { if (GOTO.hasOwnProperty(name)) window.location.assign(GOTO[name]); },
     'case-rename': function (el) {
       var v = (el.querySelector('[name=name]') || {}).value;
       v = (v || '').trim();

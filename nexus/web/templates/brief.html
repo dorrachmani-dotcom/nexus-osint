@@ -5,7 +5,7 @@
      must NOT try to swap its response into the Brief — instead reload /brief. #}
   <button hx-post="/scan" hx-swap="none"
           hx-indicator="#brief-spin"
-          data-done="goto:/brief"
+          data-done="goto:brief"
           title="Collect from every source (can take a minute or two)"
           class="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-semibold whitespace-nowrap">
     Scan now</button>
