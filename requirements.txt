@@ -58,6 +58,11 @@ python-pptx==1.0.2          # PowerPoint .pptx (MIT)
 defusedxml==0.7.1           # safe XML parsing: no entity bombs / external refs (PSF)
 PyYAML==6.0.3               # Obsidian note frontmatter, yaml.safe_load only (MIT)
 
+# --- Encryption at rest (opt-in, off by default) ---
+# AES-256-GCM + HKDF for uploaded originals and evidence files. Guarded import:
+# without it the Settings option is shown as unavailable. Apache-2.0 / BSD-3-Clause.
+cryptography==50.0.2
+
 # --- Entity graph (Maltego replacement) ---
 networkx==3.6.1
 pyvis==0.3.2

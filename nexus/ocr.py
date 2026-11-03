@@ -15,6 +15,7 @@ result instead of raising — callers simply store no OCR text and move on.
 
 from __future__ import annotations
 
+import io
 import logging
 from pathlib import Path
 
@@ -52,6 +53,19 @@ def extract_text(image_path: str | Path) -> str | None:
     if not path.exists():
         return None
     try:
+        from nexus.security.atrest import read_protected
+
+        data = read_protected(path)
+    except Exception as exc:  # unreadable, or encrypted while locked
+        logger.warning("OCR skipped for %s: %s", path.name, exc)
+        return None
+    return extract_text_from_bytes(data)
+
+
+def extract_text_from_bytes(data: bytes) -> str | None:
+    """Like :func:`extract_text`, for image bytes held in memory (so an
+    encrypted-at-rest screenshot is never written out as plaintext by us)."""
+    try:
         import pytesseract
         from PIL import Image
     except ImportError:
@@ -59,10 +73,10 @@ def extract_text(image_path: str | Path) -> str | None:
         return None
 
     try:
-        with Image.open(path) as img:
+        with Image.open(io.BytesIO(data)) as img:
             raw = pytesseract.image_to_string(img)
     except Exception as exc:  # engine missing, bad image, etc.
-        logger.warning("OCR failed for %s: %s", path.name, exc)
+        logger.warning("OCR failed: %s", exc)
         return None
 
     text = _clean(raw)

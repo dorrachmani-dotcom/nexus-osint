@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import mimetypes
 import os
 import re
 import threading
@@ -29,6 +30,8 @@ from nexus import __version__
 from nexus.collector import Collector
 from nexus.config import get_settings
 from nexus.db import get_connection, init_db
+from nexus.security import atrest
+from nexus.security.atrest import EncryptionError, LockedError, needs_decrypt, read_protected
 from nexus.storage import fail_stale_archive_jobs, get_meta, set_meta
 from nexus.web.common import (
     FEED_PAGE_SIZE,
@@ -46,6 +49,7 @@ from nexus.web.routers import (
     connectors,
     demo,
     documents,
+    encryption,
     entity,
     feed,
     graph,
@@ -145,6 +149,11 @@ async def lifespan(app: FastAPI):
     # Re-run after uvicorn has installed its own log handlers, so the secret
     # redaction filter covers those too.
     install_log_redaction()
+    # Encryption at rest (opt-in): unlock through Windows / the environment if
+    # configured, otherwise the UI shows /unlock. Leftover plaintext files are
+    # converted in the background once unlocked.
+    if atrest.try_auto_unlock():
+        atrest.start_background_conversion()
     init_db()
     # Archive jobs queued before a restart were lost with the in-memory queue.
     try:
@@ -248,6 +257,16 @@ def evidence_file(name: str) -> Response:
         match = None
     if match is None:
         return PlainTextResponse("Not found", status_code=404)
+    if needs_decrypt(match):
+        try:
+            body = read_protected(match)
+        except LockedError:
+            return PlainTextResponse("Locked", status_code=423)
+        except EncryptionError:
+            logger.warning("An evidence file failed its integrity check")
+            return PlainTextResponse("Evidence file is damaged", status_code=500)
+        media = mimetypes.guess_type(name)[0] or "application/octet-stream"
+        return Response(body, media_type=media, headers={"X-Content-Type-Options": "nosniff"})
     return FileResponse(match, headers={"X-Content-Type-Options": "nosniff"})
 
 
@@ -285,6 +304,7 @@ ROUTERS = (
     web_sources,
     connectors,
     publish,
+    encryption,
 )
 for _module in ROUTERS:
     app.include_router(_module.router)

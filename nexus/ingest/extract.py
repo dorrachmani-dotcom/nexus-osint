@@ -35,10 +35,8 @@ import email.policy
 import io
 import json
 import logging
-import os
 import posixpath
 import re
-import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from email.message import EmailMessage
@@ -802,22 +800,12 @@ def _x_eml(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
 
 # --- Images ---------------------------------------------------------------
 def _x_image(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
-    from nexus.ocr import extract_text, ocr_available
+    from nexus.ocr import extract_text_from_bytes, ocr_available
 
     if not ocr_available():
         ctx.note("image stored without text: OCR needs the Tesseract engine")
         return []
-    suffix = "." + (_ext(filename) or "png")
-    fd, tmp = tempfile.mkstemp(suffix=suffix, prefix="nexus-ocr-")
-    try:
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(data)
-        text = extract_text(tmp) or ""
-    finally:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            logger.debug("could not remove OCR temp file", exc_info=True)
+    text = extract_text_from_bytes(data) or ""
     out: list[Section] = []
     if not text:
         ctx.note(f"no text found in image '{safe_display_name(filename)}'")

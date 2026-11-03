@@ -247,6 +247,12 @@ limits: [INGESTION.md](INGESTION.md).
   intelligence requirement, write a case note, or open a page. By design it only
   ever performs **constructive, local** actions — it cannot delete anything,
   change settings/keys/the AI provider, or send your data anywhere.
+- **Encryption at rest (opt-in)** — Settings › Encryption at rest encrypts
+  uploaded originals and evidence screenshots on disk (AES-256-GCM, 1 MiB
+  authenticated chunks). Set a passphrase, write down the one-time recovery
+  code, and optionally let Windows unlock it for your account. Otherwise Nexus
+  starts locked and asks for the passphrase. Existing files are converted in
+  the background. Evidence hashes stay the SHA-256 of the original image.
 - **Security center** — a built-in, fully local defensive layer (`/security`):
   an **egress monitor** that records every outbound connection the app makes and
   flags any destination that isn't an AI provider, a configured source, or the

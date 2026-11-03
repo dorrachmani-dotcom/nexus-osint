@@ -38,6 +38,7 @@ from pathlib import Path
 
 from nexus.config import get_settings
 from nexus.db import last_row_id
+from nexus.security.atrest import EncryptionError, read_protected, write_protected
 from nexus.storage import get_meta, set_meta
 
 logger = logging.getLogger("nexus.transfer")
@@ -241,8 +242,8 @@ def export_bundle(
         zf.writestr("data.json", data_bytes)
         for arcname, src in evidence_files.items():
             try:
-                zf.write(src, arcname)
-            except OSError:
+                zf.writestr(arcname, read_protected(src))
+            except (OSError, EncryptionError):
                 logger.warning("Could not add evidence file %s to bundle", src)
 
     if only_new:
@@ -436,7 +437,7 @@ def import_bundle(conn: sqlite3.Connection, blob: bytes) -> dict:
             except KeyError:
                 file_bytes = None
             if file_bytes is not None:
-                (ev_dir / name).write_bytes(file_bytes)
+                write_protected(ev_dir / name, file_bytes)
             conn.execute(
                 "INSERT INTO evidence (item_id, screenshot, sha256, captured_at, ocr_text) "
                 "VALUES (?, ?, ?, ?, ?)",

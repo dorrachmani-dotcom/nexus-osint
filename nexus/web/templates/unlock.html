@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus-OSINT is locked</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen flex items-center justify-center">
+  <main class="w-full max-w-md p-6 space-y-4">
+    <h1 class="text-lg font-semibold">&#128274; Nexus-OSINT is locked</h1>
+    <p class="text-sm text-slate-400">
+      Stored files are encrypted at rest. Enter your passphrase (or the recovery code) to continue.
+    </p>
+    <form method="post" action="/unlock" class="space-y-3">
+      <input type="password" name="passphrase" autocomplete="current-password" autofocus required
+             aria-label="Passphrase or recovery code"
+             class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+      <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5"
+              {% if wait %}disabled{% endif %}>Unlock</button>
+      {% if error %}<p class="text-xs text-rose-400" role="alert">{{ error }}</p>{% endif %}
+    </form>
+  </main>
+</body>
+</html>

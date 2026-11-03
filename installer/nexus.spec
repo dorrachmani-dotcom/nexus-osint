@@ -103,6 +103,13 @@ for _pkg in ("reportlab", "xhtml2pdf", "html5lib", "svglib", "arabic_reshaper",
     binaries += _b
     hiddenimports += _h
 
+# Encryption at rest imports these lazily (only once the analyst enables it).
+hiddenimports += [
+    "nexus.security.atrest",
+    "cryptography.hazmat.primitives.ciphers.aead",
+    "cryptography.hazmat.primitives.kdf.hkdf",
+]
+
 # ------------------------------------------------------------------ excludes
 # Trim weight and avoid native-lib pitfalls. weasyprint needs GTK DLLs we don't
 # ship — the app already falls back to xhtml2pdf on Windows for PDF export.
