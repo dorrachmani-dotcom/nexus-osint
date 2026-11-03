@@ -37,8 +37,9 @@ one SQLite file you own, and every outbound connection can be audited.
 ## What it does
 
 - **Collects** from RSS, Google News, Reddit and GDELT with no API keys, plus
-  optional Twitter/X, Telegram, SERPAPI and Google CSE, any user-defined JSON API,
-  and wrapped OSINT CLI tools. Reddit works keyless through its public search
+  optional Twitter/X, Telegram, SERPAPI and Google CSE, any user-defined API
+  (JSON, NDJSON, XML, CSV, RSS/Atom or HTML; paging, Basic/bearer/OAuth2
+  client-credentials auth), and wrapped OSINT CLI tools. Reddit works keyless through its public search
   feed; the official Reddit Data API (`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`,
   for steady per-subreddit pulls) is optional and, since 2026, needs approval
   from Reddit before keys work. Commercial use needs a separate agreement with Reddit.

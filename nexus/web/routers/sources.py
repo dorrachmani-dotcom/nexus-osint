@@ -9,6 +9,8 @@ from nexus.config import get_settings
 from nexus.db import get_connection
 from nexus.envstore import (
     custom_source_env_name,
+    custom_source_headers_configured,
+    custom_source_headers_env_name,
     custom_source_key_configured,
     reload_settings,
     update_env,
@@ -34,11 +36,45 @@ _CUSTOM_FORM_FIELDS = (
     "name", "base_url", "endpoint", "http_method", "auth_type", "auth_param",
     "query_param", "extra_params", "items_path",
     "map_title", "map_content", "map_url", "map_author", "map_published", "notes",
+    "response_format", "pagination", "page_param", "page_size_param", "page_size",
+    "page_start", "cursor_path", "max_pages", "body_template", "extra_headers",
+    "tls_mode", "oauth_token_url", "oauth_scope",
 )
+_KEYED_AUTH = ("header", "query", "bearer", "basic", "oauth2")
 
 
 def _custom_cfg_from_form(form) -> dict:
     return {field: (form.get(field) or "") for field in _CUSTOM_FORM_FIELDS}
+
+
+def _save_custom_secrets(source_id: int, cfg: dict, form) -> str | None:
+    """Write the key and secret headers (if given) to .env. Returns an error
+    message for unusable secret headers, else None. Blank fields keep the
+    stored values."""
+    import json
+
+    updates: dict[str, str] = {}
+    api_key = str(form.get("api_key") or "").strip()
+    if api_key and cfg.get("auth_type") in _KEYED_AUTH:
+        updates[custom_source_env_name(source_id)] = api_key
+    error = None
+    raw_headers = str(form.get("secret_headers") or "").strip()
+    if raw_headers:
+        try:
+            parsed = json.loads(raw_headers)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, dict) and all(isinstance(v, (str, int)) for v in parsed.values()):
+            updates[custom_source_headers_env_name(source_id)] = json.dumps(
+                {str(k): str(v) for k, v in parsed.items()}
+            )
+        else:
+            error = ('Secret headers must be a JSON object such as {"X-Api-Key": "..."}; '
+                     "they were not saved.")
+    if updates:
+        update_env(updates)
+        reload_settings()
+    return error
 
 
 def _custom_sources_context() -> dict:
@@ -47,6 +83,7 @@ def _custom_sources_context() -> dict:
         rows = list_custom_sources(conn)
     for row in rows:
         row["key_set"] = custom_source_key_configured(row["id"])
+        row["headers_set"] = custom_source_headers_configured(row["id"])
     return {
         "custom_sources": rows,
         "ai_enabled": settings.analysis_enabled,
@@ -105,13 +142,9 @@ async def custom_source_create(request: Request) -> HTMLResponse:
     cfg = _custom_cfg_from_form(form)
     with get_connection() as conn:
         new_id = create_custom_source(conn, cfg)
-    api_key = str(form.get("api_key") or "").strip()
-    if api_key and cfg.get("auth_type") in ("header", "query", "bearer"):
-        update_env({custom_source_env_name(new_id): api_key})
-        reload_settings()
-    return TEMPLATES.TemplateResponse(
-        request, "_custom_source_list.html", _custom_sources_context()
-    )
+    error = _save_custom_secrets(new_id, cfg, form)
+    ctx = {**_custom_sources_context(), "list_error": error}
+    return TEMPLATES.TemplateResponse(request, "_custom_source_list.html", ctx)
 
 
 @router.post("/sources/custom/{source_id}/update", response_class=HTMLResponse)
@@ -121,13 +154,9 @@ async def custom_source_update(request: Request, source_id: int) -> HTMLResponse
     cfg = _custom_cfg_from_form(form)
     with get_connection() as conn:
         update_custom_source(conn, source_id, cfg)
-    api_key = str(form.get("api_key") or "").strip()
-    if api_key and cfg.get("auth_type") in ("header", "query", "bearer"):
-        update_env({custom_source_env_name(source_id): api_key})
-        reload_settings()
-    return TEMPLATES.TemplateResponse(
-        request, "_custom_source_list.html", _custom_sources_context()
-    )
+    error = _save_custom_secrets(source_id, cfg, form)
+    ctx = {**_custom_sources_context(), "list_error": error}
+    return TEMPLATES.TemplateResponse(request, "_custom_source_list.html", ctx)
 
 
 @router.post("/sources/custom/{source_id}/toggle", response_class=HTMLResponse)
@@ -144,7 +173,8 @@ def custom_source_delete(request: Request, source_id: int) -> HTMLResponse:
     with get_connection() as conn:
         delete_custom_source(conn, source_id)
     # Clear its secret from .env so no orphan key lingers.
-    update_env({custom_source_env_name(source_id): ""})
+    update_env({custom_source_env_name(source_id): "",
+                custom_source_headers_env_name(source_id): ""})
     return TEMPLATES.TemplateResponse(
         request, "_custom_source_list.html", _custom_sources_context()
     )
@@ -175,6 +205,11 @@ def custom_source_test(request: Request, source_id: int) -> HTMLResponse:
         else:
             items = src.fetch()
             result["count"] = len(items)
+            result["format"] = src.detected_format
+            if not items and src.last_error:
+                result["error"] = src.last_error
+            elif items and items[0].raw.get("flattened"):
+                result["flattened"] = True
             if items:
                 first = items[0]
                 result["sample_title"] = first.title or (first.content or "")[:120]

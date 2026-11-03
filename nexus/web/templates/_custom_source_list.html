@@ -1,4 +1,7 @@
 <div id="custom-source-list" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+  {% if list_error %}
+  <div class="rounded border border-rose-900/60 bg-rose-950/30 p-2 text-xs text-rose-300 mb-2">{{ list_error }}</div>
+  {% endif %}
   {% if not custom_sources %}
   <p class="text-sm text-slate-500">No custom sources yet. Add one above and it will be scanned on the next run.</p>
   {% else %}
@@ -15,7 +18,7 @@
             <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-500">disabled</span>
             {% endif %}
             {% set auth = (s.auth_type or 'none')|lower %}
-            {% if auth in ('header', 'query', 'bearer') %}
+            {% if auth in ('header', 'query', 'bearer', 'basic', 'oauth2') %}
               {% if s.key_set %}
               <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-sky-950/60 text-sky-300 border border-sky-800">key set</span>
               {% else %}
@@ -33,6 +36,12 @@
             {% endif %}
           </div>
           <div class="text-xs text-slate-500 mono truncate mt-0.5">{{ s.base_url }}{{ s.endpoint }}</div>
+          <div class="text-[11px] text-slate-600 mt-0.5">
+            {{ (s.response_format or 'auto') }} &middot; {{ (s.http_method or 'GET') }} &middot; auth: {{ auth }}
+            {% if s.pagination and s.pagination != 'none' %}&middot; pages: {{ s.pagination }} &times;{{ s.max_pages or 1 }}{% endif %}
+            {% if s.headers_set %}&middot; secret headers set{% endif %}
+            {% if s.tls_mode == 'insecure' %}&middot; <span class="text-rose-400">TLS not verified</span>{% endif %}
+          </div>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
           <button hx-post="/sources/custom/{{ s.id }}/test"

@@ -58,12 +58,14 @@
           <option value="header" {% if a == 'header' %}selected{% endif %}>header</option>
           <option value="query" {% if a == 'query' %}selected{% endif %}>query</option>
           <option value="bearer" {% if a == 'bearer' %}selected{% endif %}>bearer</option>
+          <option value="basic" {% if a == 'basic' %}selected{% endif %}>basic (user:password)</option>
+          <option value="oauth2" {% if a == 'oauth2' %}selected{% endif %}>OAuth2 client credentials</option>
         </select>
       </div>
       <div>
         <label class="text-xs text-slate-400">Auth param name</label>
         <input type="text" name="auth_param" value="{{ cfg.get('auth_param', '') }}"
-               placeholder="Authorization / api_key"
+               placeholder="Authorization / api_key / OAuth2 client ID"
                class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
       </div>
     </div>
@@ -71,10 +73,56 @@
     <div>
       <label class="text-xs text-slate-400">API key</label>
       <input type="password" name="api_key" autocomplete="off"
-             placeholder="paste key… (saved to .env only; leave blank if none)"
+             placeholder="key, user:password, or OAuth2 client secret (saved to .env only)"
              class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
-      <p class="text-[11px] text-slate-600 mt-0.5">Stored in <span class="mono">.env</span> only — never the database, never shown back. Only used when auth type is header, query or bearer.</p>
+      <p class="text-[11px] text-slate-600 mt-0.5">Stored in <span class="mono">.env</span> only — never the database, never shown back. Used for header, query, bearer, basic (<span class="mono">user:password</span>) and OAuth2 (client secret). Leave blank to keep the stored value.</p>
     </div>
+
+    <details class="rounded border border-slate-800 p-2.5" {% if cfg.get('oauth_token_url') or cfg.get('body_template') or (cfg.get('extra_headers') and cfg.get('extra_headers') != '{}') %}open{% endif %}>
+      <summary class="text-xs text-slate-400 cursor-pointer">Headers, POST body, OAuth2 &amp; certificates</summary>
+      <div class="mt-2 space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] text-slate-500">OAuth2 token URL</label>
+            <input type="url" name="oauth_token_url" value="{{ cfg.get('oauth_token_url', '') or '' }}"
+                   placeholder="https://auth.example.com/oauth/token"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-500">OAuth2 scope</label>
+            <input type="text" name="oauth_scope" value="{{ cfg.get('oauth_scope', '') or '' }}"
+                   placeholder="read (optional)"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+          </div>
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-500">Extra headers (JSON, not secret)</label>
+          <input type="text" name="extra_headers" value="{{ cfg.get('extra_headers', '') or '' }}"
+                 placeholder='{"Accept": "application/json"}'
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-500">Secret headers (JSON) &mdash; saved to the local <span class="mono">.env</span> only, never shown again</label>
+          <input type="password" name="secret_headers" autocomplete="off"
+                 placeholder='{"X-Api-Key": "...", "X-Tenant": "..."}'
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-500">POST body template (JSON; <span class="mono">{query}</span> is replaced by the search term)</label>
+          <textarea name="body_template" rows="2" placeholder='{"query": "{query}", "size": 50}'
+                    class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs mono">{{ cfg.get('body_template', '') or '' }}</textarea>
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-500">TLS certificate</label>
+          {% set t = (cfg.get('tls_mode') or 'verify') | lower %}
+          <select name="tls_mode" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm">
+            <option value="verify" {% if t == 'verify' %}selected{% endif %}>Verify normally (recommended)</option>
+            <option value="ca_bundle" {% if t == 'ca_bundle' %}selected{% endif %}>Trust my internal CA (set its file in Settings)</option>
+            <option value="insecure" {% if t == 'insecure' %}selected{% endif %}>Do NOT verify (self-signed; insecure)</option>
+          </select>
+        </div>
+      </div>
+    </details>
 
     <div class="grid grid-cols-2 gap-2">
       <div>
@@ -92,17 +140,80 @@
     </div>
 
     <div>
+      <label class="text-xs text-slate-400">Response format</label>
+      {% set f = (cfg.get('response_format') or 'auto') | lower %}
+      <select name="response_format"
+              class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono">
+        {% for v, label in [('auto', 'auto-detect'), ('json', 'JSON'), ('ndjson', 'NDJSON (one JSON per line)'), ('xml', 'XML'), ('csv', 'CSV'), ('rss', 'RSS / Atom'), ('html', 'HTML page')] %}
+        <option value="{{ v }}" {% if f == v %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
       <label class="text-xs text-slate-400">Extra query params (JSON)</label>
       <input type="text" name="extra_params" value="{{ cfg.get('extra_params', '') }}"
              placeholder='{"limit": 50, "lang": "en"}'
              class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
     </div>
 
+    {% set pg = (cfg.get('pagination') or 'none') | lower %}
+    <details class="rounded border border-slate-800 p-2.5" {% if pg != 'none' %}open{% endif %}>
+      <summary class="text-xs text-slate-400 cursor-pointer">Pagination (read more than one page)</summary>
+      <div class="mt-2 space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[11px] text-slate-500">Type</label>
+            <select name="pagination" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm">
+              {% for v, label in [('none', 'None (one page)'), ('page', 'Page number'), ('offset', 'Offset / limit'), ('cursor', 'Cursor from the response'), ('next_link', 'Next-page link (body or Link header)')] %}
+              <option value="{{ v }}" {% if pg == v %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-500">Max pages per scan (1&ndash;20)</label>
+            <input type="number" name="max_pages" min="1" max="20" value="{{ cfg.get('max_pages') or 1 }}"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-500">Page / offset / cursor param</label>
+            <input type="text" name="page_param" value="{{ cfg.get('page_param', '') or '' }}"
+                   placeholder="page / offset / cursor"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-500">First page number</label>
+            <input type="number" name="page_start" min="0" value="{{ cfg.get('page_start') if cfg.get('page_start') is not none else 1 }}"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-500">Page size param</label>
+            <input type="text" name="page_size_param" value="{{ cfg.get('page_size_param', '') or '' }}"
+                   placeholder="limit / per_page"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-500">Page size</label>
+            <input type="number" name="page_size" min="0" value="{{ cfg.get('page_size') or '' }}"
+                   placeholder="50"
+                   class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+          </div>
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-500">Cursor / next-link path in the response (blank = use the Link header)</label>
+          <input type="text" name="cursor_path" value="{{ cfg.get('cursor_path', '') or '' }}"
+                 placeholder="meta.next_cursor / links.next"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+        </div>
+      </div>
+    </details>
+
     <div class="border-t border-slate-800 pt-2">
       <p class="text-xs text-slate-400 mb-1">Field mapping — dotted path inside one item</p>
+      <p class="text-[11px] text-slate-600 mb-1">Leave content and title empty to store each record as readable <span class="mono">key: value</span> text.</p>
       <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="text-[11px] text-slate-500">Content (main text) <span class="text-rose-400">*</span></label>
+          <label class="text-[11px] text-slate-500">Content (main text)</label>
           <input type="text" name="map_content" value="{{ cfg.get('map_content', '') }}"
                  placeholder="text / body"
                  class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />

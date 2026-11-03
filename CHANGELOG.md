@@ -28,6 +28,16 @@ to [Semantic Versioning](https://semver.org/).
   internal connections show as "Internal network (allowed)" in the Security
   center.
 
+- Custom API sources read JSON, NDJSON, XML, CSV, RSS/Atom and HTML
+  (auto-detected), page through results (page number, offset/limit, cursor or
+  next link, capped per scan), authenticate with Basic or OAuth2 client
+  credentials besides header/query/bearer, send several secret headers, and POST
+  a JSON body template with `{query}`. Without a field mapping each record is
+  stored as readable text. Requests use the shared SSRF guard (internal
+  allow-list, per-source TLS, every redirect re-checked). The AI planner and
+  Auto-Adapt understand non-JSON samples. Existing sources keep working
+  unchanged; the database migrates automatically.
+
 ### Security
 - The web app no longer serves the whole data folder under `/data`. Before,
   anyone who could reach the local port could download the SQLite database,
@@ -49,6 +59,8 @@ to [Semantic Versioning](https://semver.org/).
   cleared by "End chat".
 
 ### Fixed
+- Auto-Adapt no longer fails when the AI answers that the response itself is
+  the list of items (an empty items path).
 - Sherlock's answers read as clean text: Markdown markers such as `**bold**`
   and `- ` bullets no longer show up literally (bullets become "•"). Answers
   are still displayed as text only, never as HTML.

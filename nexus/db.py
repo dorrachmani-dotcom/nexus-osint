@@ -407,6 +407,23 @@ def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
     return any(r["name"] == column for r in rows)
 
 
+_CUSTOM_SOURCE_V2_COLUMNS = (
+    ("response_format", "TEXT NOT NULL DEFAULT 'auto'"),  # auto|json|ndjson|xml|csv|rss|html
+    ("pagination", "TEXT NOT NULL DEFAULT 'none'"),       # none|page|offset|cursor|next_link
+    ("page_param", "TEXT"),                               # page / offset / cursor param name
+    ("page_size_param", "TEXT"),                          # limit / per_page param name
+    ("page_size", "INTEGER NOT NULL DEFAULT 0"),
+    ("page_start", "INTEGER NOT NULL DEFAULT 1"),         # first page number
+    ("cursor_path", "TEXT"),                              # dotted path to cursor / next link
+    ("max_pages", "INTEGER NOT NULL DEFAULT 1"),
+    ("body_template", "TEXT"),                            # POST JSON body with {query}
+    ("extra_headers", "TEXT NOT NULL DEFAULT '{}'"),      # non-secret headers (JSON)
+    ("tls_mode", "TEXT NOT NULL DEFAULT 'verify'"),       # verify | ca_bundle | insecure
+    ("oauth_token_url", "TEXT"),                          # OAuth2 client-credentials
+    ("oauth_scope", "TEXT"),
+)
+
+
 def init_db() -> None:
     """Create the schema if it does not exist. Idempotent."""
     with get_connection() as conn:
@@ -442,6 +459,12 @@ def init_db() -> None:
             conn.execute("ALTER TABLE custom_sources ADD COLUMN last_sample TEXT")
         if not _column_exists(conn, "custom_sources", "last_adapt_at"):
             conn.execute("ALTER TABLE custom_sources ADD COLUMN last_adapt_at TEXT")
+        # Flexible API sources: response format, pagination, more auth schemes,
+        # POST body template, headers and TLS. Defaults keep old rows behaving
+        # exactly as before (auto-detect only changes non-JSON responses).
+        for col, decl in _CUSTOM_SOURCE_V2_COLUMNS:
+            if not _column_exists(conn, "custom_sources", col):
+                conn.execute(f"ALTER TABLE custom_sources ADD COLUMN {col} {decl}")
         # Case hub: a case can hold sub-cases (one level) and own its questions.
         if not _column_exists(conn, "cases", "parent_id"):
             conn.execute(
