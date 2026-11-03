@@ -81,12 +81,18 @@ EDITABLE_KEYS: frozenset[str] = frozenset(
 # integer source id (never user input), so the pattern below can never be used to
 # write an arbitrary variable. These keys are honoured by update_env in addition
 # to EDITABLE_KEYS, keeping every custom source's API key in .env (not the DB).
-_CUSTOM_KEY_RE = re.compile(r"^CUSTOM_SOURCE_\d+_KEY$")
+_CUSTOM_KEY_RE = re.compile(r"^CUSTOM_SOURCE_\d+_(?:KEY|HEADERS)$")
 
 
 def custom_source_env_name(source_id: int) -> str:
-    """Canonical .env variable name holding a custom source's API key."""
+    """Canonical .env variable name holding a custom source's API key (or the
+    Basic ``user:password``, or the OAuth2 client secret)."""
     return f"CUSTOM_SOURCE_{int(source_id)}_KEY"
+
+
+def custom_source_headers_env_name(source_id: int) -> str:
+    """.env variable holding a custom source's secret headers (a JSON object)."""
+    return f"CUSTOM_SOURCE_{int(source_id)}_HEADERS"
 
 
 # Per-web-page-source secret (Basic "user:password", a bearer token, a header
@@ -223,3 +229,8 @@ def read_env_value(key: str) -> str | None:
 def custom_source_key_configured(source_id: int) -> bool:
     """Whether a custom source's API key is present in .env (value hidden)."""
     return bool(read_env_value(custom_source_env_name(source_id)))
+
+
+def custom_source_headers_configured(source_id: int) -> bool:
+    """Whether a custom source has secret headers in .env (values hidden)."""
+    return bool(read_env_value(custom_source_headers_env_name(source_id)))

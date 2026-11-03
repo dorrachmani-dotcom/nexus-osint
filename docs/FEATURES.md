@@ -144,8 +144,24 @@ walkthrough see the [Overview](OVERVIEW.md); for task-oriented usage see the
   and pulls their findings into a local entity graph (a lightweight
   link-analysis alternative built on networkx + pyvis).
 - **Custom API sources (self-service + self-healing)** — point Nexus at any
-  public JSON API; the AI planner reads its docs/sample response and writes the
-  field mapping for you. **Auto-Adapt** then watches each custom source: if the
+  API; the AI planner reads its docs/sample response and writes the
+  field mapping for you.
+  - *Formats:* JSON, NDJSON, XML (parsed safely with `defusedxml`), CSV,
+    RSS/Atom and HTML, auto-detected from the Content-Type and the body.
+  - *Pagination:* page number, offset/limit, a cursor read from the response
+    (dotted path), or a next-page link (body path or the `Link` header), always
+    capped by "max pages" (1-20). A next link may never leave the API host.
+  - *Auth:* none, header, query parameter, bearer, Basic, OAuth2 client
+    credentials (the access token is cached in memory only), plus any number of
+    secret headers. Keys, passwords, client secrets and secret headers live in
+    `.env` (`CUSTOM_SOURCE_<id>_KEY`, `CUSTOM_SOURCE_<id>_HEADERS`), never the
+    database or the page.
+  - *POST* bodies from a JSON template with a `{query}` placeholder.
+  - *No mapping needed:* without a content/title mapping each record is stored
+    as readable `key: value` text, so items still arrive.
+  - Every request (and every redirect hop) goes through the same SSRF policy as
+    web pages, including the opt-in internal allow-list and per-source TLS
+    (internal CA or, explicitly, no verification). **Auto-Adapt** then watches each custom source: if the
   API keeps responding but its response shape drifts (so nothing is collected),
   the AI automatically re-maps the fields from the latest response — bounded by
   a threshold and a cooldown, and only when an AI provider is connected.

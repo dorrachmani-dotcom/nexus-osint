@@ -14,10 +14,36 @@ _CUSTOM_FIELDS = (
     "name", "enabled", "base_url", "endpoint", "http_method", "auth_type",
     "auth_param", "query_param", "extra_params", "items_path",
     "map_title", "map_content", "map_url", "map_author", "map_published", "notes",
+    "response_format", "pagination", "page_param", "page_size_param", "page_size",
+    "page_start", "cursor_path", "max_pages", "body_template", "extra_headers",
+    "tls_mode", "oauth_token_url", "oauth_scope",
 )
 
 
-_CUSTOM_AUTH_TYPES = {"none", "header", "query", "bearer"}
+_CUSTOM_AUTH_TYPES = {"none", "header", "query", "bearer", "basic", "oauth2"}
+_CUSTOM_FORMATS = {"auto", "json", "ndjson", "xml", "csv", "rss", "html"}
+_CUSTOM_PAGINATION = {"none", "page", "offset", "cursor", "next_link"}
+_CUSTOM_TLS = {"verify", "ca_bundle", "insecure"}
+
+
+def _bounded_int(value, default: int, lo: int, hi: int) -> int:
+    try:
+        n = int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+    return max(lo, min(hi, n))
+
+
+def _json_dict(value) -> str:
+    """A dict (or JSON text of one) as canonical JSON; anything else -> {}."""
+    if isinstance(value, str):
+        try:
+            value = json.loads(value) if value.strip() else {}
+        except (ValueError, TypeError):
+            value = {}
+    if not isinstance(value, dict):
+        value = {}
+    return json.dumps(value)
 
 
 _CUSTOM_METHODS = {"GET", "POST"}
@@ -50,6 +76,23 @@ def _clean_custom(cfg: dict) -> dict:
     for key in ("map_title", "map_content", "map_url", "map_author", "map_published"):
         out[key] = (cfg.get(key) or "").strip()[:200] or None
     out["notes"] = (cfg.get("notes") or "").strip()[:4000] or None
+    fmt = (cfg.get("response_format") or "auto").strip().lower()
+    out["response_format"] = fmt if fmt in _CUSTOM_FORMATS else "auto"
+    pag = (cfg.get("pagination") or "none").strip().lower()
+    out["pagination"] = pag if pag in _CUSTOM_PAGINATION else "none"
+    out["page_param"] = (cfg.get("page_param") or "").strip()[:120] or None
+    out["page_size_param"] = (cfg.get("page_size_param") or "").strip()[:120] or None
+    out["page_size"] = _bounded_int(cfg.get("page_size"), 0, 0, 1000)
+    out["page_start"] = _bounded_int(cfg.get("page_start"), 1, 0, 1000)
+    out["cursor_path"] = (cfg.get("cursor_path") or "").strip()[:200] or None
+    out["max_pages"] = _bounded_int(cfg.get("max_pages"), 1, 1, 20)
+    out["body_template"] = (cfg.get("body_template") or "").strip()[:4000] or None
+    # Non-secret headers only; secret headers live in .env (CUSTOM_SOURCE_<id>_HEADERS).
+    out["extra_headers"] = _json_dict(cfg.get("extra_headers"))
+    tls = (cfg.get("tls_mode") or "verify").strip().lower()
+    out["tls_mode"] = tls if tls in _CUSTOM_TLS else "verify"
+    out["oauth_token_url"] = (cfg.get("oauth_token_url") or "").strip()[:500] or None
+    out["oauth_scope"] = (cfg.get("oauth_scope") or "").strip()[:300] or None
     return out
 
 
@@ -170,6 +213,8 @@ def apply_custom_source_remap(
         if f in mapping:
             val = mapping[f]
             val = (str(val).strip()[:200] or None) if val not in (None, "") else None
+            if f == "items_path":
+                val = val or ""  # NOT NULL: "" means "the response is the list"
             sets.append(f"{f} = ?")
             params.append(val)
     sets.append("consecutive_empty = 0")

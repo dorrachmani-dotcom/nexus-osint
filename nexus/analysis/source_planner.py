@@ -1,7 +1,7 @@
 """AI-assisted planner for user-defined API sources.
 
-Given an API's documentation (a URL we fetch, and/or a pasted sample JSON
-response), the analyst's chosen AI provider works out how to pull data from it:
+Given an API's documentation (a URL we fetch, and/or a pasted sample response
+in JSON, NDJSON, XML, CSV, RSS/Atom or HTML), the analyst's chosen AI provider works out how to pull data from it:
 the base URL, how it authenticates, which endpoint to call, where the list of
 items lives in the response, and which field is the title/text/link/author/date.
 
@@ -38,11 +38,22 @@ _ALLOWED_KEYS = {
     "name", "base_url", "endpoint", "http_method", "auth_type", "auth_param",
     "query_param", "extra_params", "items_path",
     "map_title", "map_content", "map_url", "map_author", "map_published", "notes",
+    "response_format", "pagination", "page_param", "page_size_param", "page_size",
+    "page_start", "cursor_path", "max_pages", "body_template", "extra_headers",
+    "oauth_token_url", "oauth_scope",
 }
+# Never accepted from the model: TLS verification is the analyst's security call.
 
 _SYSTEM_PROMPT = """You are an OSINT integration assistant. Your job is to read an \
-API's documentation and/or a sample JSON response and produce a JSON configuration \
+API's documentation and/or a sample response and produce a JSON configuration \
 that a generic collector will use to pull public content from that API.
+
+The collector reads JSON, NDJSON, XML, CSV, RSS/Atom and HTML. A non-JSON sample \
+is shown to you already CONVERTED to JSON exactly as the collector sees it: XML \
+becomes {"root_tag": {"child": ..., "@attr": ...}} (repeated children become \
+arrays); CSV, NDJSON and RSS become an array of records (RSS records have title, \
+link, summary, author, published, id); HTML becomes [{"title", "text", "url"}]. \
+Write every dotted path against that converted JSON.
 
 Return ONLY a single JSON object (no prose, no markdown fences) with these keys:
 - name: a short human label for the source (e.g. "ACLED conflict events").
@@ -50,25 +61,46 @@ Return ONLY a single JSON object (no prose, no markdown fences) with these keys:
 - endpoint: the path appended to base_url, e.g. "/v1/posts". It MAY contain the \
 literal token {query} where a search term should be inserted into the path.
 - http_method: "GET" or "POST".
-- auth_type: one of "none", "header", "query", "bearer".
+- body_template: for POST only, the JSON request body as a string, with the \
+literal token {query} where the search term goes (inside a JSON string). null \
+for GET.
+- auth_type: one of "none", "header", "query", "bearer", "basic", "oauth2" \
+(OAuth2 client credentials).
 - auth_param: the header name (for header/bearer) or query-parameter name (for \
-query auth) that carries the API key. Use null when auth_type is "none". For \
-"bearer" this is usually "Authorization".
+query auth) that carries the API key; for "oauth2" the client ID only if the \
+docs show a public one, else null. Use null when auth_type is "none" or \
+"basic". For "bearer" this is usually "Authorization".
+- oauth_token_url, oauth_scope: the OAuth2 token endpoint and scope (oauth2 \
+only), else null.
+- extra_headers: a JSON object of constant NON-secret headers (e.g. \
+{"Accept": "application/json"}). Use {} if none. Never put keys or tokens here.
 - query_param: the query-parameter name that should carry the analyst's search \
 term, or null if this endpoint takes no search term.
 - extra_params: a JSON object of constant query parameters always sent (e.g. \
 {"limit": 50, "lang": "en"}). Use {} if none.
-- items_path: the dotted path to the ARRAY of items inside the JSON response \
-(e.g. "data.results"). Use "" if the response is itself the array.
+- response_format: "auto" unless the docs say otherwise ("json", "ndjson", \
+"xml", "csv", "rss", "html").
+- items_path: the dotted path to the ARRAY of items inside the (converted) JSON \
+response (e.g. "data.results"). Use "" if the response is itself the array.
+- pagination: "none", "page" (page number), "offset" (offset/limit), "cursor" \
+(a cursor from the response is sent back), or "next_link" (the response gives \
+the next page URL, in the body or the Link header).
+- page_param: the query parameter carrying the page number / offset / cursor \
+(null for none and next_link). page_size_param, page_size: the limit parameter \
+and a sensible value (null / 0 if none). page_start: the first page number \
+(usually 1). cursor_path: the dotted path to the next cursor (cursor) or the \
+next page URL (next_link; null when it is in the Link header). max_pages: pages \
+to read per scan (1-5 is usually enough).
 - map_title, map_content, map_url, map_author, map_published: the dotted path \
 WITHIN one item object to that field. map_content (the main text) is the most \
-important. Use null for any field the API does not provide.
+important. Use null for any field the API does not provide (with no mapping at \
+all, each record is stored as readable "key: value" text).
 - notes: one or two sentences explaining how this source works and what data it \
 returns, for the analyst to review.
 
 Never invent endpoints or fields that are not supported by the provided material. \
 If something is unknown, use null and explain the gap in notes. Do NOT include \
-the API key itself anywhere in the output."""
+the API key, token or any secret anywhere in the output."""
 
 
 def _fetch_docs(url: str) -> str:
@@ -133,6 +165,11 @@ def _coerce_config(data: dict) -> dict:
         out["extra_params"] = json.dumps(extra)
     elif not isinstance(extra, str):
         out["extra_params"] = "{}"
+    if "extra_headers" in out:
+        headers = out["extra_headers"]
+        out["extra_headers"] = json.dumps(headers) if isinstance(headers, dict) else "{}"
+    if isinstance(out.get("body_template"), (dict, list)):
+        out["body_template"] = json.dumps(out["body_template"])
     # Null -> empty string for the simple text fields (storage handles the rest).
     for key in list(out.keys()):
         if out[key] is None:
@@ -173,9 +210,16 @@ def plan_source(
                 f"(Could not fetch {docs_url.strip()} — rely on the hint/sample.)"
             )
     if sample:
-        parts.append(
-            "Sample JSON response from the API:\n" + sample.strip()[:_SAMPLE_MAX_CHARS]
-        )
+        from nexus.sources.api_formats import sample_preview
+
+        fmt, preview = sample_preview(sample, _SAMPLE_MAX_CHARS)
+        if fmt == "json":
+            parts.append("Sample JSON response from the API:\n" + preview)
+        else:
+            parts.append(
+                f"Sample response from the API (detected format: {fmt}), converted "
+                f"to JSON the way the collector sees it:\n{preview}"
+            )
     if not parts:
         return {"ok": False, "error": "Provide a docs URL, a sample response, or a hint."}
 
