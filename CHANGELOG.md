@@ -16,6 +16,14 @@ to [Semantic Versioning](https://semver.org/).
   (rate-limited). Existing files are converted in the background; evidence
   hashes stay those of the original images. CLI: `python -m nexus.security.atrest`.
 
+- Backup & restore (Settings › Backup & restore): one archive with the
+  database (consistent copy via SQLite's backup API), uploaded documents,
+  evidence, saved reports, the encryption keystore and the non-secret settings;
+  API keys, tokens and passwords are never included. Optionally protected with a
+  passphrase (AES-256-GCM). Restore validates everything before touching data
+  (format and version check, zip-slip and ZIP-bomb safe, per-file SHA-256,
+  database integrity check), saves a pre-restore backup, then swaps the data in.
+
 ### Changed
 - Image OCR (uploads and evidence) reads from memory instead of writing a
   temporary copy of the image.

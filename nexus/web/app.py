@@ -43,6 +43,7 @@ from nexus.web.common import (
 from nexus.web.routers import (
     archive,
     assistant,
+    backup,
     brief,
     case_reports,
     cases,
@@ -305,6 +306,7 @@ ROUTERS = (
     connectors,
     publish,
     encryption,
+    backup,
 )
 for _module in ROUTERS:
     app.include_router(_module.router)
