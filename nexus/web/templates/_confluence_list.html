@@ -1,0 +1,59 @@
+<div id="confluence-list" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+  {% if error %}<p class="text-xs text-rose-400">{{ error }}</p>{% endif %}
+  {% if not confluence_sources %}
+  <p class="text-sm text-slate-500">No Confluence connections yet. Connect one, press &ldquo;Test connection&rdquo; to pick its spaces, then scan.</p>
+  {% endif %}
+  {% for s in confluence_sources %}
+  <div class="border border-slate-800 rounded p-3 bg-slate-950/40">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="text-sm font-medium text-slate-200 truncate">{{ s.name }}</span>
+          {% if s.enabled %}
+          <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-emerald-950/60 text-emerald-300 border border-emerald-800">enabled</span>
+          {% else %}
+          <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-500">disabled</span>
+          {% endif %}
+          <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-300">{{ 'Cloud' if s.deployment == 'cloud' else 'Data Center' }}</span>
+          {% if s.token_set %}
+          <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-sky-950/60 text-sky-300 border border-sky-800">token set</span>
+          {% else %}
+          <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-rose-950/60 text-rose-300 border border-rose-800">token missing</span>
+          {% endif %}
+          {% if s.in_pool %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-sky-950/60 text-sky-300 border border-sky-800">knowledge pool</span>{% endif %}
+          {% if s.case_name %}<a href="/cases/{{ s.case_id }}" class="px-1.5 py-0.5 rounded text-[10px] mono bg-amber-950/50 text-amber-300 border border-amber-800 hover:text-amber-200">case: {{ s.case_name }}</a>{% endif %}
+          {% if s.no_ai %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-300 border border-slate-700" title="Kept away from AI enrichment">no AI</span>{% endif %}
+          {% if s.tls_mode == 'insecure' %}
+          <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-rose-950/60 text-rose-300 border border-rose-800"
+                title="TLS certificates are NOT verified for this connection">TLS not verified</span>
+          {% elif s.tls_mode == 'ca_bundle' %}
+          <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-300">internal CA</span>
+          {% endif %}
+        </div>
+        <div class="text-xs text-slate-500 mono truncate mt-0.5">{{ s.base_url }}</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">
+          {% if s.spaces %}spaces: <span class="mono">{{ s.spaces }}</span>{% else %}no spaces chosen{% endif %}
+          {% if s.cql %}&middot; CQL: <span class="mono">{{ s.cql[:60] }}</span>{% endif %}
+          &middot; {{ s.page_count }} page{{ '' if s.page_count == 1 else 's' }} stored
+          {% if s.last_scan_at %}&middot; last scan {{ s.last_scan_at[:16] }}{% endif %}
+          {% if s.last_status %}&middot; {{ s.last_status }}{% endif %}
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+        <button hx-post="/sources/confluence/{{ s.id }}/test" hx-target="#confluence-test-{{ s.id }}" hx-swap="innerHTML"
+                hx-indicator="#confluence-tspin-{{ s.id }}"
+                class="px-2 py-1 rounded text-xs bg-sky-800 hover:bg-sky-700 text-sky-100">Test connection<span id="confluence-tspin-{{ s.id }}" class="htmx-indicator">&hellip;</span></button>
+        <button hx-post="/sources/confluence/{{ s.id }}/scan" hx-target="#confluence-test-{{ s.id }}" hx-swap="innerHTML"
+                hx-indicator="#confluence-spin-{{ s.id }}"
+                class="px-2 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-200">Scan now<span id="confluence-spin-{{ s.id }}" class="htmx-indicator">&hellip;</span></button>
+        <button hx-post="/sources/confluence/{{ s.id }}/toggle" hx-target="#confluence-list" hx-swap="outerHTML"
+                class="px-2 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-200">{% if s.enabled %}Disable{% else %}Enable{% endif %}</button>
+        <button hx-post="/sources/confluence/{{ s.id }}/delete" hx-target="#confluence-list" hx-swap="outerHTML"
+                hx-confirm="Disconnect '{{ s.name }}' and delete its stored token? Pages already stored stay under Documents."
+                class="px-2 py-1 rounded text-xs bg-rose-900/70 hover:bg-rose-800 text-rose-100">Delete</button>
+      </div>
+    </div>
+    <div id="confluence-test-{{ s.id }}" class="mt-1"></div>
+  </div>
+  {% endfor %}
+</div>

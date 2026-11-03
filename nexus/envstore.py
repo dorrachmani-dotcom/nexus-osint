@@ -105,9 +105,19 @@ def web_source_env_name(source_id: int) -> str:
     return f"WEB_SOURCE_{int(source_id)}_SECRET"
 
 
+# A Confluence connection's API token (Cloud) or Personal Access Token (DC).
+_CONFLUENCE_KEY_RE = re.compile(r"^CONFLUENCE_SOURCE_\d+_TOKEN$")
+
+
+def confluence_env_name(source_id: int) -> str:
+    """Canonical .env variable name holding a Confluence connection's token."""
+    return f"CONFLUENCE_SOURCE_{int(source_id)}_TOKEN"
+
+
 def is_per_source_secret(key: str) -> bool:
     """A per-source secret variable (name derived from a numeric source id)."""
-    return bool(_CUSTOM_KEY_RE.match(key) or _WEB_KEY_RE.match(key))
+    return bool(_CUSTOM_KEY_RE.match(key) or _WEB_KEY_RE.match(key)
+                or _CONFLUENCE_KEY_RE.match(key))
 
 
 def _is_writable_key(key: str) -> bool:
@@ -163,7 +173,8 @@ def update_env(updates: dict[str, str]) -> None:
     # must not leave dead CUSTOM_SOURCE_<id>_KEY= cruft). Standing allow-listed
     # keys are left as ``KEY=`` to preserve the .env layout.
     def _drop(key: str) -> bool:
-        return clean.get(key, "") == "" and bool(_CUSTOM_KEY_RE.match(key))
+        return clean.get(key, "") == "" and bool(
+            _CUSTOM_KEY_RE.match(key) or _CONFLUENCE_KEY_RE.match(key))
 
     out: list[str] = []
     seen: set[str] = set()

@@ -43,6 +43,7 @@ from nexus.web.routers import (
     brief,
     case_reports,
     cases,
+    connectors,
     demo,
     documents,
     entity,
@@ -281,6 +282,7 @@ ROUTERS = (
     sources,
     documents,
     web_sources,
+    connectors,
 )
 for _module in ROUTERS:
     app.include_router(_module.router)

@@ -28,6 +28,15 @@ to [Semantic Versioning](https://semver.org/).
   internal connections show as "Internal network (allowed)" in the Security
   center.
 
+- Confluence connector (Sources › Confluence): Confluence Cloud (e-mail + API
+  token) or Data Center / Server (Personal Access Token), also on closed
+  networks through the internal allow-list and internal CA. Pick spaces after
+  "Test connection" and/or enter a CQL query; pages (optionally blog posts,
+  comments and attachments) are stored in a case or the knowledge pool with
+  title, space, labels, author, version, last-modified time, link and
+  breadcrumb. Later scans read only new and changed pages (watermark + version),
+  a changed page gets a "what changed" item, and HTTP 429 is retried after
+  `Retry-After`. The token stays in `.env`.
 - Custom API sources read JSON, NDJSON, XML, CSV, RSS/Atom and HTML
   (auto-detected), page through results (page number, offset/limit, cursor or
   next link, capped per scan), authenticate with Basic or OAuth2 client
