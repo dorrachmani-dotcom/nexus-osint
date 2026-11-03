@@ -15,7 +15,9 @@ Rules
     the reason is shown. Needs the vault's "Allow writing" switch.
   * Confluence: only Nexus's own anchored section is removed from the page;
     the page itself is never deleted. Needs the connection's "Allow publishing
-    to Confluence" switch. 409 / 429 handling is the publisher's.
+    to Confluence" switch, and is never ticked by default: a shared team page
+    is only edited when the analyst asks for it. 409 / 429 handling is the
+    publisher's.
 
 A publish record is forgotten only when its target was cleaned up (or is
 already gone). Anything left in place, or unreachable, keeps its record.
@@ -189,8 +191,10 @@ def plan(conn, kind: str, subject_id: int) -> list[dict]:
             allowed = publisher is not None
             note = why or ("only Nexus's section is removed; the page itself is never "
                            "deleted")
+        # A shared Confluence page is edited only on an explicit tick.
+        default = allowed and pub["target"] != "confluence"
         rows.append({"pub": pub, "what": _what(pub), "allowed": allowed,
-                     "default": allowed, "note": note})
+                     "default": default, "note": note})
     return rows
 
 

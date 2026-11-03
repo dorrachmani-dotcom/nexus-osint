@@ -860,7 +860,8 @@ def test_writeup_delete_cleans_up_every_target(temp_db, tmp_path, fake):
     c = _client()
     dialog = c.get(f"/writeups/{wid}/delete").text
     form = dialog.split("data-writeup-delete", 1)[1].split("</form>", 1)[0]
-    assert form.count('name="remove"') == 4 and form.count("checked ") == 4
+    # Confluence rows are offered but unticked: only pool + vault are checked.
+    assert form.count('name="remove"') == 4 and form.count("checked ") == 2
     assert "disabled" not in form
     assert "never deleted" in dialog
     fake.conflicts = 1   # someone saves the page meanwhile: re-read and retry once
@@ -944,6 +945,11 @@ def test_writeup_delete_respects_opt_ins_and_unreachable_targets(temp_db, tmp_pa
     with temp_db() as conn:
         set_confluence_publish(conn, sid, True)
         set_vault_write(conn, vid, True, "Nexus")
+    with temp_db() as conn:
+        rows = {r["pub"]["target"]: r for r in R.plan(conn, "writeup", wid)}
+    # A shared Confluence page is offered but never ticked by default.
+    assert rows["confluence"]["allowed"] and not rows["confluence"]["default"]
+    assert rows["obsidian"]["default"]
 
     def down(*args, **kwargs):
         raise httpx.ConnectError("unreachable")
