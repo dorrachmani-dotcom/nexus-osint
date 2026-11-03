@@ -22,21 +22,7 @@
       class="intel-export-opt block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">&#123;&#125; JSON (data)</button>
   </div>
 </details>
-<script>
-document.addEventListener('click', function (e) {
-  var opt = e.target && e.target.closest && e.target.closest('.intel-export-opt');
-  if (!opt) return;
-  e.preventDefault();
-  var form = document.getElementById('intel-filters');
-  var params = new URLSearchParams(new FormData(form));
-  params.set('format', opt.getAttribute('data-format') || 'csv');
-  var url = '/intel/export?' + params.toString();
-  var win = window.open(url, '_blank');
-  if (!win || win.closed || typeof win.closed === 'undefined') window.location.href = url;
-  var menu = document.getElementById('intel-export-menu');
-  if (menu) menu.removeAttribute('open');
-});
-</script>
+<script src="/static/js/intel.js"></script>
 {% endblock %}
 
 {% block content %}

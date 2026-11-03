@@ -31,7 +31,7 @@
 
     <div class="flex flex-wrap items-end gap-2">
       <form hx-post="/cases/{{ case.id }}/questions" hx-target="#case-questions" hx-swap="outerHTML"
-            hx-on::after-request="this.reset()" class="flex flex-1 items-center gap-2 min-w-[260px]">
+            data-done="reset" class="flex flex-1 items-center gap-2 min-w-[260px]">
         <input name="question" required placeholder="e.g. What is the status of the transfer?"
                class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
         <button class="text-sm bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-3 py-1.5">Add</button>

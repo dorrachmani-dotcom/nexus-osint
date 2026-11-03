@@ -11,7 +11,7 @@
       </p>
     </div>
     <form hx-post="/cases/{{ case.id }}/subcases" hx-target="#case-subcases" hx-swap="outerHTML"
-          hx-on::after-request="this.reset()" class="flex items-center gap-2">
+          data-done="reset" class="flex items-center gap-2">
       <input name="name" required placeholder="new sub-case name"
              class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
       <button class="text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 rounded px-3 py-1.5">&#43; Create</button>
@@ -61,7 +61,7 @@
           {% endif %}
           <form hx-post="/cases/{{ case.id }}/subcases/{{ c.id }}/terms"
                 hx-target="#case-subcases" hx-swap="outerHTML"
-                hx-on::after-request="this.reset()" class="flex items-center gap-1.5">
+                data-done="reset" class="flex items-center gap-1.5">
             <input type="hidden" name="kind" value="required" />
             <input name="terms" placeholder="add tracking words (comma-separated)"
                    class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs min-w-0" />
@@ -91,7 +91,7 @@
           {% endif %}
           <form hx-post="/cases/{{ case.id }}/subcases/{{ c.id }}/terms"
                 hx-target="#case-subcases" hx-swap="outerHTML"
-                hx-on::after-request="this.reset()" class="flex items-center gap-1.5">
+                data-done="reset" class="flex items-center gap-1.5">
             <input type="hidden" name="kind" value="alert" />
             <input name="terms" placeholder="add supplement words (comma-separated)"
                    class="flex-1 bg-slate-950 border border-amber-900/40 rounded px-2 py-1 text-xs min-w-0" />

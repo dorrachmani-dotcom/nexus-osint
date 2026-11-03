@@ -15,11 +15,16 @@ BASE = (
     Path(__file__).resolve().parent.parent
     / "nexus" / "web" / "templates" / "base.html"
 )
+JS = BASE.parent.parent / "static" / "js"
 
 
 def test_base_template_has_failure_feedback():
     html = BASE.read_text(encoding="utf-8")
     assert 'id="toast-host"' in html, "the toast container is missing"
+    # The handlers live in static scripts that base.html loads (strict CSP).
+    for src in ("app.js", "drawer.js"):
+        if f'/static/js/{src}"' in html:
+            html += (JS / src).read_text(encoding="utf-8")
     # Both htmx error channels must be handled: an error response and no answer.
     assert "htmx:responseError" in html, "no handler for server/refused errors"
     assert "htmx:sendError" in html, "no handler for unreachable-server errors"

@@ -17,7 +17,8 @@ def test_briefing_escapes_script_breakout() -> None:
         count=1,
         items_json=[{"id": 1, "title": PAYLOAD}],
     )
-    # Exactly one closing tag: the template's own. The payload's is escaped.
-    assert html.count("</script>") == 1
+    # The template's own two tags (JSON data block + static script); the
+    # payload's closing tag is escaped.
+    assert html.count("</script>") == 2
     assert "alert(1)" in html  # the text survives, just inert
     assert "\\u003c/script\\u003e" in html

@@ -384,8 +384,8 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
   configured keys).
 - **Works fully offline.** The stylesheet, htmx and the graph library ship
   with the app; the UI makes no CDN or font requests, and the
-  Content-Security-Policy only allows the app's own origin. A test asserts that
-  no page loads a remote asset.
+  Content-Security-Policy only allows the app's own origin, with no inline
+  script or eval. A test asserts that no page loads a remote asset.
 - The Security center lists every outbound destination the app has contacted and
   flags any that is not a configured source or AI provider. Its **activity log**
   records each AI call, publish, e-mail, archive request and source fetch (metadata

@@ -10,41 +10,8 @@
   {% if briefing %}
   <pre id="briefing-text" class="mt-2 whitespace-pre-wrap font-sans text-sm text-slate-200 leading-relaxed">{{ briefing }}</pre>
   <p class="mt-2 text-[11px] text-slate-500">AI synthesis of {{ count }} tracked item(s) — verify against the sources before relying on it.</p>
-  <script>
-  (function() {
-    const items = {{ items_json | tojson }};
-    const el = document.getElementById('briefing-text');
-    if (!el || !items.length) return;
-    const text = el.textContent;
-    const parts = text.split(/\b(Item\s+\d+)\b/gi);
-    if (parts.length <= 1) return;
-    const frag = document.createDocumentFragment();
-    for (let i = 0; i < parts.length; i++) {
-      const m = parts[i].match(/^Item\s+(\d+)$/i);
-      if (m) {
-        const n = parseInt(m[1], 10);
-        const item = items[n - 1];
-        if (item && item.id) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.textContent = parts[i];
-          btn.title = (item.title || '') + ' — click to open details';
-          btn.className = 'text-violet-300 hover:text-violet-100 underline underline-offset-2 cursor-pointer';
-          btn.onclick = (function(id) {
-            return function() {
-              htmx.ajax('GET', '/items/' + id + '/detail', {target: '#item-drawer-content', swap: 'innerHTML'});
-            };
-          })(item.id);
-          frag.appendChild(btn);
-          continue;
-        }
-      }
-      frag.appendChild(document.createTextNode(parts[i]));
-    }
-    el.textContent = '';
-    el.appendChild(frag);
-  })();
-  </script>
+  <script type="application/json" id="briefing-items">{{ items_json | tojson }}</script>
+  <script src="/static/js/case-briefing.js"></script>
   {% else %}
   <p class="mt-1 text-sm text-slate-400">{{ error or "No briefing available." }}</p>
   {% endif %}

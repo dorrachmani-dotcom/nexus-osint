@@ -69,22 +69,22 @@
         <span class="text-emerald-400">&#10003; Read</span>
         {% else %}
         <button hx-post="/items/{{ it.id }}/read" hx-swap="none"
-          hx-on::after-request="this.textContent='✓ read'; this.disabled=true; this.className='text-emerald-400 cursor-default'; this.closest('article').classList.add('opacity-60')"
+          data-done="done; fade-closest:article" data-done-text="✓ read" data-done-class="text-emerald-400 cursor-default" data-done-disable
           class="text-slate-400 hover:text-emerald-400" title="Mark read">&#10003; Read</button>
         {% endif %}
         <button hx-post="/items/{{ it.id }}/dismiss" hx-swap="none"
-          hx-on::after-request="this.closest('article').style.display='none'"
+          data-done="hide-closest:article"
           class="text-slate-400 hover:text-rose-400" title="Dismiss from feed">&#10005;</button>
         {% if it.is_bookmarked %}
         <span class="text-amber-400 cursor-default" title="Bookmarked">&#9733; saved</span>
         {% else %}
         <button hx-post="/items/{{ it.id }}/bookmark" hx-swap="none"
-          hx-on::after-request="this.textContent='★ saved'; this.disabled=true; this.className='text-amber-400 cursor-default'"
+          data-done="done" data-done-text="★ saved" data-done-class="text-amber-400 cursor-default" data-done-disable
           class="text-slate-400 hover:text-amber-400">&#9733; Bookmark</button>
         {% endif %}
         {% if active_case %}
         <button hx-post="/cases/{{ active_case.id }}/items/{{ it.id }}/add" hx-swap="none"
-          hx-on::after-request="this.textContent='✓ pinned'; this.disabled=true; this.className='text-emerald-400 cursor-default'"
+          data-done="done" data-done-text="✓ pinned" data-done-class="text-emerald-400 cursor-default" data-done-disable
           class="text-amber-400 hover:text-amber-300"
           title="Pin to active case: {{ active_case.name }}">&#128204; {{ active_case.name }}</button>
         {% endif %}

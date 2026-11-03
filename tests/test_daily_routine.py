@@ -99,4 +99,5 @@ def test_brief_count_endpoint(temp_db):
     assert r.status_code == 200 and r.json()["total"] == 2
     # The nav badge + poll are wired into every page.
     page = c.get("/").text
-    assert 'id="brief-badge"' in page and "/brief/count" in page
+    assert 'id="brief-badge"' in page and "/static/js/badge-brief.js" in page
+    assert "/brief/count" in c.get("/static/js/badge-brief.js").text

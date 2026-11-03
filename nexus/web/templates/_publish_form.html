@@ -5,7 +5,7 @@
     <p class="text-[10px] uppercase tracking-wide text-sky-300 font-semibold">
       Publish {{ 'this item' if kind == 'item' else 'this write-up' }} &rarr;
       {% if target == 'confluence' %}Confluence{% elif target == 'obsidian' %}Obsidian vault{% else %}Knowledge pool{% endif %}</p>
-    <button type="button" onclick="this.closest('[data-publish-form]').remove()" class="text-slate-500 hover:text-slate-300" aria-label="Close">&times;</button>
+    <button type="button" data-action="remove-closest:[data-publish-form]" class="text-slate-500 hover:text-slate-300" aria-label="Close">&times;</button>
   </div>
   {% if target == 'confluence' %}
     {% set ready = t.confluence | selectattr('ready') | list %}

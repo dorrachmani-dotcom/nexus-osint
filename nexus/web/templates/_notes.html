@@ -9,7 +9,7 @@
         <details class="relative">
           <summary class="cursor-pointer hover:text-amber-400 list-none">edit</summary>
           <form hx-post="/notes/{{ n.id }}/update" hx-target="#notes" hx-swap="outerHTML"
-                hx-on::after-request="this.closest('details').open=false"
+                data-done="close-closest:details"
                 class="mt-1 space-y-1">
             <textarea name="body" rows="3" required
               class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">{{ n.body }}</textarea>

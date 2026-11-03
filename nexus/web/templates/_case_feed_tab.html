@@ -27,7 +27,7 @@
         {% endif %}
         <button type="button" id="tw-edit" aria-controls="tw-editor"
                 aria-expanded="{{ 'false' if terms else 'true' }}"
-                onclick="nexusToggleTerms()"
+                data-action="call:nexusToggleTerms"
                 class="text-xs rounded border border-slate-600 hover:border-sky-500 hover:text-sky-300 text-slate-300 px-2 py-0.5">
           <span class="tw-edit-label">{{ 'Edit' if terms else 'Hide' }}</span></button>
       </div>
@@ -90,7 +90,7 @@
 
       <div class="flex flex-wrap items-end gap-2">
         <form hx-post="/cases/{{ case.id }}/terms" hx-target="#case-feed-tab" hx-swap="outerHTML"
-              hx-on::after-request="this.reset()" class="flex items-center gap-2">
+              data-done="reset" class="flex items-center gap-2">
           <input type="hidden" name="kind" value="required" />
           <input name="terms" required placeholder="add search words (comma-separated)"
                  class="w-64 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs" />
@@ -106,7 +106,7 @@
           <span id="case-gen-spin" class="htmx-indicator mono text-xs text-emerald-400">thinking&hellip;</span>
         </form>
         <form hx-post="/cases/{{ case.id }}/terms/translate" hx-target="#case-feed-tab" hx-swap="outerHTML"
-              hx-indicator="#case-lang-spin" hx-on::after-request="this.reset()" class="flex items-center gap-2">
+              hx-indicator="#case-lang-spin" data-done="reset" class="flex items-center gap-2">
           <input name="language" required placeholder="add in language (e.g. French)"
                  class="w-52 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs" />
           <button {% if not analysis_enabled %}disabled title="Needs an AI model (Settings)"{% endif %}
@@ -156,7 +156,7 @@
       <p class="text-xs text-slate-500">No alert words yet.</p>
       {% endif %}
       <form hx-post="/cases/{{ case.id }}/terms" hx-target="#case-feed-tab" hx-swap="outerHTML"
-            hx-on::after-request="this.reset()" class="flex items-center gap-2">
+            data-done="reset" class="flex items-center gap-2">
         <input type="hidden" name="kind" value="alert" />
         <input name="terms" required placeholder="add alert words (comma-separated)"
                class="w-64 bg-slate-950 border border-amber-900/50 rounded px-2 py-1 text-xs" />
@@ -165,33 +165,7 @@
     </div>
     </div>{# /tw-editor #}
   </div>
-  <script>
-    (function () {
-      var ed = document.getElementById('tw-editor');
-      if (!ed) return;
-      var key = 'nexus-tw-open-' + ed.dataset.case;
-      function show(open) {
-        ed.classList.toggle('hidden', !open);
-        var b = document.getElementById('tw-edit');
-        if (b) {
-          b.setAttribute('aria-expanded', open ? 'true' : 'false');
-          var l = b.querySelector('.tw-edit-label');
-          if (l) l.textContent = open ? 'Hide' : 'Edit';
-        }
-      }
-      try {
-        var saved = sessionStorage.getItem(key);
-        if (saved !== null) show(saved === '1');
-      } catch (e) {}
-      window.nexusToggleTerms = function () {
-        var e = document.getElementById('tw-editor');
-        if (!e) return;
-        var open = e.classList.contains('hidden');
-        show(open);
-        try { sessionStorage.setItem('nexus-tw-open-' + e.dataset.case, open ? '1' : '0'); } catch (x) {}
-      };
-    })();
-  </script>
+  <script src="/static/js/case-feed-tab.js"></script>
 
   {# ── Filter bar + items queue ─────────────────────────────────────────── #}
   <div id="case-feed-items">

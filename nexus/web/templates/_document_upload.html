@@ -8,7 +8,7 @@
   <form hx-post="/documents/upload" hx-encoding="multipart/form-data"
         hx-target="#upload-results{{ '-' ~ fixed_case_id if fixed_case_id else '' }}" hx-swap="innerHTML"
         hx-indicator="#upload-spin{{ '-' ~ fixed_case_id if fixed_case_id else '' }}"
-        hx-on::after-request="if (event.detail.successful) this.reset()"
+        data-done="reset-if-ok"
         class="space-y-3">
     <label class="block rounded border border-dashed border-slate-700 bg-slate-950/50 hover:border-amber-600 px-3 py-4 text-center cursor-pointer">
       <span class="block text-sm text-slate-300">Choose files or a ZIP</span>

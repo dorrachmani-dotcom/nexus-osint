@@ -101,9 +101,7 @@
         <summary class="cursor-pointer list-none text-[11px] text-slate-500 hover:text-amber-400" title="Rename this case">&#9998; rename</summary>
         <div class="absolute left-0 z-20 mt-1 w-72 rounded-lg border border-slate-700 bg-slate-900 p-3 shadow-xl">
           <form hx-post="/cases/{{ case.id }}/update" hx-target="body" hx-swap="none"
-                hx-on::after-request="var v=this.querySelector('[name=name]').value.trim();
-                  if(v){document.getElementById('case-name-text').textContent=v;document.title=v+' — Nexus';}
-                  document.getElementById('case-rename-details').open=false;"
+                data-done="case-rename"
                 class="space-y-2">
             <label class="block text-[11px] text-slate-400">Rename case</label>
             <input name="name" required value="{{ case.name }}" maxlength="120"
@@ -121,11 +119,7 @@
         <summary class="cursor-pointer list-none text-[11px] text-slate-500 hover:text-amber-400 whitespace-nowrap" title="Edit the description">&#9998; edit</summary>
         <div class="absolute right-0 z-20 mt-1 w-80 rounded-lg border border-slate-700 bg-slate-900 p-3 shadow-xl">
           <form hx-post="/cases/{{ case.id }}/update" hx-target="body" hx-swap="none"
-                hx-on::after-request="var v=this.querySelector('[name=description]').value.trim();
-                  var p=document.getElementById('case-desc-text');
-                  p.textContent=v||'No description — click ✎ to add one.';
-                  p.className='text-sm '+(v?'text-slate-400':'text-slate-600 italic');
-                  document.getElementById('case-desc-details').open=false;"
+                data-done="case-describe"
                 class="space-y-2">
             <label class="block text-[11px] text-slate-400">Description</label>
             <textarea name="description" rows="3"
@@ -260,7 +254,7 @@
         <div class="flex items-center justify-between gap-2">
           <h2 class="text-sm font-medium text-slate-300">Pinned items{% if items %} <span class="text-slate-500 font-normal">({{ items|length }})</span>{% endif %}</h2>
           <form hx-post="/cases/{{ case.id }}/items" hx-target="#case-items" hx-swap="outerHTML"
-                hx-on::after-request="this.reset()" class="flex items-center gap-2">
+                data-done="reset" class="flex items-center gap-2">
             <input name="item_id" type="number" min="1" required placeholder="item id"
                    class="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs mono" />
             <button class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded px-2 py-1">Add</button>
@@ -276,7 +270,7 @@
       <div class="space-y-3">
         <h2 class="text-sm font-medium text-slate-300">Researcher notes</h2>
         <form hx-post="/cases/{{ case.id }}/notes" hx-target="#notes" hx-swap="outerHTML"
-              hx-on::after-request="this.reset()" class="space-y-2">
+              data-done="reset" class="space-y-2">
           <textarea name="body" rows="3" required placeholder="Add a note…"
                     class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm"></textarea>
           <button class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium rounded px-3 py-1.5 text-sm">
@@ -288,15 +282,5 @@
     </div>
   {% endif %}
 </section>
-<script>
-  document.body.addEventListener('htmx:afterSwap', function(e) {
-    if (e.detail.target.id !== 'case-feed-tab') return;
-    var count = parseInt(e.detail.target.dataset.unread, 10) || 0;
-    var badge = document.getElementById('feed-unread-badge');
-    if (!badge) return;
-    if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
-    else { badge.classList.add('hidden'); }
-    if (typeof window.nexusBriefRefresh === 'function') window.nexusBriefRefresh();
-  });
-</script>
+<script src="/static/js/case-detail.js"></script>
 {% endblock %}

@@ -46,8 +46,8 @@
          class="text-xs text-sky-400 hover:text-sky-300 truncate">
         &#128279; {{ item.url[:80] }}{% if item.url|length > 80 %}&hellip;{% endif %}
       </a>
-      <button onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>{this.textContent='&#10003;';setTimeout(()=>{this.textContent='&#128203;'},1500)})"
-              data-url="{{ item.url | e }}"
+      <button data-action="copy"
+              data-copy="{{ item.url | e }}"
               class="shrink-0 text-slate-500 hover:text-emerald-400 text-[11px]"
               title="Copy URL">&#128203;</button>
     </div>
@@ -58,32 +58,32 @@
   <div class="flex flex-wrap items-center gap-2 py-3 border-y border-slate-800 text-xs mono" aria-label="Item actions">
     {% if item.is_read %}
     <button hx-post="/items/{{ item.id }}/unread" hx-swap="none"
-      hx-on::after-request="this.textContent='&#9711; Unread'"
+      data-done="done" data-done-text="&#9711; Unread"
       class="rounded border border-emerald-800 hover:border-slate-600 text-emerald-400 px-2.5 py-1">
       &#10003; Read
     </button>
     {% else %}
     <button hx-post="/items/{{ item.id }}/read" hx-swap="none"
-      hx-on::after-request="this.textContent='&#10003; Read'"
+      data-done="done" data-done-text="&#10003; Read"
       class="rounded border border-slate-700 hover:border-emerald-600 hover:text-emerald-300 text-slate-300 px-2.5 py-1">
       &#10003; Mark read
     </button>
     {% endif %}
     {% if item.is_bookmarked %}
     <button hx-post="/items/{{ item.id }}/unbookmark" hx-swap="none"
-      hx-on::after-request="this.textContent='&#9734; Bookmark'"
+      data-done="done" data-done-text="&#9734; Bookmark"
       class="rounded border border-amber-700 hover:border-slate-600 text-amber-400 px-2.5 py-1">
       &#9733; Bookmarked
     </button>
     {% else %}
     <button hx-post="/items/{{ item.id }}/bookmark" hx-swap="none"
-      hx-on::after-request="this.textContent='&#9733; Bookmarked'"
+      data-done="done" data-done-text="&#9733; Bookmarked"
       class="rounded border border-slate-700 hover:border-amber-500 hover:text-amber-300 text-slate-300 px-2.5 py-1">
       &#9734; Bookmark
     </button>
     {% endif %}
     <button hx-post="/items/{{ item.id }}/dismiss" hx-swap="none"
-      hx-on::after-request="this.textContent='&#10005; Dismissed'"
+      data-done="done" data-done-text="&#10005; Dismissed"
       class="rounded border border-slate-700 hover:border-rose-600 hover:text-rose-300 text-slate-400 px-2.5 py-1">
       &#10005; Dismiss
     </button>
@@ -99,7 +99,7 @@
         <span class="flex items-center gap-1 px-2 py-1 text-emerald-300">&#10003; {{ c.name }}</span>
         {% else %}
         <button hx-post="/cases/{{ c.id }}/items/{{ item.id }}/add" hx-swap="none"
-          hx-on::after-request="this.classList.add('text-emerald-300'); this.textContent='&#10003; ' + this.textContent"
+          data-done="check-prefix"
           class="block w-full text-left px-2 py-1 rounded text-slate-300 hover:bg-slate-800">{{ c.name }}</button>
         {% endif %}
         {% endfor %}
@@ -116,7 +116,7 @@
       class="rounded border border-slate-700 hover:border-sky-600 hover:text-sky-300 text-slate-300 px-2.5 py-1"
       title="Find items with similar meaning (local Ollama embeddings)">&#129518; Similar</button>
     <span class="mx-1 h-4 w-px bg-slate-700/70" aria-hidden="true"></span>
-    <button type="button" onclick="var d=document.getElementById('item-edit-{{ item.id }}'); d.open=!d.open; if(d.open){d.scrollIntoView({block:'nearest'});}"
+    <button type="button" data-action="toggle-details:#item-edit-{{ item.id }}"
       class="rounded border border-slate-700 hover:border-violet-500 hover:text-violet-300 text-slate-300 px-2.5 py-1"
       title="Edit the title, summary or add an analyst note (the collected original is kept)">&#9998; Edit</button>
     <details class="relative">
