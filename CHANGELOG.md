@@ -6,6 +6,12 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-03
+
+Bring your own data in, and send your analysis back out: uploads, watched pages,
+custom APIs, Confluence and Obsidian on the way in; edited items and write-ups
+published to Confluence, Obsidian or the knowledge pool on the way out.
+
 ### Added
 - Edit and publish (write-back). Edit an item's title, summary and an analyst
   note; the edit is a separate layer (with an "edited" badge) and the collected
@@ -283,7 +289,8 @@ First tagged release.
 - Inline script embedding of collected data uses Jinja `|tojson` to prevent
   `</script>` breakout.
 
-[Unreleased]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/dorrachmani-dotcom/nexus-osint/releases/tag/v1.0.0
