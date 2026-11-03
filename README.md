@@ -58,6 +58,11 @@ one SQLite file you own, and every outbound connection can be audited.
   network): pick spaces and/or a CQL query and its pages (optionally blog posts,
   comments and attachments) land in a case or the knowledge pool; later scans
   read only new and changed pages. The token stays in `.env`.
+- **Imports Obsidian vaults** ("Obsidian: import vault"): point at a local vault
+  folder (read-only) and its notes, with frontmatter, tags, `[[links]]` and
+  embedded files, land in a case or the knowledge pool; re-scans pick up new,
+  changed and deleted notes. A zipped vault can also be uploaded, and a case
+  still exports the other way ("Obsidian: export case").
 - **Deduplicates and searches**: exact re-fetches are no-ops, near-duplicates
   collapse into one row with an "echoed N times" badge, and the whole history is
   searchable through SQLite FTS5.

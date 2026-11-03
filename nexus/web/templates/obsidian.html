@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Sources</h1>
+    <p class="text-sm text-slate-400">Where your data comes from.</p>
+    {% set active = 'obsidian' %}{% include "_sources_tabs.html" %}
+  </div>
+  <p class="text-sm text-slate-400">
+    Point Nexus at an Obsidian vault on this computer and its notes become searchable in a case or
+    the knowledge pool, with their tags, frontmatter and <span class="mono">[[links]]</span>. The
+    vault is only <span class="text-slate-300">read</span>, never changed. Each scan reads new and
+    changed notes and drops notes you deleted. Files embedded with
+    <span class="mono">![[&hellip;]]</span> (PDFs, images, Office files) are read too.
+  </p>
+  <p class="text-xs text-slate-500">
+    No access to the folder from here? Zip the vault and upload it under
+    <a href="/sources/documents" class="text-sky-400 hover:text-sky-300">Documents</a> &mdash; it is
+    recognised as a vault. To go the other way, a case page offers
+    <span class="text-slate-300">Obsidian: export case (.zip)</span>.
+  </p>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+      <h2 class="text-sm font-medium text-slate-300">&#128221; Obsidian: import vault</h2>
+      <form hx-post="/sources/obsidian" hx-target="#obsidian-list" hx-swap="outerHTML"
+            hx-on::after-request="if (event.detail.successful) this.reset()"
+            autocomplete="off" class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-400">Vault folder on this computer</label>
+          <input type="text" name="path" required placeholder="C:\Users\analyst\Documents\Research vault  or  ~/vaults/research"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm mono" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400">Name (optional)</label>
+          <input type="text" name="name" placeholder="e.g. Research notes"
+                 class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm" />
+        </div>
+        <details class="rounded border border-slate-800 p-2.5">
+          <summary class="text-xs text-slate-400 cursor-pointer">Filters (optional)</summary>
+          <div class="mt-2 space-y-2">
+            <div>
+              <label class="text-[11px] text-slate-500">Only these folders (comma-separated)</label>
+              <input type="text" name="include_folders" placeholder="Projects, People"
+                     class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-500">Skip these folders</label>
+              <input type="text" name="exclude_folders" placeholder="Templates, Daily"
+                     class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-500">Only notes with this tag</label>
+              <input type="text" name="required_tag" placeholder="#osint"
+                     class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm mono" />
+            </div>
+          </div>
+        </details>
+        <div>
+          <label class="text-xs text-slate-400">Where should the notes go?</label>
+          <select name="destination"
+                  class="mt-0.5 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-sm">
+            <option value="pool">General knowledge pool (not tied to a case)</option>
+            {% for c in cases %}
+            <option value="{{ c.id }}">Case: {{ c.name }}</option>
+            {% endfor %}
+          </select>
+          <label class="mt-1.5 flex items-start gap-2 text-xs text-slate-400">
+            <input type="checkbox" name="also_pool" value="1" class="mt-0.5 accent-amber-500" />
+            <span>When a case is chosen, also add to the knowledge pool</span>
+          </label>
+        </div>
+        {% if cloud_ai %}
+        <label class="flex items-start gap-2 text-xs text-amber-200 rounded border border-amber-800/70 bg-amber-950/30 p-2.5">
+          <input type="checkbox" name="allow_ai" value="1" class="mt-0.5 accent-amber-500" />
+          <span>Allow cloud AI (<span class="mono">{{ active_provider }}</span>) to read these notes. Leave unticked to keep them on this computer.</span>
+        </label>
+        {% else %}
+        <label class="flex items-start gap-2 text-xs text-slate-400">
+          <input type="checkbox" name="allow_ai" value="1" checked class="mt-0.5 accent-amber-500" />
+          <span>Allow AI enrichment{% if active_provider != 'off' %} (local model &mdash; nothing leaves this computer){% endif %}</span>
+        </label>
+        {% endif %}
+        <button class="w-full rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium px-4 py-2 text-sm">Add vault</button>
+      </form>
+    </div>
+    <div class="space-y-2">
+      <h2 class="text-sm font-medium text-slate-300">Imported vaults</h2>
+      {% include "_obsidian_list.html" %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -206,6 +206,12 @@ EXPECTED_ROUTES: list[tuple[str, str]] = [
     ('POST', '/sources/confluence/{source_id}/test'),
     ('POST', '/sources/confluence/{source_id}/spaces'),
     ('POST', '/sources/confluence/{source_id}/scan'),
+    ('GET', '/sources/obsidian'),
+    ('POST', '/sources/obsidian'),
+    ('POST', '/sources/obsidian/{vault_id}/toggle'),
+    ('POST', '/sources/obsidian/{vault_id}/delete'),
+    ('POST', '/sources/obsidian/{vault_id}/test'),
+    ('POST', '/sources/obsidian/{vault_id}/scan'),
 ]
 
 

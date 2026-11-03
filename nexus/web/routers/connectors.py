@@ -1,4 +1,5 @@
-"""Knowledge connectors: "Connect Confluence" (Sources > Confluence)."""
+"""Knowledge connectors: "Connect Confluence" (Sources > Confluence) and
+"Obsidian: import vault" (Sources > Obsidian)."""
 
 from __future__ import annotations
 
@@ -144,4 +145,104 @@ async def confluence_scan(request: Request, source_id: int) -> HTMLResponse:
     result = await run_in_threadpool(src.ingest)
     return TEMPLATES.TemplateResponse(
         request, "_confluence_test.html", {"result": {"ok": True, "scanned": True, **result}},
+    )
+
+
+# ------------------------------------------------------ Obsidian: import vault
+def _obsidian_context() -> dict:
+    from nexus.storage.obsidian_vaults import list_obsidian_vaults
+
+    settings = get_settings()
+    with get_connection() as conn:
+        rows = list_obsidian_vaults(conn)
+        cases = list_cases(conn)
+    return {"vaults": rows, "cases": cases, "cloud_ai": cloud_ai_active(settings),
+            "active_provider": settings.active_provider()}
+
+
+def _vault(vault_id: int):
+    from nexus.sources.obsidian import ObsidianSource
+    from nexus.storage.obsidian_vaults import get_obsidian_vault
+
+    with get_connection() as conn:
+        row = get_obsidian_vault(conn, vault_id)
+    return ObsidianSource(row, get_settings()) if row else None
+
+
+@router.get("/sources/obsidian", response_class=HTMLResponse)
+def obsidian_page(request: Request) -> HTMLResponse:
+    return TEMPLATES.TemplateResponse(request, "obsidian.html", _obsidian_context())
+
+
+@router.post("/sources/obsidian", response_class=HTMLResponse)
+async def obsidian_create(request: Request) -> HTMLResponse:
+    from nexus.sources.obsidian import check_vault
+    from nexus.storage.obsidian_vaults import (
+        create_obsidian_vault,
+        delete_obsidian_vault,
+        get_obsidian_vault,
+    )
+
+    form = await request.form()
+    cfg = {f: str(form.get(f) or "") for f in ("name", "path", "include_folders",
+                                               "exclude_folders", "required_tag")}
+    destination = str(form.get("destination") or "pool").strip()
+    cfg["case_id"] = destination if destination.isdigit() else ""
+    cfg["in_pool"] = "1" if (not destination.isdigit() or form.get("also_pool")) else "0"
+    cfg["no_ai"] = "0" if form.get("allow_ai") else "1"
+    error = None
+    with get_connection() as conn:
+        new_id = create_obsidian_vault(conn, cfg)
+        row = get_obsidian_vault(conn, new_id) or {}
+        # Validate the stored folder (read-only check; nothing is read yet).
+        _root, reason = check_vault(row.get("path"))
+        if reason:
+            delete_obsidian_vault(conn, new_id)
+            error = f"Vault not added: {reason}."
+    ctx = _obsidian_context()
+    ctx["error"] = error
+    return TEMPLATES.TemplateResponse(request, "_obsidian_list.html", ctx)
+
+
+@router.post("/sources/obsidian/{vault_id}/toggle", response_class=HTMLResponse)
+def obsidian_toggle(request: Request, vault_id: int) -> HTMLResponse:
+    from nexus.storage.obsidian_vaults import toggle_obsidian_vault
+
+    with get_connection() as conn:
+        toggle_obsidian_vault(conn, vault_id)
+    return TEMPLATES.TemplateResponse(request, "_obsidian_list.html", _obsidian_context())
+
+
+@router.post("/sources/obsidian/{vault_id}/delete", response_class=HTMLResponse)
+def obsidian_delete(request: Request, vault_id: int) -> HTMLResponse:
+    from nexus.ingest.connector import forget_source
+    from nexus.storage.obsidian_vaults import delete_obsidian_vault, get_obsidian_vault
+
+    with get_connection() as conn:
+        row = get_obsidian_vault(conn, vault_id)
+        if row:
+            # Notes already imported stay under Documents; the vault on disk is
+            # never touched.
+            forget_source(conn, "obsidian", vault_id, row["name"])
+        delete_obsidian_vault(conn, vault_id)
+    return TEMPLATES.TemplateResponse(request, "_obsidian_list.html", _obsidian_context())
+
+
+@router.post("/sources/obsidian/{vault_id}/test", response_class=HTMLResponse)
+async def obsidian_test(request: Request, vault_id: int) -> HTMLResponse:
+    src = _vault(vault_id)
+    if src is None:
+        return HTMLResponse('<span class="text-rose-400">Vault not found.</span>')
+    result = await run_in_threadpool(src.describe)
+    return TEMPLATES.TemplateResponse(request, "_obsidian_test.html", {"result": result})
+
+
+@router.post("/sources/obsidian/{vault_id}/scan", response_class=HTMLResponse)
+async def obsidian_scan(request: Request, vault_id: int) -> HTMLResponse:
+    src = _vault(vault_id)
+    if src is None:
+        return HTMLResponse('<span class="text-rose-400">Vault not found.</span>')
+    result = await run_in_threadpool(src.ingest)
+    return TEMPLATES.TemplateResponse(
+        request, "_obsidian_test.html", {"result": {"ok": True, "scanned": True, **result}},
     )
