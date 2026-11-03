@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Iterable
+from typing import Any
 
 from nexus.adapters.base import Finding
 
@@ -165,6 +166,31 @@ _ENTITY_KIND_COLOR = {
 }
 
 
+_NOTE_COLOR = "#a78bfa"      # violet: an Obsidian note
+_NOTE_LINK_COLOR = "#7c3aed"  # note -> note wikilink
+_NOTE_MENTION_COLOR = "#475569"  # note -> entity it names
+
+
+def _add_notes(net: Any, note_data: dict, entity_ids: set[str]) -> None:
+    """Draw Obsidian notes (boxes) with their wikilinks and named entities."""
+    notes = note_data.get("notes") or []
+    ids = {n["id"] for n in notes}
+    for n in notes:
+        where = f"{n['vault']}: {n['path']}" if n.get("vault") else n["path"]
+        net.add_node(
+            n["id"], label=n["label"], shape="box", color=_NOTE_COLOR,
+            title=(f"Obsidian note · {where} · links to {n.get('links', 0)} note(s)"
+                   f" · names {len(n.get('entities') or [])} entit"
+                   f"{'y' if len(n.get('entities') or []) == 1 else 'ies'} on this map"),
+        )
+    for e in note_data.get("note_edges") or []:
+        if e["source"] in ids and e["target"] in ids:
+            net.add_edge(e["source"], e["target"], color=_NOTE_LINK_COLOR, arrows="to", width=2)
+    for e in note_data.get("entity_edges") or []:
+        if e["source"] in ids and e["target"] in entity_ids:
+            net.add_edge(e["source"], e["target"], color=_NOTE_MENTION_COLOR, dashes=True, width=1)
+
+
 def render_entity_graph_html(graph_data: dict) -> str | None:
     """Render a topic-driven entity co-occurrence graph to an HTML fragment.
 
@@ -177,7 +203,8 @@ def render_entity_graph_html(graph_data: dict) -> str | None:
     nothing to draw, so callers can fall back to the ranked tables alone.
     """
     nodes = graph_data.get("nodes") or []
-    if not nodes:
+    note_data = graph_data.get("notes") or {}
+    if not nodes and not note_data.get("notes"):
         return None
 
     try:
@@ -214,6 +241,7 @@ def render_entity_graph_html(graph_data: dict) -> str | None:
         )
     for e in graph_data.get("edges") or []:
         net.add_edge(e["source"], e["target"], value=e.get("weight", 1))
+    _add_notes(net, note_data, {n["id"] for n in nodes})
 
     net.set_options(_GRAPH_OPTIONS)
     try:

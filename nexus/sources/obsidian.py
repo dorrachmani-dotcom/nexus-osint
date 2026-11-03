@@ -186,6 +186,7 @@ class ObsidianSource(Source):
     # ------------------------------------------------------------- ingest
     def ingest(self) -> dict:
         from nexus.db import get_connection
+        from nexus.storage.note_links import refresh_note_links
         from nexus.storage.obsidian_vaults import save_obsidian_scan
 
         root, reason = check_vault(self.cfg.get("path"))
@@ -267,6 +268,8 @@ class ObsidianSource(Source):
             if complete:
                 with get_connection() as conn:
                     removed = remove_missing(conn, KIND, self.id, present, self.name)
+            with get_connection() as conn:
+                refresh_note_links(conn, self.id)
         except Exception as exc:  # never let one vault break a scan
             logger.exception("Obsidian vault '%s' failed", self.name)
             self.status = f"error: {type(exc).__name__}"

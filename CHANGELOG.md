@@ -32,6 +32,12 @@ to [Semantic Versioning](https://semver.org/).
   and result; CSV export (formula-safe). Content, item URLs and secrets are never
   recorded. Rows older than a year are pruned.
 
+- Obsidian link graph: `[[wikilinks]]` between notes get their own table
+  (resolved like Obsidian, dangling links resolve once the note appears). The
+  Graph page has a **Show Obsidian notes** toggle that draws note -> note links
+  and note -> entity edges (notes that name an entity on the map); without
+  entities it shows the vault's best-linked notes.
+
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no
   `'unsafe-inline'` or `'unsafe-eval'`. Inline scripts moved to

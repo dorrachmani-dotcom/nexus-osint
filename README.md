@@ -65,8 +65,9 @@ one SQLite file you own, and every outbound connection can be audited.
 - **Imports Obsidian vaults** ("Obsidian: import vault"): point at a local vault
   folder (read-only) and its notes, with frontmatter, tags, `[[links]]` and
   embedded files, land in a case or the knowledge pool; re-scans pick up new,
-  changed and deleted notes. A zipped vault can also be uploaded, and a case
-  still exports the other way ("Obsidian: export case").
+  changed and deleted notes. Wikilinks can be drawn on the relationship graph
+  (note -> note and note -> entity). A zipped vault can also be uploaded, and a
+  case still exports the other way ("Obsidian: export case").
 - **Deduplicates and searches**: exact re-fetches are no-ops, near-duplicates
   collapse into one row with an "echoed N times" badge, and the whole history is
   searchable through SQLite FTS5.

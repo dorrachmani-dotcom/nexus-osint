@@ -71,6 +71,15 @@
       </label>
     </div>
 
+    {% if has_vaults %}
+    <label class="inline-flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer"
+           title="Add the Obsidian notes that name entities on the map, linked by their [[wikilinks]]">
+      <input type="checkbox" name="notes" value="true" class="accent-violet-500"
+             {% if show_notes %}checked{% endif %} />
+      Show Obsidian notes <span class="text-slate-600">(note &rarr; note and note &rarr; entity links)</span>
+    </label>
+    {% endif %}
+
     <div class="flex items-center gap-3">
       <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-4 py-1.5">Draw map</button>
       <span id="graph-busy" class="htmx-indicator text-sm text-amber-400">Drawing the map…</span>

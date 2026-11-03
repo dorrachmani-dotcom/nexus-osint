@@ -281,9 +281,14 @@ writes the case as a vault you can open in Obsidian. To write single items or
 write-ups straight into your vault (or to Confluence), see
 [PUBLISHING.md](PUBLISHING.md).
 
-*Link graph:* wikilinks are searchable ("Linked notes") and kept as metadata,
-but they are not drawn in the entity graph yet. That graph is rebuilt from
-AI-extracted entities, which would overwrite note-to-note links.
+*Link graph:* wikilinks are searchable ("Linked notes") and stored in their
+own `note_links` table, rebuilt after every scan of the vault. A target with a
+folder (`[[Projects/Alpha]]`) matches that path; a bare name (`[[Alpha]]`)
+matches the note with that file name (the shortest path wins); a link to a note
+that does not exist yet is kept and resolves once that note appears. On the
+Graph page, **Show Obsidian notes** draws the notes that name entities on the
+map, with arrows for wikilinks and dashed lines to the entities they name (up
+to 40 notes). Vaults scanned by an older version are back-filled on start-up.
 
 ## Security limits at a glance
 
