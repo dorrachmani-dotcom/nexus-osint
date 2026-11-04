@@ -53,7 +53,7 @@ flowchart LR
 | Closed network | Settings › Internal network | (policy, not a source) | — | `INTERNAL_ALLOWED_HOSTS`, `INTERNAL_ALLOWED_CIDRS`, `INTERNAL_CA_BUNDLE` | — |
 | Flexible API sources | Sources › Custom APIs | JSON, NDJSON, XML, CSV, RSS/Atom, HTML | Feed | `CUSTOM_SOURCE_<id>_KEY`, `CUSTOM_SOURCE_<id>_HEADERS` | Every scan; Auto-Adapt re-maps drifted fields |
 | Confluence | Sources › Confluence | Pages, optionally blog posts, comments, attachments | Case and/or knowledge pool | `CONFLUENCE_SOURCE_<id>_TOKEN` | Only new/changed pages (watermark + version) |
-| Cloud connectors | Sources › Cloud connectors | Notion pages | Case and/or knowledge pool | `CLOUD_SOURCE_<id>_TOKEN` | Only new/changed content (watermark + version) |
+| Cloud connectors | Sources › Cloud connectors | Notion pages, Slack channels | Case and/or knowledge pool | `CLOUD_SOURCE_<id>_TOKEN` | Only new/changed content (watermark + version) |
 | Obsidian import | Sources › Obsidian (or upload a zipped vault) | Notes, frontmatter, tags, links, embedded files | Case and/or knowledge pool | none | New, changed and deleted notes |
 | Obsidian export | Case page › "Obsidian: export case (.zip)" | (outbound: a case as a vault) | A ZIP you download | none | — |
 
@@ -328,6 +328,23 @@ Text blocks, headings, lists, to-dos, tables and code are read, including nested
 blocks; a database row keeps its properties as text. Images and attached files
 are not downloaded. A page deleted in Notion stays in Nexus until you delete it
 under Documents.
+
+### Slack
+
+1. At api.slack.com/apps, create an app for your own workspace. Under OAuth &
+   Permissions add these bot scopes, all read-only: `channels:read`,
+   `channels:history`, `groups:read`, `groups:history`, `users:read`. Install it
+   and copy the **Bot User OAuth Token** (`xoxb-...`).
+2. In Slack, invite the bot to each channel with `/invite @your-app`.
+3. Paste the token under "Connect Slack", press **Test connection**, choose the
+   channels, then **Scan now**.
+
+Each channel becomes one document per day (UTC), with thread replies under their
+message. The first scan goes back 30 days; later scans start at the day of the
+previous scan, so an edit or a reply on an older day is not picked up. Choosing
+different channels restarts the 30-day window. Without `users:read`, member ids
+appear instead of names. Files are not downloaded and direct messages are never
+read.
 
 ## Security limits at a glance
 

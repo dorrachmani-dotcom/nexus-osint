@@ -55,6 +55,7 @@ _MAX_REQUESTS = 20_000  # request budget per scan
 # kind -> "module:class". Imported on demand.
 _CONNECTORS = {
     "notion": "nexus.sources.notion:NotionSource",
+    "slack": "nexus.sources.slack:SlackSource",
 }
 
 
