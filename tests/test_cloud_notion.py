@@ -286,3 +286,12 @@ def test_token_counts_as_a_secret_in_backups():
     from nexus.envstore import is_per_source_secret
 
     assert is_per_source_secret("CLOUD_SOURCE_7_TOKEN")
+
+
+def test_every_connector_ships_in_the_installer():
+    """Connectors are imported by name, so PyInstaller needs them listed."""
+    from nexus.sources.cloud import _CONNECTORS
+
+    spec = (Path(__file__).parent.parent / "installer" / "nexus.spec").read_text(encoding="utf-8")
+    for target in _CONNECTORS.values():
+        assert f'"{target.split(":")[0]}"' in spec

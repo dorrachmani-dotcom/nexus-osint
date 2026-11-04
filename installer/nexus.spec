@@ -110,6 +110,12 @@ hiddenimports += [
     "cryptography.hazmat.primitives.kdf.hkdf",
 ]
 
+# Cloud connectors load by name (nexus/sources/cloud.py), which static analysis
+# cannot see. tests/test_cloud_notion.py checks this list against the registry.
+hiddenimports += [
+    "nexus.sources.notion",
+]
+
 # ------------------------------------------------------------------ excludes
 # Trim weight and avoid native-lib pitfalls. weasyprint needs GTK DLLs we don't
 # ship — the app already falls back to xhtml2pdf on Windows for PDF export.
