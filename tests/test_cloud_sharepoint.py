@@ -215,4 +215,6 @@ def test_egress_expects_the_download_host(temp_db):
     egress._allow_cache = None
     allow = egress._configured_allow()
     egress._allow_cache = None
-    assert "graph.microsoft.com" in allow and "sharepoint.com" in allow
+    expected = "Source (your SharePoint / OneDrive connection)"
+    assert allow["graph.microsoft.com"] == expected
+    assert allow["sharepoint.com"] == expected
