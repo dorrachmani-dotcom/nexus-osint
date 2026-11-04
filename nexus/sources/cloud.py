@@ -57,6 +57,7 @@ _CONNECTORS = {
     "notion": "nexus.sources.notion:NotionSource",
     "slack": "nexus.sources.slack:SlackSource",
     "gdrive": "nexus.sources.gdrive:GoogleDriveSource",
+    "sharepoint": "nexus.sources.sharepoint:SharePointSource",
 }
 
 
@@ -92,6 +93,7 @@ class CloudSource(Source):
     KIND = ""
     LABEL = ""
     HOSTS: tuple[str, ...] = ()
+    REDIRECT_HOSTS: tuple[str, ...] = ()  # reached only by the service's own redirects
     INTRO = ""               # one line on the add form: what it reads
     KEY_LABEL = "Token"
     KEY_HINT = ""
@@ -116,6 +118,11 @@ class CloudSource(Source):
     @classmethod
     def normalize_key(cls, raw: str) -> str:
         """What to store for a pasted key. Raises ``ValueError`` (shown) if wrong."""
+        return raw
+
+    @classmethod
+    def normalize_account(cls, raw: str) -> str:
+        """What to store for the account field. Raises ``ValueError`` (shown) if wrong."""
         return raw
 
     def token(self) -> str | None:

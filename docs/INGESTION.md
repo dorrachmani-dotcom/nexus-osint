@@ -53,7 +53,7 @@ flowchart LR
 | Closed network | Settings › Internal network | (policy, not a source) | — | `INTERNAL_ALLOWED_HOSTS`, `INTERNAL_ALLOWED_CIDRS`, `INTERNAL_CA_BUNDLE` | — |
 | Flexible API sources | Sources › Custom APIs | JSON, NDJSON, XML, CSV, RSS/Atom, HTML | Feed | `CUSTOM_SOURCE_<id>_KEY`, `CUSTOM_SOURCE_<id>_HEADERS` | Every scan; Auto-Adapt re-maps drifted fields |
 | Confluence | Sources › Confluence | Pages, optionally blog posts, comments, attachments | Case and/or knowledge pool | `CONFLUENCE_SOURCE_<id>_TOKEN` | Only new/changed pages (watermark + version) |
-| Cloud connectors | Sources › Cloud connectors | Notion pages, Slack channels, Google Drive folders | Case and/or knowledge pool | `CLOUD_SOURCE_<id>_TOKEN` | Only new/changed content (watermark + version) |
+| Cloud connectors | Sources › Cloud connectors | Notion pages, Slack channels, Google Drive folders, SharePoint and OneDrive libraries | Case and/or knowledge pool | `CLOUD_SOURCE_<id>_TOKEN` | Only new/changed content (watermark + version) |
 | Obsidian import | Sources › Obsidian (or upload a zipped vault) | Notes, frontmatter, tags, links, embedded files | Case and/or knowledge pool | none | New, changed and deleted notes |
 | Obsidian export | Case page › "Obsidian: export case (.zip)" | (outbound: a case as a vault) | A ZIP you download | none | — |
 
@@ -362,6 +362,26 @@ audio, forms and drawings are skipped). Each scan lists the chosen folders, so a
 file deleted there, or moved out, is removed from Nexus too. If a chosen folder
 can no longer be reached nothing is removed, and the scan reports the error.
 Only the key's e-mail and private key are kept.
+
+### SharePoint and OneDrive
+
+1. In the Microsoft Entra admin center, register an app. Under **API
+   permissions** add the *application* permissions `Sites.Read.All` and
+   `Files.Read.All` for Microsoft Graph and grant admin consent. Under
+   **Certificates & secrets**, create a client secret and copy its value.
+2. Under "Connect SharePoint / OneDrive", enter the tenant ID and client ID
+   separated by a comma, and paste the secret. To read a person's OneDrive, add
+   their sign-in address after these, also comma-separated.
+3. Press **Test connection**, choose the libraries, then **Scan now**.
+
+These permissions are read-only but tenant-wide: the app could read any site.
+Nexus reads only the libraries you choose, and an administrator can restrict
+what the app may reach on the Microsoft side. Sub-folders are included, and files
+are read by the same readers as an upload (up to 50 MB each; videos, audio and
+OneNote notebooks are skipped). As with Google Drive, a file gone from a chosen
+library is removed from Nexus, and a library that cannot be reached removes
+nothing. File content comes from your tenant's `sharepoint.com` host through a
+short-lived link; the token is not sent there.
 
 ## Security limits at a glance
 
