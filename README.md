@@ -59,7 +59,7 @@ one SQLite file you own, and every outbound connection can be audited.
   Works on closed networks too: intranet hosts are blocked unless you allow-list
   them (`INTERNAL_ALLOWED_HOSTS` / `INTERNAL_ALLOWED_CIDRS`), with optional
   internal-CA trust and Basic/token/header/cookie logins kept in `.env`.
-- **Reads cloud services, read-only** (Notion): connect a token, test it, and new
+- **Reads cloud services, read-only** (Notion, Slack): connect a token, test it, and new
   and changed content lands in a case or the knowledge pool, with AI off unless
   you allow it. The token stays in `.env`.
 - **Connects Confluence** (Cloud or Data Center / Server, also on a closed

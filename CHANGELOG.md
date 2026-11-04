@@ -47,6 +47,9 @@ to [Semantic Versioning](https://semver.org/).
   the pages shared with an internal integration land in a case or the knowledge
   pool. Only new and changed pages are read, AI enrichment is off unless allowed
   per connection, and the secret stays in `.env`.
+- Slack connector: chosen channels are read into one document per channel per
+  day, with thread replies under their message. Read-only bot scopes; direct
+  messages and files are never read.
 
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no

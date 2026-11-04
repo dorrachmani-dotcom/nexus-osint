@@ -406,7 +406,7 @@ CREATE TABLE IF NOT EXISTS confluence_sources (
 -- as CLOUD_SOURCE_<id>_TOKEN, never here.
 CREATE TABLE IF NOT EXISTS cloud_sources (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    kind         TEXT NOT NULL,                  -- notion | ...
+    kind         TEXT NOT NULL,                  -- notion | slack | ...
     name         TEXT NOT NULL,
     enabled      INTEGER NOT NULL DEFAULT 1,
     account      TEXT NOT NULL DEFAULT '',       -- non-secret identity, if the service has one

@@ -114,6 +114,7 @@ hiddenimports += [
 # cannot see. tests/test_cloud_notion.py checks this list against the registry.
 hiddenimports += [
     "nexus.sources.notion",
+    "nexus.sources.slack",
 ]
 
 # ------------------------------------------------------------------ excludes
