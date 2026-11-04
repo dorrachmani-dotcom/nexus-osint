@@ -36,8 +36,8 @@ limits: [INGESTION.md](INGESTION.md).
   `.xlsx` (per sheet), PowerPoint `.pptx` (per slide, with speaker notes),
   OpenDocument (`.odt/.ods/.odp`), CSV/TSV, HTML, saved pages (`.mhtml`),
   Markdown/text (per heading), JSON and NDJSON (per record), XML/RSS/Atom (per
-  record), e-mail `.eml` (with attachments), RTF, images (text via OCR when the
-  Tesseract engine is installed) and ZIP archives. A ZIP export of a wiki or
+  record), e-mail `.eml` (with attachments), RTF, images and scanned PDF pages
+  (text via OCR when the Tesseract engine is installed) and ZIP archives. A ZIP export of a wiki or
   documentation site (Confluence, MediaWiki, MkDocs, Sphinx…) is read page by
   page, keeping each page's title and its internal links as metadata. Anything
   else is read best-effort: if it holds readable text, that text is kept.

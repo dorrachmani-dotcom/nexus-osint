@@ -48,7 +48,8 @@ one SQLite file you own, and every outbound connection can be audited.
   drafts the configuration from the API's docs or a sample, and Auto-Adapt
   re-maps fields when the response shape drifts.
 - **Ingests your own documents**: upload PDFs, Word, Excel, PowerPoint, CSV, HTML,
-  saved pages (MHTML), Markdown/text, JSON, XML, e-mails, images (OCR) or a ZIP
+  saved pages (MHTML), Markdown/text, JSON, XML, e-mails, images and scanned PDFs
+  (OCR) or a ZIP
   (including an exported wiki or docs site) into a case or a shared knowledge
   pool that Sherlock answers from. Files stay local; unknown formats are read on
   a best-effort basis, and archives are unpacked with ZIP-bomb protection.

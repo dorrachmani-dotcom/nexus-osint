@@ -18,6 +18,7 @@ Parser libraries are optional and imported lazily (graceful degradation):
   PPTX         ``python-pptx``     format disabled, clear note
   XML / ODF    ``defusedxml``      basic tag-stripped text (no parser)
   images       Tesseract (OCR)     stored, but no text
+  scanned PDF  Tesseract, pypdfium2  those pages are skipped, clear note
   ===========  ==================  ====================================
 
 Everything else (CSV, HTML, MHTML, Markdown/text, JSON/NDJSON, EML, RTF, ZIP,
@@ -37,9 +38,11 @@ import json
 import logging
 import posixpath
 import re
+import time
 import zipfile
 from dataclasses import dataclass, field
 from email.message import EmailMessage
+from typing import Any
 from urllib.parse import unquote, urlsplit
 
 from nexus.ingest.flatten import flatten_lines, flatten_to_text, guess_title
@@ -185,7 +188,7 @@ _LIB_FOR_KIND = {
 
 def format_support() -> list[dict]:
     """Per-format availability for the UI: ``{kind, label, ok, note}``."""
-    from nexus.ocr import ocr_available
+    from nexus.ocr import ocr_available, pdf_ocr_available
 
     out = []
     for kind, label in FORMAT_LABELS.items():
@@ -197,6 +200,8 @@ def format_support() -> list[dict]:
             note = "basic text only — install 'defusedxml' for full parsing"
         elif kind == "image" and not ocr_available():
             ok, note = False, "needs the Tesseract OCR engine (images are stored without text)"
+        elif kind == "pdf" and not pdf_ocr_available():
+            note = "scanned pages need the Tesseract OCR engine and 'pypdfium2'"
         out.append({"kind": kind, "label": label, "ok": ok, "note": note})
     return out
 
@@ -312,6 +317,56 @@ def _dispatch(kind: str, data: bytes, filename: str, ctx: _Ctx, depth: int) -> l
 
 # --- PDF ------------------------------------------------------------------
 _MAX_PDF_PAGES = 3000
+_MIN_PAGE_TEXT = 16  # less than this (a stray page number): treat the page as scanned
+
+
+class _PdfOcr:
+    """OCR for the scanned pages of one PDF, opened on first use, within limits."""
+
+    def __init__(self, data: bytes, ctx: _Ctx) -> None:
+        self.data, self.ctx = data, ctx
+        self.reader: Any = None
+        self.pages = 0
+        self.started = 0.0
+        self.closed = False  # off for this file (unavailable, unopenable or spent)
+
+    def _open(self) -> bool:
+        from nexus.ocr import PdfPageOcr, pdf_ocr_available
+
+        if not pdf_ocr_available():
+            self.closed = True
+            return False
+        try:
+            self.reader = PdfPageOcr(self.data, self.ctx.limits.ocr_page_seconds)
+            self.reader.__enter__()
+        except Exception as exc:
+            logger.warning("PDF could not be opened for OCR: %s", type(exc).__name__)
+            self.reader, self.closed = None, True
+            self.ctx.note("scanned pages could not be read: the PDF did not open for OCR")
+            return False
+        self.started = time.monotonic()
+        return True
+
+    def read(self, page: int) -> str | None:
+        """Text of ``page`` (from 1), or ``None`` when OCR is off or found none."""
+        if self.closed or (self.reader is None and not self._open()):
+            return None
+        limits = self.ctx.limits
+        if self.pages >= limits.max_ocr_pages:
+            self.ctx.note(f"OCR stopped after {self.pages} scanned pages (the per-document limit)")
+            self.closed = True
+            return None
+        if time.monotonic() - self.started > limits.max_ocr_seconds:
+            self.ctx.note(f"OCR stopped after {self.pages} scanned pages (the time limit)")
+            self.closed = True
+            return None
+        self.pages += 1
+        return self.reader.read(page - 1)
+
+    def close(self) -> None:
+        if self.reader is not None:
+            self.reader.__exit__(None, None, None)
+            self.reader = None
 
 
 def _x_pdf(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
@@ -331,18 +386,37 @@ def _x_pdf(data: bytes, filename: str, ctx: _Ctx, depth: int) -> list[Section]:
             return []
     out: list[Section] = []
     pages = reader.pages
-    for i, page in enumerate(pages, 1):
-        if i > _MAX_PDF_PAGES or not ctx.room():
-            ctx.note(f"only the first {i - 1} PDF pages were read")
-            break
-        try:
-            text = page.extract_text() or ""
-        except Exception:
-            logger.debug("pypdf could not read page %d", i, exc_info=True)
-            text = ""
-        ctx.add(out, f"p.{i}", text, {"page": i})
-    if not out:
-        ctx.note("PDF has no text layer (scanned?) — page OCR is not supported yet")
+    ocr = _PdfOcr(data, ctx)
+    scanned_left = 0
+    try:
+        for i, page in enumerate(pages, 1):
+            if i > _MAX_PDF_PAGES or not ctx.room():
+                ctx.note(f"only the first {i - 1} PDF pages were read")
+                break
+            try:
+                text = page.extract_text() or ""
+            except Exception:
+                logger.debug("pypdf could not read page %d", i, exc_info=True)
+                text = ""
+            if len(text.strip()) < _MIN_PAGE_TEXT:
+                # No real text layer: a scanned page.
+                read = ocr.read(i)
+                if read:
+                    ctx.add(out, f"p.{i} (OCR)", read, {"page": i, "ocr": True})
+                    continue
+                if not text.strip():
+                    scanned_left += 1
+            ctx.add(out, f"p.{i}", text, {"page": i})
+    finally:
+        ocr.close()
+    if scanned_left:
+        from nexus.ocr import pdf_ocr_available
+
+        if not pdf_ocr_available():
+            ctx.note(f"{scanned_left} page(s) have no text layer (scanned?): reading them "
+                     "needs the Tesseract OCR engine and the 'pypdfium2' package")
+        else:
+            ctx.note(f"{scanned_left} scanned page(s) gave no readable text")
     return out
 
 

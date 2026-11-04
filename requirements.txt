@@ -52,6 +52,7 @@ xhtml2pdf==0.2.21           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 # the upload page (graceful degradation). CSV, HTML, MHTML, text/Markdown,
 # JSON, e-mail, RTF and ZIP need no extra package. Licenses are permissive.
 pypdf==6.21.4               # PDF text (BSD-3-Clause)
+pypdfium2==5.14.0           # renders scanned PDF pages for OCR (BSD-3-Clause / Apache-2.0)
 python-docx==1.2.0          # Word .docx (MIT)
 openpyxl==3.1.5             # Excel .xlsx, read-only, never runs macros (MIT)
 python-pptx==1.0.2          # PowerPoint .pptx (MIT)
