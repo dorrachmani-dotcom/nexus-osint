@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     # up to gemma4:12b, or qwen3.8:27b / gemma4:31b on a strong GPU. Fully
     # offline, no key.
     ollama_model: str = Field(default="gemma4:e4b")
+    # Optional embedding model for semantic search (e.g. nomic-embed-text);
+    # empty uses the chat model above.
+    ollama_embed_model: str = Field(default="")
     # xAI (Grok) — an OpenAI-compatible cloud API (key stays in .env, OpSec).
     # Default favours cost: every analysed item is one call. Any id listed at
     # docs.x.ai works (e.g. grok-4.6, the flagship, for higher quality).

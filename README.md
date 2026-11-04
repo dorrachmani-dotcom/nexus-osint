@@ -108,7 +108,8 @@ Open sources are only half the picture. Under **Sources** you can upload files
 or ZIPs, watch intranet pages and documentation sites, plug in any HTTP API,
 connect Confluence (Cloud or Data Center) and import an Obsidian vault. Each
 one goes into the feed, a case, or a shared knowledge pool that Sherlock
-answers from. Intranet hosts are reached only after you allow-list them, and
+answers from, finding passages by meaning as well as by words when a local
+Ollama can embed them, and citing them with clickable links. Intranet hosts are reached only after you allow-list them, and
 secrets stay in `.env`. With a cloud AI provider, your material is kept away
 from it unless you tick "Allow cloud AI". Step-by-step setup, `.env` keys and
 limits: **[docs/INGESTION.md](docs/INGESTION.md)**.

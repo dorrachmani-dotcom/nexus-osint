@@ -219,6 +219,9 @@ who need a stronger posture should account for them:
   theHarvester, etc.), Nexus orchestrates code maintained by other projects. Their
   security and network behavior are outside our control; install only tools you
   trust.
+- **Embeddings.** Hybrid search sends document chunks and the question to the
+  configured Ollama server. If `OLLAMA_BASE_URL` is not on this machine, those
+  are outbound calls to that server, and documents marked "no AI" are not embedded.
 - **AI provider egress.** If you configure a cloud AI provider, the text of items
   selected for analysis is sent to that provider. Choose the local Ollama backend
   if collected content must never leave the machine.

@@ -155,6 +155,7 @@ limits: [INGESTION.md](INGESTION.md).
   ones to pull; a CQL query can narrow or replace the space list. Each page
   (optionally blog posts, footer comments and attachments, which go through the
   document readers) becomes a document in the chosen case or the knowledge pool
+  (searched by hybrid full-text and embedding ranking when Ollama is available)
   with its title, space, labels, author, version, last-modified time, web link
   and breadcrumb. Cloud spaces are read with REST v2 (cursor paging); Data
   Center, and any CQL query, with REST v1 content search. Incremental: a

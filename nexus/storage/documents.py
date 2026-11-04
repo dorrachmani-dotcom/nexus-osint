@@ -194,6 +194,37 @@ def drop_ai_excluded(conn: sqlite3.Connection, rows: list[dict]) -> list[dict]:
     return [r for r in rows if r.get("id") not in hidden]
 
 
+def chunk_scope(case_id: int | None) -> tuple[str, list]:
+    """SQL condition (on ``d``) for what Sherlock may read: pool plus one case."""
+    if case_id is None:
+        return "d.in_pool = 1", []
+    return "(d.in_pool = 1 OR d.case_id = ?)", [case_id]
+
+
+_CHUNK_COLUMNS = "i.id, i.title, i.content, i.url, d.filename, d.id AS document_id, d.case_id, d.no_ai"
+
+
+def chunks_by_id(conn: sqlite3.Connection, ids: list[int],
+                 case_id: int | None = None) -> list[dict]:
+    """The chunks ``ids``, in the same shape as :func:`search_document_chunks`."""
+    if not ids:
+        return []
+    scope, params = chunk_scope(case_id)
+    marks = ",".join("?" * len(ids))
+    rows = conn.execute(
+        f"""
+        SELECT {_CHUNK_COLUMNS}
+        FROM items i
+        JOIN document_items di ON di.item_id = i.id
+        JOIN documents d ON d.id = di.document_id
+        WHERE i.id IN ({marks}) AND {scope}
+        GROUP BY i.id
+        """,
+        [*ids, *params],
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def search_document_chunks(
     conn: sqlite3.Connection,
     terms: list[str] | None,
@@ -209,16 +240,11 @@ def search_document_chunks(
     match = build_fts_or_query(terms or [])
     if not match:
         return []
-    scope = "d.in_pool = 1"
-    params: list = [match]
-    if case_id is not None:
-        scope = "(d.in_pool = 1 OR d.case_id = ?)"
-        params.append(case_id)
-    params.append(limit)
+    scope, scoped = chunk_scope(case_id)
+    params: list = [match, *scoped, limit]
     rows = conn.execute(
         f"""
-        SELECT i.id, i.title, i.content, d.filename, d.id AS document_id,
-               d.case_id, d.no_ai
+        SELECT {_CHUNK_COLUMNS}
         FROM (
             SELECT rowid, bm25(items_fts) AS rank FROM items_fts
             WHERE items_fts MATCH ? ORDER BY rank LIMIT 500

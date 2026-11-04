@@ -593,12 +593,18 @@ def _data_context(
     terms = _keywords(question)
     # Uploads marked "no AI" never reach a cloud model; a local model is fine.
     cloud = _cloud_ai()
+    # Document chunks are also items. Matched ones are listed below as documents
+    # (longer excerpt, cited by file name), not here as well.
+    docs = _document_context(conn, terms, cloud, question)
+    doc_ids = {d.get("id") for d in docs}
     rows: list[dict] = []
     if terms:
-        rows = _ai_visible(conn, search_items(conn, terms=terms, limit=_MAX_CONTEXT_ITEMS), cloud)
+        found = _ai_visible(conn, search_items(conn, terms=terms, limit=_MAX_CONTEXT_ITEMS), cloud)
+        rows = [r for r in found if r.get("id") not in doc_ids]
     if not rows:
         # No keyword hits (or a generic question) -> show the most recent items.
-        rows = _ai_visible(conn, search_items(conn, limit=_MAX_CONTEXT_ITEMS), cloud)
+        recent = _ai_visible(conn, search_items(conn, limit=_MAX_CONTEXT_ITEMS), cloud)
+        rows = [r for r in recent if r.get("id") not in doc_ids]
         lines.append("Most recent items (no specific match for the question):")
     else:
         lines.append(f"Items most relevant to the question (search: {' '.join(terms)}):")
@@ -625,8 +631,6 @@ def _data_context(
 
     # Uploaded reference documents (knowledge pool + the active case's uploads):
     # longer excerpts, numbered on from the items so citations still link.
-    seen_ids = {r.get("id") for r in rows}
-    docs = [d for d in _document_context(conn, terms, cloud) if d.get("id") not in seen_ids]
     if docs:
         lines.append(
             "Reference documents the analyst uploaded (knowledge pool / active case). "
@@ -641,8 +645,8 @@ def _data_context(
                 f"   {_truncate(d.get('content'), 900)}"
             )
             ctx_items.append({
-                "n": n, "id": d.get("id"), "url": "", "title": title,
-                "source": "upload", "when": "",
+                "n": n, "id": d.get("id"), "url": d.get("url") or "", "title": title,
+                "source": d.get("filename") or "document", "when": "",
             })
 
     return "\n".join(lines), ctx_items
@@ -666,16 +670,19 @@ def _ai_visible(conn: sqlite3.Connection, rows: list[dict], cloud: bool) -> list
     return drop_ai_excluded(conn, rows)
 
 
-def _document_context(conn: sqlite3.Connection, terms: list[str], cloud: bool) -> list[dict]:
-    """Best-matching uploaded-document chunks for the question (fail-soft)."""
+def _document_context(conn: sqlite3.Connection, terms: list[str], cloud: bool,
+                      question: str = "") -> list[dict]:
+    """Best-matching document chunks for the question (fail-soft): full-text and,
+    when an embedder is available, meaning."""
     if not terms:
         return []
     try:
-        from nexus.storage.documents import search_document_chunks
+        from nexus.embeddings import hybrid_chunks
 
         active = get_active_case(conn)
-        rows = search_document_chunks(
-            conn, terms, case_id=active["id"] if active else None, limit=_MAX_DOC_CHUNKS
+        rows = hybrid_chunks(
+            conn, question or " ".join(terms), terms,
+            case_id=active["id"] if active else None, limit=_MAX_DOC_CHUNKS,
         )
     except Exception:
         logger.debug("document context unavailable", exc_info=True)
