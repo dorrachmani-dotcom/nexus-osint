@@ -50,6 +50,9 @@ to [Semantic Versioning](https://semver.org/).
 - Slack connector: chosen channels are read into one document per channel per
   day, with thread replies under their message. Read-only bot scopes; direct
   messages and files are never read.
+- Google Drive connector: chosen folders are read through a service account
+  with the read-only Drive scope. Docs, Sheets and Slides are exported, other
+  files use the upload readers, and files gone from those folders are removed.
 
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no

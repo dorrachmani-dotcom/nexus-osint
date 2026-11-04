@@ -171,7 +171,8 @@ limits: [INGESTION.md](INGESTION.md).
   version), rate limits are waited out, AI is off unless allowed per connection,
   and the token stays in `.env` (`CLOUD_SOURCE_<id>_TOKEN`). Connectors:
   **Notion** (pages shared with an internal integration), **Slack** (chosen
-  channels, one document per day, with thread replies).
+  channels, one document per day, with thread replies), **Google Drive** (chosen
+  folders through a service account).
 - **Edit and publish (write-back)** — edit an item's title, summary and an
   analyst note (stored as a layer beside the untouched original, with an
   "edited" badge), or compose a write-up from several pinned items (case ⋯ menu

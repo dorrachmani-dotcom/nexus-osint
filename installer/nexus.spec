@@ -115,6 +115,7 @@ hiddenimports += [
 hiddenimports += [
     "nexus.sources.notion",
     "nexus.sources.slack",
+    "nexus.sources.gdrive",
 ]
 
 # ------------------------------------------------------------------ excludes

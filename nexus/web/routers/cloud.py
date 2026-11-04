@@ -74,6 +74,10 @@ async def cloud_create(request: Request) -> HTMLResponse:
         return _list(request, f"Paste the {cls.KEY_LABEL.lower()}.")
     if cls.ACCOUNT_LABEL and not account:
         return _list(request, f"Enter the {cls.ACCOUNT_LABEL.lower()}.")
+    try:
+        token = cls.normalize_key(token)
+    except ValueError as exc:
+        return _list(request, str(exc))
     destination = str(form.get("destination") or "pool").strip()
     cfg = {
         "kind": kind, "name": str(form.get("name") or "") or cls.LABEL, "account": account,
