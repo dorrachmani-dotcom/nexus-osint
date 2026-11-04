@@ -172,7 +172,8 @@ limits: [INGESTION.md](INGESTION.md).
   and the token stays in `.env` (`CLOUD_SOURCE_<id>_TOKEN`). Connectors:
   **Notion** (pages shared with an internal integration), **Slack** (chosen
   channels, one document per day, with thread replies), **Google Drive** (chosen
-  folders through a service account).
+  folders through a service account), **SharePoint / OneDrive** (chosen libraries
+  through Microsoft Graph).
 - **Edit and publish (write-back)** — edit an item's title, summary and an
   analyst note (stored as a layer beside the untouched original, with an
   "edited" badge), or compose a write-up from several pinned items (case ⋯ menu

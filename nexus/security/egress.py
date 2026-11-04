@@ -204,7 +204,7 @@ def _configured_allow() -> dict[str, str]:
             cls = connector_class(str(row[0] or ""))
             if cls is None:
                 continue
-            for h in cls.HOSTS:
+            for h in (*cls.HOSTS, *cls.REDIRECT_HOSTS):
                 allow[h] = f"Source (your {cls.LABEL} connection)"
     except Exception:
         logger.debug("Could not read connectors for egress allow-list", exc_info=True)

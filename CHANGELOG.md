@@ -53,6 +53,9 @@ to [Semantic Versioning](https://semver.org/).
 - Google Drive connector: chosen folders are read through a service account
   with the read-only Drive scope. Docs, Sheets and Slides are exported, other
   files use the upload readers, and files gone from those folders are removed.
+- SharePoint / OneDrive connector: chosen document libraries and named users'
+  OneDrives are read through Microsoft Graph with an app registration. Files use
+  the upload readers, and files gone from those libraries are removed.
 
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no
