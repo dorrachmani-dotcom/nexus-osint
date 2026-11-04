@@ -20,6 +20,7 @@ from nexus.config import Settings, get_settings
 from nexus.db import get_connection
 from nexus.sources.auto_adapt import maybe_adapt
 from nexus.sources.base import Source
+from nexus.sources.cloud import load_cloud_sources
 from nexus.sources.confluence import load_confluence_sources
 from nexus.sources.custom import CustomApiSource, load_custom_sources
 from nexus.sources.freesearch import GoogleNewsSource, RedditSearchSource
@@ -88,7 +89,8 @@ class Collector:
         custom = load_custom_sources(self.settings)
         web = load_web_sources(self.settings)
         connectors = [*load_confluence_sources(self.settings),
-                      *load_obsidian_sources(self.settings)]
+                      *load_obsidian_sources(self.settings),
+                      *load_cloud_sources(self.settings)]
         return [s for s in (*self.sources, *custom, *web, *connectors) if s.is_available()]
 
     def scan(self) -> dict:

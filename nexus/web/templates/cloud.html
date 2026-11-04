@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="space-y-6">
+  <div>
+    <h1 class="text-lg font-semibold text-slate-100">Sources</h1>
+    <p class="text-sm text-slate-400">Where your data comes from.</p>
+    {% set active = 'cloud' %}{% include "_sources_tabs.html" %}
+  </div>
+  <p class="text-sm text-slate-400">
+    Read content you already have elsewhere into a case or the knowledge pool. Connections are
+    <span class="text-slate-300">read-only</span>: Nexus never changes anything on these services.
+    Each scan reads only <span class="text-slate-300">new</span> and
+    <span class="text-slate-300">changed</span> content. Tokens stay in your local
+    <span class="mono">.env</span>.
+  </p>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <div class="space-y-3">
+      {% for c in connectors %}
+      <details class="rounded-lg border border-slate-800 bg-slate-900/60 p-4" {% if loop.first %}open{% endif %}>
+        <summary class="cursor-pointer text-sm font-medium text-slate-300">Connect {{ c.LABEL }}</summary>
+        <form hx-post="/sources/cloud" hx-target="#cloud-list" hx-swap="outerHTML"
+              data-done="reset-if-ok" autocomplete="off" class="mt-3 space-y-3">
+          <input type="hidden" name="kind" value="{{ c.KIND }}" />
+          <p class="text-xs text-slate-500">{{ c.INTRO }}</p>
+          <label class="block text-xs text-slate-400">Name
+            <input name="name" maxlength="80" placeholder="{{ c.LABEL }}"
+                   class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200" />
+          </label>
+          {% if c.ACCOUNT_LABEL %}
+          <label class="block text-xs text-slate-400">{{ c.ACCOUNT_LABEL }}
+            <input name="account" required maxlength="500"
+                   class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 mono" />
+            <span class="text-[11px] text-slate-500">{{ c.ACCOUNT_HINT }}</span>
+          </label>
+          {% endif %}
+          <label class="block text-xs text-slate-400">{{ c.KEY_LABEL }}
+            <input name="token" type="password" required autocomplete="new-password"
+                   class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 mono" />
+            <span class="text-[11px] text-slate-500">{{ c.KEY_HINT }} Stored only in your local .env.</span>
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="block text-xs text-slate-400">Store in
+              <select name="destination"
+                      class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200">
+                <option value="pool">Knowledge pool</option>
+                {% for case in cases %}<option value="{{ case.id }}">Case: {{ case.name }}</option>{% endfor %}
+              </select>
+            </label>
+            <label class="block text-xs text-slate-400">Most per scan
+              <input name="max_items" type="number" min="1" max="{{ max_items }}" value="200"
+                     class="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200" />
+            </label>
+          </div>
+          <label class="flex items-center gap-2 text-xs text-slate-300">
+            <input type="checkbox" name="also_pool" class="accent-amber-500" /> Also add to the knowledge pool
+          </label>
+          <label class="flex items-center gap-2 text-xs text-slate-300">
+            <input type="checkbox" name="allow_ai" class="accent-amber-500" /> Allow AI enrichment of this content
+            {% if cloud_ai %}<span class="text-amber-300">(sent to {{ active_provider }})</span>{% endif %}
+          </label>
+          <button class="rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-medium px-3 py-1.5">Connect</button>
+        </form>
+      </details>
+      {% endfor %}
+    </div>
+    {% include "_cloud_list.html" %}
+  </div>
+</section>
+{% endblock %}

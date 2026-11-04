@@ -18,6 +18,7 @@ All examples use fictional hosts (`wiki.example.corp`, `api.example.org`,
 - [4. Flexible API sources](#4-flexible-api-sources)
 - [5. Confluence (Cloud and Data Center / Server)](#5-confluence-cloud-and-data-center--server)
 - [6. Obsidian: import vault and export case](#6-obsidian-import-vault-and-export-case)
+- [7. Cloud connectors (read-only)](#7-cloud-connectors-read-only)
 - [Security limits at a glance](#security-limits-at-a-glance)
 - [Where every secret lives](#where-every-secret-lives)
 
@@ -52,6 +53,7 @@ flowchart LR
 | Closed network | Settings › Internal network | (policy, not a source) | — | `INTERNAL_ALLOWED_HOSTS`, `INTERNAL_ALLOWED_CIDRS`, `INTERNAL_CA_BUNDLE` | — |
 | Flexible API sources | Sources › Custom APIs | JSON, NDJSON, XML, CSV, RSS/Atom, HTML | Feed | `CUSTOM_SOURCE_<id>_KEY`, `CUSTOM_SOURCE_<id>_HEADERS` | Every scan; Auto-Adapt re-maps drifted fields |
 | Confluence | Sources › Confluence | Pages, optionally blog posts, comments, attachments | Case and/or knowledge pool | `CONFLUENCE_SOURCE_<id>_TOKEN` | Only new/changed pages (watermark + version) |
+| Cloud connectors | Sources › Cloud connectors | Notion pages | Case and/or knowledge pool | `CLOUD_SOURCE_<id>_TOKEN` | Only new/changed content (watermark + version) |
 | Obsidian import | Sources › Obsidian (or upload a zipped vault) | Notes, frontmatter, tags, links, embedded files | Case and/or knowledge pool | none | New, changed and deleted notes |
 | Obsidian export | Case page › "Obsidian: export case (.zip)" | (outbound: a case as a vault) | A ZIP you download | none | — |
 
@@ -295,6 +297,37 @@ that does not exist yet is kept and resolves once that note appears. On the
 Graph page, **Show Obsidian notes** draws the notes that name entities on the
 map, with arrows for wikilinks and dashed lines to the entities they name (up
 to 40 notes). Vaults scanned by an older version are back-filled on start-up.
+
+## 7. Cloud connectors (read-only)
+
+**Sources › Cloud connectors** reads content you already have on a cloud service
+into a case or the knowledge pool. All of them share the same rules:
+
+- **Read-only.** Nexus only lists and reads; it never changes anything there.
+- **Fixed destinations.** Requests go over https to that service's own hosts and
+  nowhere else; the Security center lists them as expected.
+- **Only what changed.** Each scan reads new and changed content, up to the
+  "Most per scan" number; the rest follows next scan. Rate limits are waited out.
+- **AI is off by default** for this content. Tick "Allow AI enrichment" to change
+  that for a connection.
+- **The token stays in `.env`** as `CLOUD_SOURCE_<id>_TOKEN`: never in the
+  database, the page, a log or a backup.
+- Disconnecting removes the token; what was already read stays under Documents.
+
+### Notion
+
+1. At notion.so/my-integrations, create an internal integration with the **Read
+   content** capability and copy its secret.
+2. In Notion, open each page to read, then **Connections**, and add the
+   integration. Sub-pages follow. This is how pages are chosen: an integration
+   sees nothing else.
+3. Paste the secret under "Connect Notion", then press **Test connection** and
+   **Scan now**.
+
+Text blocks, headings, lists, to-dos, tables and code are read, including nested
+blocks; a database row keeps its properties as text. Images and attached files
+are not downloaded. A page deleted in Notion stays in Nexus until you delete it
+under Documents.
 
 ## Security limits at a glance
 

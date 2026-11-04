@@ -165,6 +165,12 @@ limits: [INGESTION.md](INGESTION.md).
   (explicitly) no TLS verification can be set per connection. The token lives
   in `.env` (`CONFLUENCE_SOURCE_<id>_TOKEN`) only — never the database, the page
   or a log.
+- **Cloud connectors** (Sources › Cloud connectors) — read-only connections with
+  one shared flow: connect, Test connection, scan. Requests are limited to the
+  service's own https hosts, only new and changed content is read (watermark plus
+  version), rate limits are waited out, AI is off unless allowed per connection,
+  and the token stays in `.env` (`CLOUD_SOURCE_<id>_TOKEN`). Connectors:
+  **Notion** (pages shared with an internal integration).
 - **Edit and publish (write-back)** — edit an item's title, summary and an
   analyst note (stored as a layer beside the untouched original, with an
   "edited" badge), or compose a write-up from several pinned items (case ⋯ menu

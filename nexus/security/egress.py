@@ -188,6 +188,27 @@ def _configured_allow() -> dict[str, str]:
     except Exception:
         logger.debug("Could not read web sources for egress allow-list", exc_info=True)
 
+    # Knowledge connectors the operator connected.
+    try:
+        from nexus.db import get_connection
+        from nexus.sources.cloud import connector_class
+
+        with get_connection() as conn:
+            sites = conn.execute("SELECT base_url FROM confluence_sources WHERE enabled = 1").fetchall()
+            kinds = conn.execute("SELECT DISTINCT kind FROM cloud_sources WHERE enabled = 1").fetchall()
+        for row in sites:
+            h = _host_of(str(row[0] or ""))
+            if h:
+                allow[h] = "Source (your Confluence)"
+        for row in kinds:
+            cls = connector_class(str(row[0] or ""))
+            if cls is None:
+                continue
+            for h in cls.HOSTS:
+                allow[h] = f"Source (your {cls.LABEL} connection)"
+    except Exception:
+        logger.debug("Could not read connectors for egress allow-list", exc_info=True)
+
     _allow_cache = allow
     _allow_cache_at = now
     return allow

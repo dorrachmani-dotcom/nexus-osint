@@ -41,7 +41,7 @@ PAGES = [
     "/watchlists", "/requirements", "/lists", "/tools", "/investigation", "/settings", "/setup",
     "/guide", "/security", "/security/outbound", "/transfer", "/sources",
     "/sources/documents", "/sources/web", "/sources/confluence", "/sources/obsidian",
-    "/sources/custom", "/settings/backup", "/settings/encryption", "/settings/internal-network",
+    "/sources/custom", "/sources/cloud", "/settings/backup", "/settings/encryption", "/settings/internal-network",
 ]
 
 

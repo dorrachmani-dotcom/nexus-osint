@@ -1,0 +1,29 @@
+{% if result.scanned %}
+<p class="text-xs {% if (result.status or '').startswith('error') %}text-rose-400{% else %}text-emerald-300{% endif %}">
+  Scanned: {{ result.status or 'done' }} &mdash; {{ result.new }} new item{{ '' if result.new == 1 else 's' }}.
+</p>
+{% elif result.ok %}
+<div class="text-xs space-y-1.5">
+  <p class="text-emerald-300">Connected as {{ result.account }}.</p>
+  {% if result.note %}<p class="text-amber-300">{{ result.note }}</p>{% endif %}
+  {% if connector.SCOPE_NOUN and result['items'] %}
+  <form hx-post="/sources/cloud/{{ source.id }}/scope" hx-target="#cloud-list" hx-swap="outerHTML" class="space-y-1.5">
+    <p class="text-slate-400">Choose the {{ connector.SCOPE_NOUN }} to read:</p>
+    <div class="max-h-48 overflow-y-auto rounded border border-slate-800 p-2 grid grid-cols-2 gap-1">
+      {% for it in result['items'] %}
+      <label class="flex items-center gap-2 text-slate-300 truncate">
+        <input type="checkbox" name="item" value="{{ it.key }}" {% if it.key in chosen %}checked{% endif %} class="accent-amber-500" />
+        <span class="truncate">{{ it.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button class="px-2 py-1 rounded text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-medium">Save choice</button>
+  </form>
+  {% elif result['items'] %}
+  <p class="text-slate-400">{{ result['items'] | length }} readable, including:
+    {% for it in result['items'][:8] %}<span class="text-slate-300">{{ it.name }}</span>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+</div>
+{% else %}
+<p class="text-xs text-rose-400">{{ result.error }}</p>
+{% endif %}
