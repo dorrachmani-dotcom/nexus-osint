@@ -402,6 +402,25 @@ CREATE TABLE IF NOT EXISTS confluence_sources (
     created_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Read-only cloud connections (nexus/sources/cloud.py). The token lives in .env
+-- as CLOUD_SOURCE_<id>_TOKEN, never here.
+CREATE TABLE IF NOT EXISTS cloud_sources (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind         TEXT NOT NULL,                  -- notion | ...
+    name         TEXT NOT NULL,
+    enabled      INTEGER NOT NULL DEFAULT 1,
+    account      TEXT NOT NULL DEFAULT '',       -- non-secret identity, if the service has one
+    scope        TEXT NOT NULL DEFAULT '',       -- chosen channels / folders / sites
+    max_items    INTEGER NOT NULL DEFAULT 200,   -- documents read per scan
+    case_id      INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+    in_pool      INTEGER NOT NULL DEFAULT 1,
+    no_ai        INTEGER NOT NULL DEFAULT 1,
+    watermark    TEXT,
+    last_scan_at TEXT,
+    last_status  TEXT,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Full-text search over items (external content).
 CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
     title, content, summary,
@@ -460,7 +479,7 @@ _KNOWN_TABLES = frozenset({
     "list_memberships", "meta", "case_terms", "requirements", "requirement_hits",
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
     "item_archives", "documents", "document_items", "web_sources", "web_pages",
-    "connector_docs", "confluence_sources", "obsidian_vaults",
+    "connector_docs", "confluence_sources", "obsidian_vaults", "cloud_sources",
     "item_edits", "writeups", "publications", "outbound_log", "note_links",
 })
 

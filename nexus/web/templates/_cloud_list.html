@@ -1,0 +1,51 @@
+<div id="cloud-list" class="rounded-lg border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+  {% if error %}<p class="text-xs text-rose-400">{{ error }}</p>{% endif %}
+  {% if not cloud_sources %}
+  <p class="text-sm text-slate-500">No connections yet. Connect one, press &ldquo;Test connection&rdquo;, then scan.</p>
+  {% endif %}
+  {% for s in cloud_sources %}
+  <div class="border border-slate-800 rounded p-3 bg-slate-950/40 space-y-2">
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-center gap-1.5">
+        <span class="text-sm font-medium text-slate-200 truncate">{{ s.name }}</span>
+        <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-300">{{ s.connector.LABEL if s.connector else s.kind }}</span>
+        {% if s.enabled %}
+        <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-emerald-950/60 text-emerald-300 border border-emerald-800">enabled</span>
+        {% else %}
+        <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-500">disabled</span>
+        {% endif %}
+        {% if s.token_set %}
+        <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-sky-950/60 text-sky-300 border border-sky-800">token set</span>
+        {% else %}
+        <span class="px-1.5 py-0.5 rounded text-[10px] mono bg-rose-950/60 text-rose-300 border border-rose-800">token missing</span>
+        {% endif %}
+        {% if s.in_pool %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-sky-950/60 text-sky-300 border border-sky-800">knowledge pool</span>{% endif %}
+        {% if s.case_name %}<a href="/cases/{{ s.case_id }}" class="px-1.5 py-0.5 rounded text-[10px] mono bg-amber-950/50 text-amber-300 border border-amber-800 hover:text-amber-200">case: {{ s.case_name }}</a>{% endif %}
+        {% if s.no_ai %}<span class="px-1.5 py-0.5 rounded text-[10px] mono bg-slate-800 text-slate-300 border border-slate-700" title="Kept away from AI enrichment">no AI</span>{% endif %}
+      </div>
+      <div class="text-[11px] text-slate-500 mt-1">
+        {% if s.connector and s.connector.SCOPE_NOUN %}
+          {% if s.scope %}{{ s.scope.split(',') | length }} of the {{ s.connector.SCOPE_NOUN }} chosen{% else %}no {{ s.connector.SCOPE_NOUN }} chosen{% endif %} &middot;
+        {% endif %}
+        {{ s.doc_count }} document{{ '' if s.doc_count == 1 else 's' }} stored
+        {% if s.last_scan_at %}&middot; last scan {{ s.last_scan_at[:16] }}{% endif %}
+        {% if s.last_status %}&middot; {{ s.last_status }}{% endif %}
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-1.5">
+      <button hx-post="/sources/cloud/{{ s.id }}/test" hx-target="#cloud-result-{{ s.id }}" hx-swap="innerHTML"
+              hx-indicator="#cloud-tspin-{{ s.id }}"
+              class="px-2 py-1 rounded text-xs bg-sky-800 hover:bg-sky-700 text-sky-100">Test connection<span id="cloud-tspin-{{ s.id }}" class="htmx-indicator">&hellip;</span></button>
+      <button hx-post="/sources/cloud/{{ s.id }}/scan" hx-target="#cloud-result-{{ s.id }}" hx-swap="innerHTML"
+              hx-indicator="#cloud-spin-{{ s.id }}"
+              class="px-2 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-200">Scan now<span id="cloud-spin-{{ s.id }}" class="htmx-indicator">&hellip;</span></button>
+      <button hx-post="/sources/cloud/{{ s.id }}/toggle" hx-target="#cloud-list" hx-swap="outerHTML"
+              class="px-2 py-1 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-200">{% if s.enabled %}Disable{% else %}Enable{% endif %}</button>
+      <button hx-post="/sources/cloud/{{ s.id }}/delete" hx-target="#cloud-list" hx-swap="outerHTML"
+              hx-confirm="Disconnect '{{ s.name }}' and delete its stored token? What was already read stays under Documents."
+              class="px-2 py-1 rounded text-xs bg-rose-950 hover:bg-rose-900 text-rose-200">Disconnect</button>
+    </div>
+    <div id="cloud-result-{{ s.id }}"></div>
+  </div>
+  {% endfor %}
+</div>

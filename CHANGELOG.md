@@ -43,6 +43,11 @@ to [Semantic Versioning](https://semver.org/).
   (200 pages, 10 minutes, 60 seconds per page). Without either component the
   file is still stored and a note says which pages were not read.
 
+- Read-only cloud connectors (Sources › Cloud connectors), starting with Notion:
+  the pages shared with an internal integration land in a case or the knowledge
+  pool. Only new and changed pages are read, AI enrichment is off unless allowed
+  per connection, and the secret stays in `.env`.
+
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no
   `'unsafe-inline'` or `'unsafe-eval'`. Inline scripts moved to
@@ -55,6 +60,7 @@ to [Semantic Versioning](https://semver.org/).
   temporary copy of the image.
 
 ### Fixed
+- The Security center lists Confluence hosts as expected destinations.
 - Connector attachments are parsed before the document is written, so a slow
   file no longer holds the database's write lock.
 - Deleting a write-up no longer leaves what was published from it behind
