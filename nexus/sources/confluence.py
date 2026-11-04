@@ -40,6 +40,7 @@ import base64
 import html
 import logging
 import re
+import sqlite3
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -66,6 +67,7 @@ _MAX_RETRIES = 3
 _MAX_RETRY_WAIT = 60.0
 _MAX_LIST_REQUESTS = 5000  # request budget per scan
 _MAX_ATTACHMENTS = 20
+USER_NAME_DAYS = 30  # how long a saved display name is trusted
 _OVERLAP = timedelta(days=1)  # CQL dates are minute-precision in the user's zone
 
 
@@ -142,6 +144,7 @@ class ConfluenceSource(Source):
         self.status = ""
         self._title_cache: dict[str, str] = {}
         self._user_cache: dict[str, str | None] = {}
+        self._stored_users: dict[str, tuple[str, bool]] | None = None
         self._requests = 0
 
     # ---------------------------------------------------------- config
@@ -308,18 +311,55 @@ class ConfluenceSource(Source):
         return {"ok": True, "spaces": spaces}
 
     # ----------------------------------------------------------- reading
+    def _stored_user(self, account_id: str) -> tuple[str | None, bool]:
+        """A saved name and whether it is recent. A cache problem is a cache miss."""
+        if self._stored_users is None:
+            from nexus.db import get_connection
+            from nexus.storage.confluence_sources import cached_user_names
+
+            try:
+                with get_connection() as conn:
+                    self._stored_users = cached_user_names(conn, self.id, USER_NAME_DAYS)
+            except sqlite3.Error:
+                logger.warning("Confluence '%s': no saved author names", self.name)
+                self._stored_users = {}
+        return self._stored_users.get(account_id, (None, False))
+
+    def _save_user(self, account_id: str, name: str) -> None:
+        from nexus.db import get_connection
+        from nexus.storage.confluence_sources import save_user_name
+
+        try:
+            with get_connection() as conn:
+                save_user_name(conn, self.id, account_id, name)
+        except sqlite3.Error:
+            logger.warning("Confluence '%s': could not save an author name", self.name)
+
     def _user_name(self, account_id: str | None) -> str | None:
+        """The display name behind a Cloud accountId.
+
+        Saved between scans, since the v2 API gives only ids and every listed
+        page names one. A failed lookup is remembered for this run only, and
+        keeps an older saved name.
+        """
         if not account_id:
             return None
-        if account_id not in self._user_cache:
-            name = None
+        if account_id in self._user_cache:
+            return self._user_cache[account_id]
+        stored, fresh = self._stored_user(account_id)
+        name = stored if fresh else None
+        if not fresh:
             try:
                 data = self._json(f"{self.v1}/user", {"accountId": account_id})
                 name = data.get("displayName") or data.get("publicName")
             except ConfluenceError:
                 pass
-            self._user_cache[account_id] = name
-        return self._user_cache[account_id]
+            if name:
+                self._save_user(account_id, name)
+            else:
+                name = stored
+        self._user_cache[account_id] = name
+        return name
 
     def _v2_title(self, page_id: str) -> str:
         if page_id not in self._title_cache:
@@ -338,7 +378,9 @@ class ConfluenceSource(Source):
                                  {"body-format": "storage", "limit": 50}, v2=True)
                 for c in it:
                     body = ((c.get("body") or {}).get("storage") or {}).get("value") or ""
-                    texts.append(storage_to_text(body))
+                    who = self._user_name((c.get("version") or {}).get("authorId"))
+                    text = storage_to_text(body)
+                    texts.append(f"{who}: {text}" if who else text)
             else:
                 it = self._paged(f"{self.v1}/content/{content_id}/child/comment",
                                  {"expand": "body.storage,history", "limit": 50,
@@ -431,7 +473,8 @@ class ConfluenceSource(Source):
             modified=_parse_when(version.get("createdAt")),
             version=str(version.get("number") or ""),
             meta={"space": space.get("key"), "space_name": space.get("name"),
-                  "content_type": "page" if ctype == "pages" else "blogpost"},
+                  "content_type": "page" if ctype == "pages" else "blogpost",
+                  "last_modified_by": self._user_name(version.get("authorId"))},
         )
 
     def _v2_meta(self, doc: ConnectorDoc, ctype: str) -> None:

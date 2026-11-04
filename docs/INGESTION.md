@@ -241,6 +241,8 @@ written to the database, the page or a log.
 What arrives:
 - One document per page, with clean text plus metadata: title, space, labels,
   author, version, last-modified time, web link and breadcrumb.
+- On Cloud, authors arrive as account ids. Nexus looks up their display names
+  and saves them for 30 days, so a scan does not ask again for every page.
 - Attachments go through the document readers.
 
 How it reads:
