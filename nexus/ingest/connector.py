@@ -187,6 +187,24 @@ def sync_document(
         )
         return {"change": "same", "new": 0}
 
+    # Parse attachments BEFORE the first write: OCR of a scanned PDF can take
+    # minutes, which must not hold SQLite's write lock.
+    limits = DEFAULT_LIMITS
+    notes: list[str] = []
+    parts: list[tuple[str, str]] = list(_sections(doc))
+    for name, data in doc.attachments:
+        try:
+            ex = extract(data, safe_display_name(name), limits)
+        except UnsafeFileError as exc:
+            notes.append(f"attachment {safe_display_name(name)} refused: {exc}")
+            continue
+        except Exception as exc:  # parsers are defensive; last net
+            notes.append(f"attachment {safe_display_name(name)} unreadable ({type(exc).__name__})")
+            continue
+        for sec in ex.sections:
+            label = f"attachment {safe_display_name(name)}" + (f" — {sec.label}" if sec.label else "")
+            parts.append((label, sec.text))
+
     title = (doc.title or doc.key or "untitled").strip()[:300]
     doc_id = prev.get("document_id") if prev else None
     if doc_id is not None and conn.execute(
@@ -214,22 +232,6 @@ def sync_document(
                 "document_id": doc_id, "version": doc.version, **_small_meta(doc.meta)}
     new = 0
     index = 0
-    notes: list[str] = []
-    limits = DEFAULT_LIMITS
-    parts: list[tuple[str, str]] = list(_sections(doc))
-    for name, data in doc.attachments:
-        try:
-            ex = extract(data, safe_display_name(name), limits)
-        except UnsafeFileError as exc:
-            notes.append(f"attachment {safe_display_name(name)} refused: {exc}")
-            continue
-        except Exception as exc:  # parsers are defensive; last net
-            notes.append(f"attachment {safe_display_name(name)} unreadable ({type(exc).__name__})")
-            continue
-        for sec in ex.sections:
-            label = f"attachment {safe_display_name(name)}" + (f" — {sec.label}" if sec.label else "")
-            parts.append((label, sec.text))
-
     for label, text in parts:
         pieces = split_text(text, CHUNK_CHARS)
         for n, piece in enumerate(pieces, 1):

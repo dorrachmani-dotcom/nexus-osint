@@ -17,7 +17,10 @@ from __future__ import annotations
 
 import io
 import logging
+import math
+import threading
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger("nexus.ocr")
 
@@ -25,6 +28,11 @@ logger = logging.getLogger("nexus.ocr")
 _MIN_USEFUL_CHARS = 3
 # Guard against a pathological screenshot producing a megabyte of garbage text.
 _MAX_CHARS = 20_000
+
+# Scanned PDFs: pages are rendered in memory (never written to disk).
+_PDF_DPI = 200
+_PDF_MAX_PIXELS = 25_000_000   # a huge page is scaled down, not rendered in full
+_pdfium_lock = threading.Lock()  # PDFium is not thread-safe
 
 
 def ocr_available() -> bool:
@@ -40,6 +48,87 @@ def ocr_available() -> bool:
     except Exception:
         return False
     return True
+
+
+def pdf_ocr_available() -> bool:
+    """True when scanned PDF pages can be read: Tesseract plus pypdfium2."""
+    try:
+        import pypdfium2  # noqa: F401
+    except ImportError:
+        return False
+    return ocr_available()
+
+
+class PdfPageOcr:
+    """Read pages of one PDF by rendering them and running OCR.
+
+    Use as a context manager. Never raises while reading: a page that cannot
+    be rendered or read gives ``None``. Opening a corrupt or password-protected
+    file raises, which the caller treats as "no OCR for this file".
+    """
+
+    def __init__(self, data: bytes, timeout: int = 60) -> None:
+        self.data = data
+        self.timeout = timeout
+        self._doc: Any = None
+
+    def __enter__(self) -> PdfPageOcr:
+        import pypdfium2
+
+        with _pdfium_lock:
+            self._doc = pypdfium2.PdfDocument(self.data)
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        with _pdfium_lock:
+            if self._doc is not None:
+                self._doc.close()
+                self._doc = None
+
+    def _render(self, index: int) -> Any:
+        """Page ``index`` (from 0) as a grayscale PIL image."""
+        with _pdfium_lock:
+            page = self._doc[index]
+            try:
+                width, height = page.get_size()
+                scale = _PDF_DPI / 72
+                area = max(width * height, 1.0)
+                if area * scale * scale > _PDF_MAX_PIXELS:
+                    scale = math.sqrt(_PDF_MAX_PIXELS / area)
+                bitmap = page.render(scale=scale)
+                try:
+                    return bitmap.to_pil().convert("L")  # a copy, independent of the bitmap
+                finally:
+                    bitmap.close()
+            finally:
+                page.close()
+
+    def read(self, index: int) -> str | None:
+        """Text of page ``index`` (from 0), or ``None``. OCR runs unlocked."""
+        try:
+            image = self._render(index)
+        except Exception as exc:
+            logger.warning("Could not render PDF page %d: %s", index + 1, type(exc).__name__)
+            return None
+        try:
+            return _read_image(image, self.timeout)
+        finally:
+            image.close()
+
+
+def _read_image(image: Any, timeout: int = 0) -> str | None:
+    """OCR one PIL image. ``None`` on any failure, a timeout or too little text."""
+    try:
+        import pytesseract
+
+        raw = pytesseract.image_to_string(image, **({"timeout": timeout} if timeout else {}))
+    except Exception as exc:  # engine missing, timed out, etc.
+        logger.warning("OCR failed: %s", exc)
+        return None
+    text = _clean(raw)
+    if len(text) < _MIN_USEFUL_CHARS:
+        return None
+    return text[:_MAX_CHARS]
 
 
 def extract_text(image_path: str | Path) -> str | None:
@@ -66,7 +155,7 @@ def extract_text_from_bytes(data: bytes) -> str | None:
     """Like :func:`extract_text`, for image bytes held in memory (so an
     encrypted-at-rest screenshot is never written out as plaintext by us)."""
     try:
-        import pytesseract
+        import pytesseract  # noqa: F401
         from PIL import Image
     except ImportError:
         logger.info("OCR skipped: pytesseract/Pillow not installed.")
@@ -74,15 +163,10 @@ def extract_text_from_bytes(data: bytes) -> str | None:
 
     try:
         with Image.open(io.BytesIO(data)) as img:
-            raw = pytesseract.image_to_string(img)
-    except Exception as exc:  # engine missing, bad image, etc.
+            return _read_image(img)
+    except Exception as exc:  # bad image
         logger.warning("OCR failed: %s", exc)
         return None
-
-    text = _clean(raw)
-    if len(text) < _MIN_USEFUL_CHARS:
-        return None
-    return text[:_MAX_CHARS]
 
 
 def _clean(raw: str) -> str:

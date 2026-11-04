@@ -38,6 +38,11 @@ to [Semantic Versioning](https://semver.org/).
   and note -> entity edges (notes that name an entity on the map); without
   entities it shows the vault's best-linked notes.
 
+- OCR for scanned PDFs: pages without a text layer are rendered in memory with
+  `pypdfium2` and read by Tesseract, page by page, within per-document limits
+  (200 pages, 10 minutes, 60 seconds per page). Without either component the
+  file is still stored and a note says which pages were not read.
+
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no
   `'unsafe-inline'` or `'unsafe-eval'`. Inline scripts moved to
@@ -50,6 +55,8 @@ to [Semantic Versioning](https://semver.org/).
   temporary copy of the image.
 
 ### Fixed
+- Connector attachments are parsed before the document is written, so a slow
+  file no longer holds the database's write lock.
 - Deleting a write-up no longer leaves what was published from it behind
   without asking. The delete dialog lists where it was published, with
   checkboxes: the knowledge-pool document is removed; the Obsidian note is

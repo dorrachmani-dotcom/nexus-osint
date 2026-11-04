@@ -109,6 +109,12 @@ item to whichever AI provider is active:
 - JSON and NDJSON (per record), XML/RSS/Atom (per record).
 - E-mail `.eml` with attachments, RTF.
 - Images, read with OCR when Tesseract is installed.
+- Scanned PDFs: a page with no real text layer is rendered in memory and read
+  with OCR (needs Tesseract and `pypdfium2`). Pages that already have text are
+  not touched, so a mixed PDF costs only its scanned pages. Limits per document:
+  200 pages, 10 minutes in total, 60 seconds per page, and very large pages are
+  scaled down. Beyond a limit, or without the engine, the file is still stored
+  and the upload result says which pages were not read.
 - ZIP archives. A ZIP export of a wiki or documentation site (Confluence,
   MediaWiki, MkDocs, Sphinx…) is read page by page. A ZIP containing an
   `.obsidian/` folder is read as an Obsidian vault.

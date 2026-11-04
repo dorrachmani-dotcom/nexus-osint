@@ -45,6 +45,10 @@ class Limits:
     max_office_expanded_bytes: int = 120 * MB
     max_office_part_bytes: int = 30 * MB
     max_table_cols: int = 200              # spreadsheet/CSV columns read per row
+    # OCR of scanned PDF pages (slow): bounded per document.
+    max_ocr_pages: int = 200               # pages read by OCR
+    max_ocr_seconds: int = 600             # total OCR time
+    ocr_page_seconds: int = 60             # one page, then it is skipped
 
 
 DEFAULT_LIMITS = Limits()
