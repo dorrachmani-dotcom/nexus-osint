@@ -74,6 +74,15 @@ the others from scanning.
   answers questions. A case target can also be added to the pool ("also add to
   the knowledge pool").
 
+Sherlock finds document passages by keyword. If an Ollama server is reachable,
+it also finds them by meaning: chunks are embedded in a bounded step after each
+scan (up to 200 at a time, so a large pool catches up over several scans), and
+the two rankings are combined. Set `OLLAMA_EMBED_MODEL` to use a dedicated model
+such as `nomic-embed-text`; Ollama does not have to be your active AI provider.
+Changing the model embeds the chunks again. With no Ollama, search stays
+keyword-only and nothing else changes. Each cited document links to its source
+page, or opens in the app when it has none.
+
 Deleting a source (a Confluence connection or an Obsidian vault entry) stops
 future imports. Documents already imported stay under Documents until you
 delete them there.

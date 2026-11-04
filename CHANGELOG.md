@@ -57,6 +57,13 @@ to [Semantic Versioning](https://semver.org/).
   OneDrives are read through Microsoft Graph with an app registration. Files use
   the upload readers, and files gone from those libraries are removed.
 
+- Hybrid knowledge-pool search: Sherlock finds document passages by meaning as
+  well as by words (full-text and local embeddings combined with reciprocal rank
+  fusion). Chunks are embedded after each scan by a local Ollama, with an optional
+  `OLLAMA_EMBED_MODEL`; without one, search stays keyword-only.
+- Sherlock's citations of documents are clickable: they open the source page
+  when there is one, otherwise the item in the app.
+
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no
   `'unsafe-inline'` or `'unsafe-eval'`. Inline scripts moved to

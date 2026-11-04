@@ -201,6 +201,17 @@ class Collector:
             logger.exception("Requirement scoring pass failed")
             stats["_requirements"] = {"error": str(exc)}
 
+        # Embed new document chunks for hybrid search. Does nothing useful, and
+        # costs nothing, without a local embedder.
+        try:
+            from nexus.embeddings import embed_pool
+
+            with get_connection() as conn:
+                stats["_embeddings"] = embed_pool(conn, self.settings)
+        except Exception as exc:
+            logger.exception("Embedding pass failed")
+            stats["_embeddings"] = {"error": str(exc)}
+
         # Incremental-update summary for the UI: how much is new and the
         # previous run's watermark we measured against (None on a first run).
         since = min(prev_watermarks) if prev_watermarks else None

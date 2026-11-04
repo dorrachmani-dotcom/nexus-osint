@@ -241,7 +241,7 @@ def test_sherlock_context_includes_pool_documents(temp_db, monkeypatch):
     with temp_db() as conn:
         text, items = A._data_context(conn, "what is the evacuation procedure")
     assert "procedure.txt" in text and "gate seven" in text
-    assert any(i["source"] == "upload" for i in items)
+    assert any(i["source"] == "procedure.txt" for i in items)
 
 
 def test_sherlock_hides_no_ai_documents_from_cloud(temp_db, monkeypatch):

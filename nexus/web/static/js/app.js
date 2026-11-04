@@ -107,6 +107,31 @@ document.addEventListener('DOMContentLoaded', nexusSyncThemeIcon);
     persist();
   };
 
+  // A clickable element for a cited item: its source page (http(s) only: URLs
+  // are source-derived and must never run as a scheme), or, for something with
+  // no page of its own such as an uploaded document, the item drawer here.
+  // Returns null when there is nothing to open.
+  function itemLink(it, className) {
+    if (typeof it.url === 'string' && /^https?:\/\//i.test(it.url)) {
+      var a = document.createElement('a');
+      a.href = it.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.className = className;
+      return a;
+    }
+    var id = parseInt(it.id, 10);
+    if (!id || !window.htmx) return null;
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = className + ' text-left';
+    b.addEventListener('click', function () {
+      window.htmx.ajax('GET', '/items/' + id + '/detail',
+                       { target: '#item-drawer-content', swap: 'innerHTML' });
+    });
+    return b;
+  }
+
   // Safely render a bot message, turning "Item N" references into clickable
   // links. Uses document.createDocumentFragment — no innerHTML, model output
   // can never inject HTML. items is [{n, id, url, title}, ...] from the server.
@@ -122,15 +147,11 @@ document.addEventListener('DOMContentLoaded', nexusSyncThemeIcon);
       if (m) {
         var n = parseInt(m[1], 10);
         var it = byN[n];
-        if (it && it.url && /^https?:\/\//i.test(it.url)) {
-          var a = document.createElement('a');
-          a.href = it.url;
-          a.target = '_blank';
-          a.rel = 'noopener';
-          a.textContent = parts[i];
-          a.className = 'text-sky-400 underline hover:text-sky-300';
-          a.title = it.title || parts[i];
-          frag.appendChild(a);
+        var link = it ? itemLink(it, 'text-sky-400 underline hover:text-sky-300') : null;
+        if (link) {
+          link.textContent = parts[i];
+          link.title = it.title || parts[i];
+          frag.appendChild(link);
           continue;
         }
       }
@@ -283,8 +304,7 @@ document.addEventListener('DOMContentLoaded', nexusSyncThemeIcon);
 
   // Show the sources an answer is based on: the collected items Sherlock
   // cited as "(Item N)". Parsed from the answer text so the list reflects
-  // what the answer actually used; each becomes a clickable link (http(s)
-  // only — item URLs are source-derived and must never run as a scheme).
+  // what the answer actually used; each becomes clickable (see itemLink).
   // Renders nothing when the answer cited no items (e.g. how-to guidance).
   function renderSources(items, answerText) {
     items = items || [];
@@ -309,14 +329,9 @@ document.addEventListener('DOMContentLoaded', nexusSyncThemeIcon);
     cited.forEach(function (it) {
       var meta = [it.source, it.when].filter(Boolean).join(' · ');
       var label = 'Item ' + it.n + ' · ' + (it.title || '(untitled)') + (meta ? ('  — ' + meta) : '');
-      var safe = (typeof it.url === 'string' && /^https?:\/\//i.test(it.url)) ? it.url : null;
-      var row;
-      if (safe) {
-        row = document.createElement('a');
-        row.href = safe; row.target = '_blank'; row.rel = 'noopener';
-        row.className = 'block rounded border border-slate-700/70 bg-slate-800/50 ' +
-          'hover:bg-slate-700 px-2 py-1 text-[11px] text-sky-300 no-underline';
-      } else {
+      var row = itemLink(it, 'block w-full rounded border border-slate-700/70 bg-slate-800/50 ' +
+        'hover:bg-slate-700 px-2 py-1 text-[11px] text-sky-300 no-underline');
+      if (!row) {
         row = document.createElement('div');
         row.className = 'block rounded border border-slate-700/70 bg-slate-800/50 ' +
           'px-2 py-1 text-[11px] text-slate-300';
