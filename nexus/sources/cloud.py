@@ -56,6 +56,7 @@ _MAX_REQUESTS = 20_000  # request budget per scan
 _CONNECTORS = {
     "notion": "nexus.sources.notion:NotionSource",
     "slack": "nexus.sources.slack:SlackSource",
+    "gdrive": "nexus.sources.gdrive:GoogleDriveSource",
 }
 
 
@@ -112,6 +113,11 @@ class CloudSource(Source):
         self._requests = 0
 
     # ---------------------------------------------------------- config
+    @classmethod
+    def normalize_key(cls, raw: str) -> str:
+        """What to store for a pasted key. Raises ``ValueError`` (shown) if wrong."""
+        return raw
+
     def token(self) -> str | None:
         return read_env_value(cloud_env_name(self.id)) or None
 

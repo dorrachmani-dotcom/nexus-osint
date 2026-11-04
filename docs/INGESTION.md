@@ -53,7 +53,7 @@ flowchart LR
 | Closed network | Settings › Internal network | (policy, not a source) | — | `INTERNAL_ALLOWED_HOSTS`, `INTERNAL_ALLOWED_CIDRS`, `INTERNAL_CA_BUNDLE` | — |
 | Flexible API sources | Sources › Custom APIs | JSON, NDJSON, XML, CSV, RSS/Atom, HTML | Feed | `CUSTOM_SOURCE_<id>_KEY`, `CUSTOM_SOURCE_<id>_HEADERS` | Every scan; Auto-Adapt re-maps drifted fields |
 | Confluence | Sources › Confluence | Pages, optionally blog posts, comments, attachments | Case and/or knowledge pool | `CONFLUENCE_SOURCE_<id>_TOKEN` | Only new/changed pages (watermark + version) |
-| Cloud connectors | Sources › Cloud connectors | Notion pages, Slack channels | Case and/or knowledge pool | `CLOUD_SOURCE_<id>_TOKEN` | Only new/changed content (watermark + version) |
+| Cloud connectors | Sources › Cloud connectors | Notion pages, Slack channels, Google Drive folders | Case and/or knowledge pool | `CLOUD_SOURCE_<id>_TOKEN` | Only new/changed content (watermark + version) |
 | Obsidian import | Sources › Obsidian (or upload a zipped vault) | Notes, frontmatter, tags, links, embedded files | Case and/or knowledge pool | none | New, changed and deleted notes |
 | Obsidian export | Case page › "Obsidian: export case (.zip)" | (outbound: a case as a vault) | A ZIP you download | none | — |
 
@@ -345,6 +345,23 @@ previous scan, so an edit or a reply on an older day is not picked up. Choosing
 different channels restarts the 30-day window. Without `users:read`, member ids
 appear instead of names. Files are not downloaded and direct messages are never
 read.
+
+### Google Drive
+
+1. In the Google Cloud console, enable the **Google Drive API**, create a
+   **service account** and download a JSON key for it.
+2. In Drive, share each folder to read with the service account's e-mail address
+   (`...iam.gserviceaccount.com`) as **Viewer**. It sees nothing else, and its
+   token only ever asks for the read-only Drive scope.
+3. Paste the whole JSON key under "Connect Google Drive", press **Test
+   connection**, choose the folders, then **Scan now**.
+
+Sub-folders are included. Google Docs and Slides are read as text, Sheets as CSV
+and other files by the same readers as an upload (up to 50 MB each; videos,
+audio, forms and drawings are skipped). Each scan lists the chosen folders, so a
+file deleted there, or moved out, is removed from Nexus too. If a chosen folder
+can no longer be reached nothing is removed, and the scan reports the error.
+Only the key's e-mail and private key are kept.
 
 ## Security limits at a glance
 
