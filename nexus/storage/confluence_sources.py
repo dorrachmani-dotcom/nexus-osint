@@ -121,6 +121,26 @@ def delete_confluence_source(conn: sqlite3.Connection, source_id: int) -> None:
     conn.execute("DELETE FROM confluence_sources WHERE id = ?", (source_id,))
 
 
+def cached_user_names(conn: sqlite3.Connection, source_id: int,
+                      max_age_days: int) -> dict[str, tuple[str, bool]]:
+    """``{account_id: (name, is_fresh)}`` for one connection."""
+    rows = conn.execute(
+        "SELECT account_id, name, fetched_at >= datetime('now', ?) AS fresh "
+        "FROM confluence_users WHERE source_id = ?",
+        (f"-{int(max_age_days)} days", source_id),
+    ).fetchall()
+    return {r["account_id"]: (r["name"], bool(r["fresh"])) for r in rows}
+
+
+def save_user_name(conn: sqlite3.Connection, source_id: int, account_id: str,
+                   name: str) -> None:
+    conn.execute(
+        "INSERT OR REPLACE INTO confluence_users (source_id, account_id, name) "
+        "VALUES (?, ?, ?)",
+        (source_id, account_id, name),
+    )
+
+
 def save_confluence_scan(conn: sqlite3.Connection, source_id: int, status: str,
                          watermark: str | None) -> None:
     conn.execute(

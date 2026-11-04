@@ -63,6 +63,9 @@ to [Semantic Versioning](https://semver.org/).
   `OLLAMA_EMBED_MODEL`; without one, search stays keyword-only.
 - Sherlock's citations of documents are clickable: they open the source page
   when there is one, otherwise the item in the app.
+- Confluence Cloud: display names of authors are saved between scans (refreshed
+  after 30 days), and pages and comments now name their last editor and comment
+  author, as on Data Center.
 
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no

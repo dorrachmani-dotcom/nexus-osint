@@ -54,6 +54,7 @@ class FakeConfluence:
         self.rate_limit_once = False
         self.attachments: dict[str, list[tuple[str, bytes]]] = {}
         self.comments: dict[str, list[str]] = {}
+        self.users = {"acc-1": "Robin Example", "acc-2": "Dana Example", "acc-3": "Kim Example"}
 
     # -- helpers
     def _ordered(self, newest_first: bool) -> list[tuple[str, dict]]:
@@ -93,7 +94,8 @@ class FakeConfluence:
             nxt = (f"/wiki/api/v2/spaces/9001/pages?cursor={cursor + 2}&limit=2"
                    if cursor + 2 < len(items) else None)
             res = [{"id": pid, "title": p["title"], "authorId": "acc-1",
-                    "version": {"number": p["version"], "createdAt": p["when"]},
+                    "version": {"number": p["version"], "createdAt": p["when"],
+                                "authorId": "acc-2"},
                     "body": _storage(p["body"]), "_links": {"webui": f"/spaces/ENG/pages/{pid}"}}
                    for pid, p in chunk]
             return httpx.Response(200, json={"results": res, "_links": {"next": nxt} if nxt else {}})
@@ -108,7 +110,8 @@ class FakeConfluence:
         if path.startswith("/wiki/api/v2/pages/") and path.endswith("/footer-comments"):
             pid = path.split("/")[5]
             return httpx.Response(200, json={"results": [
-                {"body": _storage(f"<p>{c}</p>")} for c in self.comments.get(pid, [])]})
+                {"body": _storage(f"<p>{c}</p>"), "version": {"authorId": "acc-3"}}
+                for c in self.comments.get(pid, [])]})
         if path.startswith("/wiki/api/v2/pages/") and path.endswith("/attachments"):
             pid = path.split("/")[5]
             return httpx.Response(200, json={"results": [
@@ -121,7 +124,10 @@ class FakeConfluence:
             pid = path.split("/")[5]
             return httpx.Response(200, json={"id": pid, "title": self.titles.get(pid, pid)})
         if path == "/wiki/rest/api/user":
-            return httpx.Response(200, json={"displayName": "Robin Example"})
+            name = self.users.get(q.get("accountId"))
+            if name is None:
+                return httpx.Response(404, json={})
+            return httpx.Response(200, json={"displayName": name})
         # ---------------- DC v1
         if path == "/confluence/rest/api/space":
             return httpx.Response(200, json={"results": [{"key": "ENG", "name": "Engineering"}],
@@ -240,6 +246,82 @@ def test_cloud_v2_pull_with_basic_auth_and_metadata(temp_db, fake):
     with temp_db() as conn:
         docs = conn.execute("SELECT * FROM documents WHERE kind = 'confluence'").fetchall()
     assert len(docs) == 3 and all(d["in_pool"] == 1 and d["stored_path"] == "" for d in docs)
+
+
+def _user_calls(fake) -> list[str]:
+    return [r.url.params["accountId"] for r in fake.requests
+            if r.url.path == "/wiki/rest/api/user"]
+
+
+def test_v2_names_the_last_editor_and_comment_authors(temp_db, fake):
+    fake.comments["101"] = ["Looks right."]
+    sid = _make(temp_db, include_comments="1")
+    _src(temp_db, sid).ingest()
+    runbook = next(i for i in _items(temp_db) if i["title"].startswith("Runbook"))
+    assert json.loads(runbook["raw"])["last_modified_by"] == "Dana Example"
+    assert "Kim Example: Looks right." in runbook["content"]
+
+
+def test_author_names_are_saved_between_scans(temp_db, fake):
+    sid = _make(temp_db)
+    _src(temp_db, sid).ingest()
+    assert sorted(_user_calls(fake)) == ["acc-1", "acc-2"]  # once each, for many pages
+    fake.requests.clear()
+    _src(temp_db, sid).ingest()
+    assert _user_calls(fake) == []
+
+
+def test_an_old_name_is_refreshed(temp_db, fake):
+    sid = _make(temp_db)
+    _src(temp_db, sid).ingest()
+    with temp_db() as conn:
+        conn.execute("UPDATE confluence_users SET fetched_at = datetime('now', '-31 days')")
+    fake.users["acc-1"] = "Robin Renamed"
+    fake.requests.clear()
+    src = _src(temp_db, sid)
+    assert src._user_name("acc-1") == "Robin Renamed"
+    assert _user_calls(fake) == ["acc-1"]
+    assert _src(temp_db, sid)._stored_user("acc-1") == ("Robin Renamed", True)
+
+
+def test_failed_refresh_keeps_the_old_name(temp_db, fake):
+    sid = _make(temp_db)
+    _src(temp_db, sid).ingest()
+    with temp_db() as conn:
+        conn.execute("UPDATE confluence_users SET fetched_at = datetime('now', '-31 days')")
+    fake.users.clear()
+    assert _src(temp_db, sid)._user_name("acc-1") == "Robin Example"
+
+
+def test_failed_lookup_is_retried_only_on_the_next_scan(temp_db, fake):
+    sid = _make(temp_db)
+    fake.users.clear()
+    src = _src(temp_db, sid)
+    assert src._user_name("acc-1") is None and src._user_name("acc-1") is None
+    assert _user_calls(fake) == ["acc-1"]
+    with temp_db() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM confluence_users").fetchone()[0] == 0
+    fake.users["acc-1"] = "Robin Example"
+    assert _src(temp_db, sid)._user_name("acc-1") == "Robin Example"
+
+
+def test_a_broken_name_cache_never_stops_a_scan(temp_db, fake):
+    sid = _make(temp_db)
+    with temp_db() as conn:
+        conn.execute("DROP TABLE confluence_users")
+    res = _src(temp_db, sid).ingest()
+    assert "3 checked, 3 new" in res["status"]
+    assert any(i["author"] == "Robin Example" for i in _items(temp_db))
+
+
+def test_deleting_a_connection_forgets_its_names(temp_db, fake):
+    from nexus.storage.confluence_sources import delete_confluence_source
+
+    sid = _make(temp_db)
+    _src(temp_db, sid).ingest()
+    with temp_db() as conn:
+        delete_confluence_source(conn, sid)
+        assert conn.execute("SELECT COUNT(*) FROM confluence_users").fetchone()[0] == 0
 
 
 def test_incremental_unchanged_then_changed(temp_db, fake):

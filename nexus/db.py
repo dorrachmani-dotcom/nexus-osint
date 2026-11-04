@@ -402,6 +402,15 @@ CREATE TABLE IF NOT EXISTS confluence_sources (
     created_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Display names of Confluence Cloud authors, so each scan does not ask again.
+CREATE TABLE IF NOT EXISTS confluence_users (
+    source_id   INTEGER NOT NULL REFERENCES confluence_sources(id) ON DELETE CASCADE,
+    account_id  TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    fetched_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (source_id, account_id)
+);
+
 -- Read-only cloud connections (nexus/sources/cloud.py). The token lives in .env
 -- as CLOUD_SOURCE_<id>_TOKEN, never here.
 CREATE TABLE IF NOT EXISTS cloud_sources (
@@ -480,7 +489,7 @@ _KNOWN_TABLES = frozenset({
     "custom_sources", "item_entities", "item_embeddings", "entity_aliases",
     "item_archives", "documents", "document_items", "web_sources", "web_pages",
     "connector_docs", "confluence_sources", "obsidian_vaults", "cloud_sources",
-    "item_edits", "writeups", "publications", "outbound_log", "note_links",
+    "confluence_users", "item_edits", "writeups", "publications", "outbound_log", "note_links",
 })
 
 
