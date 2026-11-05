@@ -66,6 +66,8 @@ to [Semantic Versioning](https://semver.org/).
 - Confluence Cloud: display names of authors are saved between scans (refreshed
   after 30 days), and pages and comments now name their last editor and comment
   author, as on Data Center.
+- Browser tests of the main flows (`e2e/`, Playwright) and the CSP crawl now run
+  as their own CI job.
 
 ### Changed
 - Stricter Content-Security-Policy: `script-src 'self'` with no
