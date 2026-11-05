@@ -54,6 +54,8 @@ npm run build        # writes nexus/web/static/css/app.css and vendor/htmx.min.j
 ```bash
 python -m pytest -q                          # whole suite
 python -m pytest tests/test_assistant.py -q  # one file
+python -m pytest e2e -q                      # browser tests (its own CI job)
+python scripts/csp_crawl.py                  # every page, for CSP violations
 ```
 
 Tests use temporary SQLite databases (see `tests/conftest.py`) and must not hit
