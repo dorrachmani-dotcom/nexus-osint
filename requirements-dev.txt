@@ -5,4 +5,4 @@
 pytest==9.2.0               # 9.0.3 fixes CVE-2025-71176
 ruff==0.17.3               # linter / formatter
 mypy==2.4.1                 # static type checker
-pre-commit==4.6.2           # git hook runner
+pre-commit==4.7.0           # git hook runner
