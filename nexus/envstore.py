@@ -156,18 +156,21 @@ def _format_value(value: str) -> str:
     return value
 
 
-def update_env(updates: dict[str, str]) -> None:
+def update_env(updates: dict[str, str], *,
+               protected: frozenset[str] = frozenset()) -> None:
     """Apply ``{KEY: value}`` edits to the .env file in place.
 
     Only keys in ``EDITABLE_KEYS`` are honoured. An empty-string value clears the
     variable (left as ``KEY=``). Comments, blank lines, ordering, and unrelated
     variables are preserved; allowed keys not already present are appended.
     Newlines in values are stripped so a value can never break the file format.
+    ``protected`` names keys a caller may write beyond those: for code that checks
+    its own conditions first, never for keys taken from a request.
     """
     clean = {
         key: (val or "").replace("\r", "").replace("\n", "").strip()
         for key, val in updates.items()
-        if _is_writable_key(key)
+        if _is_writable_key(key) or key in protected
     }
     if not clean:
         return

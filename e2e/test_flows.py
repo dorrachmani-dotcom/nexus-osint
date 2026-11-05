@@ -162,3 +162,38 @@ def test_a_sandboxed_page_cannot_post_the_same_way(page: Page):
     request = seen.value.request
     assert request.all_headers()["origin"] == "null"
     assert seen.value.status == 403
+
+
+def test_app_password_from_settings_to_sign_in_and_off_again(page: Page):
+    chosen = "harbor-lantern-7"
+    page.goto("/settings")
+    panel = page.locator("#app-password")
+    panel.locator("input[name=password]").fill(chosen)
+    panel.locator("input[name=confirm]").fill(chosen)
+    panel.get_by_role("button", name="Set password").click()
+    expect(panel).to_contain_text("App password saved")
+    try:
+        # Still signed in, and a sandboxed frame still renders behind the password.
+        page.goto("/graph?case=1&case=2")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_function(
+            "[...document.querySelectorAll('iframe')].some(f => f.src.includes('/graph/frame/'))")
+        frame = next(f for f in page.frames if "/graph/frame/" in f.url)
+        frame.wait_for_selector("canvas")
+
+        page.context.clear_cookies()
+        page.goto("/cases")
+        assert "/login?next=/cases" in page.url
+        page.fill("input[name=password]", "wrong-password")
+        page.get_by_role("button", name="Sign in").click()
+        expect(page.locator("[role=alert]")).to_contain_text("not correct")
+        page.fill("input[name=password]", chosen)
+        page.get_by_role("button", name="Sign in").click()
+        page.wait_for_url(lambda url: "/login" not in url)
+        assert page.url.endswith("/cases")
+    finally:
+        page.goto("/settings")
+        form = page.locator("form[hx-post='/settings/password/remove']")
+        form.locator("input[name=current]").fill(chosen)
+        form.get_by_role("button", name="Remove password").click()
+        expect(page.locator("#app-password")).to_contain_text("App password removed")

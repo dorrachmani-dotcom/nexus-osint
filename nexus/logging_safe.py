@@ -36,8 +36,9 @@ def _secret_values() -> list[str]:
             if isinstance(val, str) and len(val) >= _MIN_REDACT_LEN:
                 values.append(val)
 
-        # Per-custom-source API keys (CUSTOM_SOURCE_<id>_KEY) are not Settings
-        # fields, so read them straight from .env. Without this a query-auth key
+        # Per-custom-source API keys (CUSTOM_SOURCE_<id>_KEY) and the app password
+        # hash are not Settings fields, so read them straight from .env. Without
+        # this a query-auth key
         # embedded in a failed-request URL could reach server.log un-redacted.
         try:
             for line in _env_path().read_text(encoding="utf-8").splitlines():
@@ -45,7 +46,8 @@ def _secret_values() -> list[str]:
                 if not stripped or stripped.startswith("#") or "=" not in stripped:
                     continue
                 name, _, raw = stripped.partition("=")
-                if not is_per_source_secret(name.strip()):
+                if not (is_per_source_secret(name.strip())
+                        or name.strip() == "APP_PASSWORD_HASH"):
                     continue
                 val = raw.strip()
                 if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):

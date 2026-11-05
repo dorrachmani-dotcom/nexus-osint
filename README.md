@@ -399,6 +399,9 @@ Nexus-OSINT is built for defensive research, journalism and due diligence on
 - **Backups never contain secrets.** Settings › Backup & restore writes one
   archive (optionally passphrase-encrypted) without API keys or passwords;
   restore validates the archive fully and saves the current state first.
+- **Optional app password** (off by default, Settings): stops other people at
+  the computer from opening the app. Forgot it? Delete its line from `.env`. See
+  [SECURITY.md](SECURITY.md#app-password).
 - **Optional encryption at rest** (off by default, Settings): uploaded
   documents and evidence screenshots are stored AES-256-GCM encrypted; the key
   is wrapped by your passphrase (plus a one-time recovery code, and optionally
