@@ -32,6 +32,27 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
+  e2e:
+    # The main flows in a real browser, then every page checked for CSP
+    # violations. Separate from `test`: slower, and needs a browser.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Browser tests
+        run: python -m pytest e2e -q
+      - name: CSP crawl
+        run: python scripts/csp_crawl.py
+
   assets:
     # The compiled stylesheet and vendored htmx are committed so the app needs
     # no Node and no CDN at runtime. Fail if they drift from their sources.
