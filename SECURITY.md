@@ -127,6 +127,22 @@ external OSINT CLI tools the platform can orchestrate.
 - The entity-graph iframe is rendered with escaped `srcdoc` and a
   `sandbox="allow-scripts"` attribute, isolating it from the parent document.
 
+### App password
+Optional and **off by default** (Settings › App password). With a password set,
+every page and API call needs a signed-in session, except the sign-in page, the
+health probe, static files and the Google sign-in return.
+
+- Only a salted PBKDF2-HMAC-SHA256 hash (600,000 iterations) is kept, in `.env`.
+- Sessions are random tokens in an `HttpOnly`, `SameSite=Strict` cookie. Only their
+  hashes are held, in memory, for 12 hours from last use. A restart signs everyone
+  out, and changing the password ends every other session.
+- Wrong passwords back off exponentially, one attempt at a time.
+- **Forgot it?** Stop Nexus, delete the `APP_PASSWORD_HASH` line from `.env`, and
+  start it again. Anyone who can edit that file can do the same, so this keeps
+  people out of the app, not out of the computer: it does not encrypt anything, and
+  the files under `data/` stay readable. Local scripts calling the app also need a
+  session while it is on.
+
 ### Encryption at rest
 Optional and **off by default** (Settings › Encryption at rest, or
 `python -m nexus.security.atrest enable`).
@@ -209,9 +225,11 @@ until it is overwritten, so enable encryption before importing sensitive files.
 These are deliberate trade-offs for a single-user, local-first tool. Operators
 who need a stronger posture should account for them:
 
-- **No authentication / authorization.** Anyone with access to the loopback
-  interface on the host has full access to the application. This is by design for
-  a single-user desktop tool. Do not expose the port to a network.
+- **No authentication by default.** Anyone with access to the loopback interface
+  on the host has full access to the application, by design for a single-user
+  desktop tool. An optional [app password](#app-password) closes the app to other
+  people at the computer. It has no users or roles. Do not expose the port to a
+  network.
 - **The database is not encrypted.** Optional encryption at rest covers
   uploaded files and evidence screenshots only; the SQLite database (including
   the text extracted from uploads) is a plain file under `data/`. Use full-disk

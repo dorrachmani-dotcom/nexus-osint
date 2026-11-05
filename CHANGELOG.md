@@ -76,6 +76,9 @@ to [Semantic Versioning](https://semver.org/).
 - Confluence Cloud: display names of authors are saved between scans (refreshed
   after 30 days), and pages and comments now name their last editor and comment
   author, as on Data Center.
+- Optional app password (Settings › App password, off by default): sign-in with a
+  stdlib PBKDF2 hash kept in `.env`, `HttpOnly` / `SameSite=Strict` session cookie
+  and back-off on wrong passwords. Recovery is deleting one `.env` line.
 - Browser tests of the main flows (`e2e/`, Playwright) and the CSP crawl now run
   as their own CI job.
 

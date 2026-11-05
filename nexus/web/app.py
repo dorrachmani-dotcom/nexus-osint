@@ -59,6 +59,7 @@ from nexus.web.routers import (
     items,
     lists,
     llm,
+    login,
     notifications,
     publish,
     scan,
@@ -308,6 +309,7 @@ ROUTERS = (
     connectors,
     publish,
     encryption,
+    login,
     backup,
 )
 for _module in ROUTERS:

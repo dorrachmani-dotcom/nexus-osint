@@ -23,7 +23,7 @@ MIME-sniffing, referrer leakage, a CSP) to every response.
 from __future__ import annotations
 
 import logging
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -129,7 +129,30 @@ class SameOriginGuardMiddleware(BaseHTTPMiddleware):
 
 # Paths reachable while encryption at rest is locked: the unlock page itself,
 # its stylesheet/icon and the health probe.
-_UNLOCKED_PATHS = ("/unlock", "/health", "/favicon.ico")
+_UNLOCKED_PATHS = ("/unlock", "/login", "/health", "/favicon.ico")
+
+# Reachable without the optional app password. The OAuth return is here because a
+# SameSite=Strict cookie is not sent on Google's redirect back; it only completes
+# a flow started from Settings, against a single-use state value.
+_OPEN_PATHS = ("/login", "/health", "/favicon.ico", "/settings/email/google/callback")
+
+
+class AppPasswordMiddleware(BaseHTTPMiddleware):
+    """With an app password set, everything needs a signed-in session."""
+
+    async def dispatch(self, request: Request, call_next):
+        from nexus.security import apppass
+
+        path = request.url.path
+        if (path in _OPEN_PATHS or path.startswith("/static/")
+                or not apppass.is_enabled()
+                or apppass.session_valid(request.cookies.get(apppass.COOKIE))):
+            return await call_next(request)
+        if request.method == "GET" and "hx-request" not in request.headers:
+            wanted = path + (f"?{request.url.query}" if request.url.query else "")
+            return RedirectResponse(f"/login?next={quote(wanted, safe='/')}", status_code=303)
+        return PlainTextResponse("Sign in first", status_code=401,
+                                 headers={"HX-Redirect": "/login"})
 
 
 class LockedModeMiddleware(BaseHTTPMiddleware):
@@ -159,7 +182,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 def install_security(app) -> None:
-    """Wire both middlewares onto the app (call once at startup).
+    """Wire the middlewares onto the app (call once at startup).
 
     Order matters: middleware added last runs first. We add the origin guard
     last so it runs before the header middleware and can short-circuit a forged
@@ -167,4 +190,5 @@ def install_security(app) -> None:
     """
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(LockedModeMiddleware)
+    app.add_middleware(AppPasswordMiddleware)
     app.add_middleware(SameOriginGuardMiddleware)
