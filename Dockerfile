@@ -39,7 +39,11 @@ RUN pip install sherlock-project maigret theHarvester || true \
 # unpinned remote script at build time (supply-chain risk). Best-effort: a
 # network/asset-name failure never breaks the image (the adapter reports the
 # tool unavailable via shutil.which() and is skipped).
-RUN curl -sSL -o /tmp/phoneinfoga.tar.gz \
+# These two Go binaries are x86_64-only, so they are skipped on other
+# architectures (the arm64 image) rather than installing a binary that cannot
+# run; the adapters then report the tool as unavailable.
+RUN [ "$(uname -m)" = "x86_64" ] \
+    && curl -sSL -o /tmp/phoneinfoga.tar.gz \
         https://github.com/sundowndev/phoneinfoga/releases/download/v2.11.0/phoneinfoga_Linux_x86_64.tar.gz \
     && (cd /tmp && tar -xzf phoneinfoga.tar.gz phoneinfoga \
         && mv phoneinfoga /usr/local/bin/phoneinfoga \
@@ -50,7 +54,8 @@ RUN curl -sSL -o /tmp/phoneinfoga.tar.gz \
 # subfinder (ProjectDiscovery) is a Go binary distributed as a prebuilt release.
 # Fetch the linux/amd64 archive and drop the binary on PATH; best-effort so a
 # network failure never breaks the image (adapter skips it via shutil.which).
-RUN curl -sSL -o /tmp/subfinder.zip \
+RUN [ "$(uname -m)" = "x86_64" ] \
+    && curl -sSL -o /tmp/subfinder.zip \
         https://github.com/projectdiscovery/subfinder/releases/download/v2.6.6/subfinder_2.6.6_linux_amd64.zip \
     && (cd /tmp && unzip -o subfinder.zip subfinder -d /usr/local/bin || true) \
     && rm -f /tmp/subfinder.zip \
@@ -75,7 +80,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)" || exit 1
 
 # Bind 0.0.0.0 INSIDE the container so Docker's published-port forwarding can
-# reach it. The network exposure boundary is docker-compose.yml, which publishes
-# only to 127.0.0.1 (loopback). Running `docker run -p 8000:8000` directly would
-# expose it on all interfaces — always publish with the 127.0.0.1: prefix.
+# reach it. The network exposure boundary is the host-side publish, which must
+# be loopback only: docker-compose.yml does this, and with `docker run` always
+# use `-p 127.0.0.1:8000:8000`. A bare `-p 8000:8000` would expose the app on
+# all host interfaces.
 CMD ["uvicorn", "nexus.web.app:app", "--host", "0.0.0.0", "--port", "8000"]

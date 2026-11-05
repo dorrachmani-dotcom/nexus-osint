@@ -5,5 +5,20 @@
 __pycache__
 *.py[cod]
 data
-.env
+**/.env
+**/.env.*
+!.env.example
 README.md
+docker-compose.yml
+# Never bake secrets, runtime data or tooling config into an image.
+CLAUDE.md
+.claude
+.github
+.pre-commit-config.yaml
+node_modules
+tests
+e2e
+docs
+installer
+launcher
+scripts

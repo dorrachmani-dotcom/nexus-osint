@@ -31,7 +31,7 @@ the project [README](../README.md); this is the short version.
 | Method | Best for | What you install |
 | --- | --- | --- |
 | **Desktop app** (Windows/Linux) | Non-technical users who want an icon | The packaged installer (`Nexus-Setup.exe`) — bundles everything |
-| **Docker** | A reproducible, all-batteries-included box | Docker Desktop, then `docker compose up --build` |
+| **Docker** | A reproducible, all-batteries-included box | Docker Desktop, then `docker compose up --build`, or the prebuilt image (see "Run with Docker" in the README) |
 | **Local (uvicorn)** | Developers and tinkerers | Python 3.11+, `pip install -r requirements.txt` |
 
 However you start it, open **http://127.0.0.1:8000** in your browser. A first-run

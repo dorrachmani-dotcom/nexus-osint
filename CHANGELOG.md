@@ -7,6 +7,13 @@ to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Container image on GitHub Container Registry
+  (`ghcr.io/dorrachmani-dotcom/nexus-osint`, linux/amd64 and linux/arm64),
+  published by a new Docker workflow on release tags. Pull requests touching the
+  image get a build-only check. The arm64 image skips the two x86_64-only helper
+  binaries (PhoneInfoga, subfinder). `.dockerignore` now also excludes env
+  files, `CLAUDE.md`, `.claude/` and other non-runtime folders.
+
 - Opt-in encryption at rest for stored files (Settings › Encryption at rest, off
   by default): uploaded originals and evidence screenshots are stored AES-256-GCM
   encrypted (chunked, tamper-evident). The data key is wrapped by a passphrase
