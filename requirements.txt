@@ -45,7 +45,7 @@ pytesseract==0.3.13         # thin wrapper around the Tesseract OCR engine
 # the Docker image) then falls back to xhtml2pdf (pure Python, no system deps,
 # works on Windows/macOS local installs). HTML export always works regardless.
 weasyprint==70.0            # HTML -> PDF (primary; Linux/Docker); 70.0 includes the latest security fixes
-xhtml2pdf==0.2.21           # HTML -> PDF (pure-Python fallback; Windows/macOS)
+xhtml2pdf==0.2.28           # HTML -> PDF (pure-Python fallback; Windows/macOS)
 
 # --- Document upload (universal ingestion) ---
 # All OPTIONAL + guarded: a missing package only disables that one format in
