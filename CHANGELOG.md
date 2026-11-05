@@ -93,6 +93,12 @@ to [Semantic Versioning](https://semver.org/).
   temporary copy of the image.
 
 ### Fixed
+- Every plain HTML form failed with "Cross-origin request refused" in a real
+  browser: closing, reopening and activating cases, write-ups, bundle export and
+  import, the file scan and the encryption unlock page. `Referrer-Policy:
+  no-referrer` makes browsers send `Origin: null` on these posts. The guard now
+  accepts that only with `Sec-Fetch-Site: same-origin`, so a sandboxed page is
+  still refused.
 - The Security center lists Confluence hosts as expected destinations.
 - Connector attachments are parsed before the document is written, so a slow
   file no longer holds the database's write lock.

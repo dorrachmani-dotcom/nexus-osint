@@ -75,7 +75,8 @@ external OSINT CLI tools the platform can orchestrate.
 
 ### CSRF / cross-origin protection
 - All state-changing methods (`POST`/`PUT`/`PATCH`/`DELETE`) are verified to be
-  same-origin: any `Origin`/`Referer` present must resolve to a loopback host,
+  same-origin: any `Origin`/`Referer` present must resolve to a loopback host
+  (`Origin: null` counts only with `Sec-Fetch-Site: same-origin`),
   otherwise the request is refused with `403`. This needs no per-form token and
   works cleanly with htmx.
 

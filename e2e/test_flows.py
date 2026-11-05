@@ -132,3 +132,33 @@ def test_a_script_url_from_a_source_never_becomes_a_link(page: Page):
     expect(page.locator("#assistant-log")).to_contain_text("See Item 1.")
     assert page.locator("#assistant-log a[href^='javascript']").count() == 0
     assert page.evaluate("window.__pwned") is None
+
+
+def test_a_plain_form_post_is_accepted(page: Page):
+    # The app sends Referrer-Policy: no-referrer, so a browser posts these forms
+    # with "Origin: null". Unlike htmx's requests, nothing but a real browser
+    # shows that.
+    def post(action: str):
+        with page.expect_navigation() as moved:
+            page.evaluate("a => document.querySelector(`form[action='${a}']`).requestSubmit()",
+                          action)
+        return moved.value
+
+    page.goto("/cases/1")
+    closed = post("/cases/1/close")
+    assert closed is not None and closed.status == 200, closed
+    assert post("/cases/1/reopen").status == 200
+
+
+def test_a_sandboxed_page_cannot_post_the_same_way(page: Page):
+    # It too sends "Origin: null": this is what the guard must still stop.
+    html = ("<form id=f method=post action='/cases/1/close'></form>"
+            "<script>document.getElementById('f').submit()</script>")
+    page.route("**/sandboxed", lambda route: route.fulfill(
+        content_type="text/html", body=html,
+        headers={"Content-Security-Policy": "sandbox allow-scripts allow-forms"}))
+    with page.expect_response("**/cases/1/close") as seen:
+        page.goto("/sandboxed")
+    request = seen.value.request
+    assert request.all_headers()["origin"] == "null"
+    assert seen.value.status == 403
