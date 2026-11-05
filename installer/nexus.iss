@@ -41,6 +41,14 @@ ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile=..\launcher\nexus.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 PrivilegesRequired=admin
+; Optional code signing. Off by default, so a normal compile stays unsigned.
+; Enabled only when ISCC is called with /DSignWithScript and a matching /S
+; definition; see docs\SIGNING.md. installer\sign.ps1 skips quietly when the
+; NEXUS_SIGN_* variables are not set.
+#ifdef SignWithScript
+SignTool=nexussign
+SignedUninstaller=yes
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

@@ -13,6 +13,9 @@ to [Semantic Versioning](https://semver.org/).
   image get a build-only check. The arm64 image skips the two x86_64-only helper
   binaries (PhoneInfoga, subfinder). `.dockerignore` now also excludes env
   files, `CLAUDE.md`, `.claude/` and other non-runtime folders.
+- Optional Windows code signing with Azure Trusted Signing: `installer/sign.ps1`
+  (skips quietly when `NEXUS_SIGN_*` is not set) and an opt-in Inno Setup hook;
+  setup steps in `docs/SIGNING.md`. Unsigned builds are unchanged.
 
 - Opt-in encryption at rest for stored files (Settings › Encryption at rest, off
   by default): uploaded originals and evidence screenshots are stored AES-256-GCM
