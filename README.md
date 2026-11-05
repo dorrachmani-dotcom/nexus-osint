@@ -140,6 +140,24 @@ cp .env.example .env
 docker compose up --build
 ```
 
+### Run with Docker
+
+A prebuilt multi-architecture image (amd64 and arm64) is published to GitHub
+Container Registry with each release:
+
+```bash
+docker run -p 127.0.0.1:8000:8000 -v nexus-data:/app/data ghcr.io/dorrachmani-dotcom/nexus-osint:latest
+```
+
+Then open <http://127.0.0.1:8000>. Keep the `127.0.0.1:` prefix in `-p`: inside
+the container the server listens on all container interfaces so Docker can
+forward to it, and the prefix is what keeps it reachable from this machine only.
+Never publish it as a bare `-p 8000:8000`. The `nexus-data` volume holds the
+database, evidence and settings; add `--env-file .env` to pass API keys. The
+image contains no `.env`, data or project tooling files and runs as a non-root
+user. Pin a release with a version tag (for example `:1.3.0`) instead of
+`:latest`.
+
 **Windows installer**: download the latest installer from the repository's
 **Releases** page and run it; it installs a desktop shortcut that opens the app in
 its own window and stops the local server when closed. Linux has a script under
