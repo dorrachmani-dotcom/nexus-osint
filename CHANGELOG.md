@@ -80,6 +80,8 @@ to [Semantic Versioning](https://semver.org/).
   as their own CI job.
 
 ### Changed
+- Internal: the largest functions (`act`, `_configured_allow`, `import_bundle`) are
+  split up with no change in behaviour, and lint now caps function complexity.
 - Stricter Content-Security-Policy: `script-src 'self'` with no
   `'unsafe-inline'` or `'unsafe-eval'`. Inline scripts moved to
   `nexus/web/static/js/`, `onclick=`/`hx-on` handlers replaced by declarative

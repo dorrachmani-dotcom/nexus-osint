@@ -95,100 +95,76 @@ def _host_of(url: str) -> str | None:
         return None
 
 
-def _configured_allow() -> dict[str, str]:
-    """Build {host_suffix: category} from the live configuration.
+def _add_host(allow: dict[str, str], url: object, label: str) -> None:
+    h = _host_of(str(url or ""))
+    if h:
+        allow[h] = label
 
-    Best-effort and fully defensive: any failure yields an empty extra map so the
-    monitor still works with just the static list.
-    """
-    global _allow_cache, _allow_cache_at
-    now = time.monotonic()
-    if _allow_cache is not None and (now - _allow_cache_at) < _ALLOW_TTL_SEC:
-        return _allow_cache
 
-    allow: dict[str, str] = {}
+def _allow_rss(allow: dict[str, str], settings) -> None:
+    """RSS feeds the operator added (``rss_feed_list`` is a property)."""
+    try:
+        feeds = settings.rss_feed_list
+        for url in (feeds if isinstance(feeds, (list, tuple)) else []):
+            h = _host_of(url)
+            if h:
+                allow[h] = "Source (your RSS feed)"
+    except Exception:
+        for url in str(getattr(settings, "rss_feeds", "") or "").split(","):
+            _add_host(allow, url.strip(), "Source (your RSS feed)")
+
+
+def _allow_email(allow: dict[str, str], settings) -> None:
+    """The email brief: only the destination the operator configured."""
+    try:
+        from nexus.mailer import resolve_email_config
+
+        cfg = resolve_email_config(settings)
+        if cfg.provider in ("gmail", "outlook", "smtp") and cfg.host:
+            _add_host(allow, cfg.host, "Email (your SMTP server)")
+        elif cfg.provider in ("resend", "sendgrid") and cfg.api_key:
+            _add_host(allow, cfg.api_url, f"Email (your {cfg.label} API)")
+    except Exception:
+        logger.debug("Could not read email settings for egress allow-list", exc_info=True)
+
+
+def _allow_settings(allow: dict[str, str]) -> None:
+    """Hosts named in the settings."""
     try:
         from nexus.config import get_settings
 
         settings = get_settings()
-
-        # RSS feeds the operator added (``rss_feed_list`` is a property).
-        try:
-            feeds = settings.rss_feed_list
-            for url in (feeds if isinstance(feeds, (list, tuple)) else []):
-                h = _host_of(url)
-                if h:
-                    allow[h] = "Source (your RSS feed)"
-        except Exception:
-            for url in str(getattr(settings, "rss_feeds", "") or "").split(","):
-                h = _host_of(url.strip())
-                if h:
-                    allow[h] = "Source (your RSS feed)"
-
+        _allow_rss(allow, settings)
         # A remote Ollama server, if one is configured (local ones are caught by
         # the loopback/private check anyway).
-        h = _host_of(str(getattr(settings, "ollama_base_url", "") or ""))
-        if h:
-            allow[h] = "AI provider (Ollama)"
-
-        h = _host_of(str(getattr(settings, "telemetry_base_url", "") or ""))
-        if h:
-            allow[h] = "Source (Telegram / Telemetry)"
-
+        _add_host(allow, getattr(settings, "ollama_base_url", ""), "AI provider (Ollama)")
+        _add_host(allow, getattr(settings, "telemetry_base_url", ""),
+                  "Source (Telegram / Telemetry)")
         # A local OpenAI-compatible server (LM Studio etc.). Usually loopback
         # (already "Local machine"), but it may sit on another host the
         # operator configured.
-        h = _host_of(str(getattr(settings, "local_llm_base_url", "") or ""))
-        if h:
-            allow[h] = "AI provider (local OpenAI-compatible server)"
-
-        # The email brief: only the destination the operator configured.
-        try:
-            from nexus.mailer import resolve_email_config
-
-            cfg = resolve_email_config(settings)
-            if cfg.provider in ("gmail", "outlook", "smtp") and cfg.host:
-                h = _host_of(cfg.host)
-                if h:
-                    allow[h] = "Email (your SMTP server)"
-            elif cfg.provider in ("resend", "sendgrid") and cfg.api_key:
-                h = _host_of(cfg.api_url)
-                if h:
-                    allow[h] = f"Email (your {cfg.label} API)"
-        except Exception:
-            logger.debug("Could not read email settings for egress allow-list", exc_info=True)
+        _add_host(allow, getattr(settings, "local_llm_base_url", ""),
+                  "AI provider (local OpenAI-compatible server)")
+        _allow_email(allow, settings)
     except Exception:
         logger.debug("Could not read settings for egress allow-list", exc_info=True)
 
-    # Custom API sources the operator defined.
+
+def _allow_rows(allow: dict[str, str], query: str, label: str, what: str) -> None:
+    """Hosts of the enabled rows a fixed query returns."""
     try:
         from nexus.db import get_connection
 
         with get_connection() as conn:
-            rows = conn.execute(
-                "SELECT base_url FROM custom_sources WHERE enabled = 1"
-            ).fetchall()
+            rows = conn.execute(query).fetchall()
         for row in rows:
-            h = _host_of(str(row[0] or ""))
-            if h:
-                allow[h] = "Source (your custom API)"
+            _add_host(allow, row[0], label)
     except Exception:
-        logger.debug("Could not read custom sources for egress allow-list", exc_info=True)
+        logger.debug("Could not read %s for egress allow-list", what, exc_info=True)
 
-    # Watched web pages / docs sites the operator added.
-    try:
-        from nexus.db import get_connection
 
-        with get_connection() as conn:
-            rows = conn.execute("SELECT url FROM web_sources WHERE enabled = 1").fetchall()
-        for row in rows:
-            h = _host_of(str(row[0] or ""))
-            if h:
-                allow[h] = "Source (your watched web page)"
-    except Exception:
-        logger.debug("Could not read web sources for egress allow-list", exc_info=True)
-
-    # Knowledge connectors the operator connected.
+def _allow_connectors(allow: dict[str, str]) -> None:
+    """Knowledge connectors the operator connected."""
     try:
         from nexus.db import get_connection
         from nexus.sources.cloud import connector_class
@@ -197,9 +173,7 @@ def _configured_allow() -> dict[str, str]:
             sites = conn.execute("SELECT base_url FROM confluence_sources WHERE enabled = 1").fetchall()
             kinds = conn.execute("SELECT DISTINCT kind FROM cloud_sources WHERE enabled = 1").fetchall()
         for row in sites:
-            h = _host_of(str(row[0] or ""))
-            if h:
-                allow[h] = "Source (your Confluence)"
+            _add_host(allow, row[0], "Source (your Confluence)")
         for row in kinds:
             cls = connector_class(str(row[0] or ""))
             if cls is None:
@@ -208,6 +182,27 @@ def _configured_allow() -> dict[str, str]:
                 allow[h] = f"Source (your {cls.LABEL} connection)"
     except Exception:
         logger.debug("Could not read connectors for egress allow-list", exc_info=True)
+
+
+def _configured_allow() -> dict[str, str]:
+    """Build {host_suffix: category} from the live configuration.
+
+    Best-effort and fully defensive: any failure yields an empty extra map so the
+    monitor still works with just the static list. When one host is named twice,
+    the later kind below sets its label.
+    """
+    global _allow_cache, _allow_cache_at
+    now = time.monotonic()
+    if _allow_cache is not None and (now - _allow_cache_at) < _ALLOW_TTL_SEC:
+        return _allow_cache
+
+    allow: dict[str, str] = {}
+    _allow_settings(allow)
+    _allow_rows(allow, "SELECT base_url FROM custom_sources WHERE enabled = 1",
+                "Source (your custom API)", "custom sources")
+    _allow_rows(allow, "SELECT url FROM web_sources WHERE enabled = 1",
+                "Source (your watched web page)", "web sources")
+    _allow_connectors(allow)
 
     _allow_cache = allow
     _allow_cache_at = now

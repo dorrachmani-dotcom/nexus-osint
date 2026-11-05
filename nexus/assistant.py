@@ -30,6 +30,8 @@ import logging
 import re
 import sqlite3
 import urllib.parse
+from collections.abc import Callable
+from typing import NamedTuple
 
 from nexus.assistant_local import local_reply
 from nexus.config import Settings, get_settings
@@ -1476,6 +1478,145 @@ def _deep_gather(provider, question: str, conn: sqlite3.Connection,
     return "\n\n".join(observations)
 
 
+class _ToolCall(NamedTuple):
+    """Everything a tool may need; each entry of ``_TOOLS`` picks what it uses."""
+
+    conn: sqlite3.Connection
+    ctx: dict
+    spec: dict
+    settings: Settings
+    question: str
+    tool: str
+
+
+def _publish_call(c: _ToolCall) -> dict:
+    return _do_prepare_publish(c.conn, c.question, c.tool, c.spec)
+
+
+# Entries call the tool by name when run, so ``_do_*`` stay replaceable in tests.
+_TOOLS: dict[str, Callable[[_ToolCall], dict]] = {
+    "create_case": lambda c: _do_create_case(c.conn, c.ctx, c.spec),
+    "add_items_to_case": lambda c: _do_add_items(c.conn, c.ctx, c.spec),
+    "generate_report": lambda c: _do_generate_report(c.conn, c.ctx, c.spec),
+    "open_page": lambda c: _do_open_page(c.conn, c.ctx, c.spec),
+    "run_scan": lambda c: _do_scan(c.settings),
+    "search_feed": lambda c: _do_search(c.conn, c.spec),
+    "add_watchlist": lambda c: _do_add_watchlist(c.conn, c.spec),
+    "add_requirement": lambda c: _do_add_requirement(c.conn, c.spec),
+    "add_note": lambda c: _do_add_note(c.conn, c.ctx, c.spec),
+    "capture_evidence": lambda c: _do_capture_evidence(c.conn, c.spec, c.settings),
+    "add_case_term": lambda c: _do_add_case_term(c.conn, c.ctx, c.spec),
+    "add_case_question": lambda c: _do_add_case_question(c.conn, c.ctx, c.spec),
+    "create_subcase": lambda c: _do_create_subcase(c.conn, c.ctx, c.spec),
+    "schedule_daily_brief": lambda c: _do_schedule_daily_brief(c.conn, c.spec, c.settings),
+    **dict.fromkeys(_PUBLISH_TOOLS, _publish_call),
+}
+
+
+def _run_actions(conn: sqlite3.Connection, actions_spec: object, question: str,
+                 settings: Settings) -> list[dict]:
+    """Run the actions the model asked for, skipping anything not allow-listed."""
+    results: list[dict] = []
+    if not isinstance(actions_spec, list) or not actions_spec:
+        return results
+    ctx: dict = {"last_case_id": None, "by_name": {}}
+    try:
+        for c in list_cases(conn):
+            ctx["by_name"][c["name"].lower()] = c["id"]
+    except Exception:
+        # Name lookup is a convenience; actions can still use explicit ids.
+        logger.debug("could not list cases for name resolution", exc_info=True)
+    for spec in actions_spec[:_MAX_ACTIONS]:
+        if not isinstance(spec, dict):
+            continue
+        tool = spec.get("tool")
+        if tool not in _ALLOWED_TOOLS:
+            logger.warning(
+                "Sherlock: blocked disallowed tool %r — possible prompt injection",
+                tool,
+            )
+            continue
+        try:
+            results.append(_TOOLS[tool](_ToolCall(conn, ctx, spec, settings, question, tool)))
+        except Exception:
+            logger.exception("Sherlock: action '%s' failed", tool)
+            results.append({"type": "error",
+                            "label": "One step couldn't be completed."})
+    return results
+
+
+def _with_deep_research(provider, question: str, conn: sqlite3.Connection,
+                        data_ctx: str) -> str:
+    """Deep mode: a bounded reason->search->observe research loop + a graph
+    summary, so the answer draws on more than the first keyword slice. Best-effort."""
+    try:
+        research = _deep_gather(provider, question, conn)
+        graph = _graph_brief(conn)
+        if graph:
+            data_ctx += f"\n\nRELATIONSHIP SUMMARY:\n{graph}"
+        if research:
+            data_ctx += f"\n\nADDITIONAL RESEARCH (you ran these searches):\n{research}"
+    except Exception:
+        logger.exception("Sherlock: deep research phase failed")
+    return data_ctx
+
+
+def _email_status_line(conn: sqlite3.Connection, settings: Settings) -> str:
+    """Whether the daily email brief can be scheduled, so Sherlock's reply neither
+    hedges needlessly nor promises an email that cannot be sent."""
+    try:
+        from nexus.mailer import is_verified, resolve_email_config
+
+        email_ready = is_verified(conn, resolve_email_config(settings))
+    except Exception:
+        logger.debug("Could not read the email status for Sherlock", exc_info=True)
+        email_ready = False
+    return ("Email for the daily brief: connected and tested (schedule_daily_brief will work)."
+            if email_ready else
+            "Email for the daily brief: NOT set up yet (schedule_daily_brief will ask the "
+            "analyst to connect it in Settings).")
+
+
+def _act_prompts(conn: sqlite3.Connection, question: str, data_ctx: str,
+                 history: list[dict] | None, settings: Settings, *,
+                 page: str | None, cite: bool) -> tuple[str, str]:
+    """The system and user prompts for one :func:`act` call."""
+    current = _describe_current(conn, page)
+    email_line = _email_status_line(conn, settings)
+    system_prompt = f"{PROJECT_GUIDE}\n\n{_BEHAVIOUR}\n\n{_ACTIONS_GUIDE}\n\n{_tools_reference()}"
+    if cite:
+        system_prompt += f"\n\n{_CITE_GUIDE}"
+    history_block = _format_history(history)
+    user_prompt = (
+        "DATA AVAILABLE TO YOU (use only this for data questions):\n"
+        f"{data_ctx}\n\n"
+        + (f"CURRENT CONTEXT (what the analyst is looking at right now):\n{current}\n\n"
+           if current else "")
+        + f"APP STATUS:\n{email_line}\n\n"
+        + (f"{history_block}\n\n" if history_block else "")
+        + f"Analyst's request: {question}\n\n"
+        "Respond ONLY with the single JSON object described in your instructions."
+    )
+    return system_prompt, user_prompt
+
+
+def _prose_result(provider, provider_name: str, question: str, data_ctx: str,
+                  raw: str | None, ctx_items: list[dict]) -> dict:
+    """The model replied in prose despite the JSON instruction: still useful."""
+    reply = (raw or "").strip()
+    if not reply:
+        # Last-ditch salvage: ask once more in plain-text mode (no JSON
+        # constraint), which some models answer when structured output came
+        # back empty. The analyst gets a real answer instead of nothing.
+        reply = _plaintext_fallback(provider, question, data_ctx)
+        if not reply:
+            return {"ok": False, "answer": "", "provider": provider_name,
+                    "actions": [],
+                    "error": "The model returned an empty response. Please rephrase."}
+    return {"ok": True, "answer": reply, "provider": provider_name,
+            "actions": [], "error": "", "items": ctx_items}
+
+
 def act(
     question: str,
     *,
@@ -1534,47 +1675,11 @@ def act(
         data_ctx = "Total collected items: unknown (could not read the database)."
         ctx_items = []
 
-    # Deep mode: a bounded reason->search->observe research loop + a graph summary,
-    # so the answer draws on more than the first keyword slice. Best-effort.
     if deep:
-        try:
-            research = _deep_gather(provider, question, conn)
-            graph = _graph_brief(conn)
-            if graph:
-                data_ctx += f"\n\nRELATIONSHIP SUMMARY:\n{graph}"
-            if research:
-                data_ctx += f"\n\nADDITIONAL RESEARCH (you ran these searches):\n{research}"
-        except Exception:
-            logger.exception("Sherlock: deep research phase failed")
+        data_ctx = _with_deep_research(provider, question, conn, data_ctx)
 
-    current = _describe_current(conn, page)
-    # Let Sherlock know whether the daily email brief can be scheduled, so its
-    # reply neither hedges needlessly nor promises an email that cannot be sent.
-    try:
-        from nexus.mailer import is_verified, resolve_email_config
-
-        email_ready = is_verified(conn, resolve_email_config(settings))
-    except Exception:
-        logger.debug("Could not read the email status for Sherlock", exc_info=True)
-        email_ready = False
-    email_line = ("Email for the daily brief: connected and tested (schedule_daily_brief will work)."
-                  if email_ready else
-                  "Email for the daily brief: NOT set up yet (schedule_daily_brief will ask the "
-                  "analyst to connect it in Settings).")
-
-    system_prompt = f"{PROJECT_GUIDE}\n\n{_BEHAVIOUR}\n\n{_ACTIONS_GUIDE}\n\n{_tools_reference()}"
-    if cite:
-        system_prompt += f"\n\n{_CITE_GUIDE}"
-    history_block = _format_history(history)
-    user_prompt = (
-        "DATA AVAILABLE TO YOU (use only this for data questions):\n"
-        f"{data_ctx}\n\n"
-        + (f"CURRENT CONTEXT (what the analyst is looking at right now):\n{current}\n\n"
-           if current else "")
-        + f"APP STATUS:\n{email_line}\n\n"
-        + (f"{history_block}\n\n" if history_block else "")
-        + f"Analyst's request: {question}\n\n"
-        "Respond ONLY with the single JSON object described in your instructions."
+    system_prompt, user_prompt = _act_prompts(
+        conn, question, data_ctx, history, settings, page=page, cite=cite,
     )
 
     try:
@@ -1591,77 +1696,10 @@ def act(
 
     parsed = _extract_json(raw)
     if parsed is None:
-        # The model replied in prose despite the JSON instruction — still useful.
-        reply = (raw or "").strip()
-        if not reply:
-            # Last-ditch salvage: ask once more in plain-text mode (no JSON
-            # constraint), which some models answer when structured output came
-            # back empty. The analyst gets a real answer instead of nothing.
-            reply = _plaintext_fallback(provider, question, data_ctx)
-            if not reply:
-                return {"ok": False, "answer": "", "provider": provider_name,
-                        "actions": [],
-                        "error": "The model returned an empty response. Please rephrase."}
-        return {"ok": True, "answer": reply, "provider": provider_name,
-                "actions": [], "error": "", "items": ctx_items}
+        return _prose_result(provider, provider_name, question, data_ctx, raw, ctx_items)
 
     reply = str(parsed.get("reply") or "").strip()
-    actions_spec = parsed.get("actions")
-    results: list[dict] = []
-
-    if isinstance(actions_spec, list) and actions_spec:
-        ctx: dict = {"last_case_id": None, "by_name": {}}
-        try:
-            for c in list_cases(conn):
-                ctx["by_name"][c["name"].lower()] = c["id"]
-        except Exception:
-            # Name lookup is a convenience; actions can still use explicit ids.
-            logger.debug("could not list cases for name resolution", exc_info=True)
-        for spec in actions_spec[:_MAX_ACTIONS]:
-            if not isinstance(spec, dict):
-                continue
-            tool = spec.get("tool")
-            if tool not in _ALLOWED_TOOLS:
-                logger.warning(
-                    "Sherlock: blocked disallowed tool %r — possible prompt injection",
-                    tool,
-                )
-                continue
-            try:
-                if tool == "create_case":
-                    results.append(_do_create_case(conn, ctx, spec))
-                elif tool == "add_items_to_case":
-                    results.append(_do_add_items(conn, ctx, spec))
-                elif tool == "generate_report":
-                    results.append(_do_generate_report(conn, ctx, spec))
-                elif tool == "open_page":
-                    results.append(_do_open_page(conn, ctx, spec))
-                elif tool == "run_scan":
-                    results.append(_do_scan(settings))
-                elif tool == "search_feed":
-                    results.append(_do_search(conn, spec))
-                elif tool == "add_watchlist":
-                    results.append(_do_add_watchlist(conn, spec))
-                elif tool == "add_requirement":
-                    results.append(_do_add_requirement(conn, spec))
-                elif tool == "add_note":
-                    results.append(_do_add_note(conn, ctx, spec))
-                elif tool == "capture_evidence":
-                    results.append(_do_capture_evidence(conn, spec, settings))
-                elif tool == "add_case_term":
-                    results.append(_do_add_case_term(conn, ctx, spec))
-                elif tool == "add_case_question":
-                    results.append(_do_add_case_question(conn, ctx, spec))
-                elif tool == "create_subcase":
-                    results.append(_do_create_subcase(conn, ctx, spec))
-                elif tool == "schedule_daily_brief":
-                    results.append(_do_schedule_daily_brief(conn, spec, settings))
-                elif tool in _PUBLISH_TOOLS:
-                    results.append(_do_prepare_publish(conn, question, tool, spec))
-            except Exception:
-                logger.exception("Sherlock: action '%s' failed", tool)
-                results.append({"type": "error",
-                                "label": "One step couldn't be completed."})
+    results = _run_actions(conn, parsed.get("actions"), question, settings)
 
     if not reply:
         reply = ("Done." if results

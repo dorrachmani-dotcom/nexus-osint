@@ -34,6 +34,7 @@ select = [
     "PL",   # pylint
     "S",    # flake8-bandit (security)
     "DTZ",  # flake8-datetimez (naive datetimes)
+    "C90",  # mccabe: keep functions small enough to follow
 ]
 ignore = [
     # Line length is a formatting concern. The codebase is not mass-reformatted
@@ -84,6 +85,9 @@ extend-immutable-calls = [
     "fastapi.Cookie",
     "fastapi.Path",
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 20
 
 [tool.ruff.lint.per-file-ignores]
 # The data layer builds `IN (?, ?, ...)` placeholder lists and SET/WHERE clauses
