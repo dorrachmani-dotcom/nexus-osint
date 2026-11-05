@@ -278,13 +278,8 @@ def _requirement_id(conn: sqlite3.Connection, question: str, priority: int) -> i
     return last_row_id(cur)
 
 
-def import_bundle(conn: sqlite3.Connection, blob: bytes) -> dict:
-    """Merge a ``.nexusbundle`` into the local database.
-
-    Idempotent: items already present (matched on content_hash) are not
-    duplicated; their analysis/scores are filled in only where missing. Returns
-    a summary dict with counts for the UI.
-    """
+def _open_bundle(blob: bytes) -> tuple[zipfile.ZipFile, dict]:
+    """The opened archive and its payload, or ``ValueError`` saying what is wrong."""
     try:
         zf = zipfile.ZipFile(io.BytesIO(blob))
     except zipfile.BadZipFile as exc:
@@ -321,149 +316,169 @@ def import_bundle(conn: sqlite3.Connection, blob: bytes) -> dict:
             "This bundle appears to be corrupted (its contents don't match its "
             "checksum). Please re-export it and copy the file again."
         )
+    return zf, payload
+
+
+def _insert_item(conn: sqlite3.Connection, rec: dict, chash: str) -> int:
+    dedup_key = rec.get("dedup_key") or chash
+    conn.execute(
+        "INSERT OR IGNORE INTO clusters (id, shared_count) VALUES (?, ?)",
+        (dedup_key, int(rec.get("shared_count") or 1)),
+    )
+    cur = conn.execute(
+        """
+        INSERT INTO items (
+            content_hash, dedup_key, source, track, external_id, url, author,
+            title, content, summary, language, published_at, fetched_at,
+            media_urls, raw, cluster_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            chash,
+            dedup_key,
+            rec.get("source") or "import",
+            rec.get("track") or "api",
+            rec.get("external_id"),
+            rec.get("url"),
+            rec.get("author"),
+            rec.get("title"),
+            rec.get("content") or "",
+            rec.get("summary") or "",
+            rec.get("language"),
+            rec.get("published_at"),
+            # fetched_at is NOT NULL; a real export always sets it, but a
+            # partial/hand-built bundle might not — fall back to now so a
+            # missing field never aborts the whole import.
+            rec.get("fetched_at") or datetime.now(UTC).isoformat(),
+            rec.get("media_urls") or "[]",
+            rec.get("raw") or "{}",
+            dedup_key,
+        ),
+    )
+    return last_row_id(cur)
+
+
+def _merge_item(conn: sqlite3.Connection, rec: dict, chash: str, counts: dict[str, int]) -> int:
+    """Add the item, or fill in what an existing one lacks. Returns its id."""
+    existing = conn.execute(
+        "SELECT id FROM items WHERE content_hash = ?", (chash,)
+    ).fetchone()
+
+    if existing is not None:
+        item_id = int(existing["id"])
+        counts["skipped_items"] += 1
+        # Backfill analysis only if this machine has none for the item.
+        if (
+            rec.get("analysis")
+            and conn.execute(
+                "SELECT 1 FROM analyses WHERE item_id = ?", (item_id,)
+            ).fetchone() is None
+            and _insert_analysis(conn, item_id, rec["analysis"])
+        ):
+            counts["analyses_added"] += 1
+        return item_id
+
+    item_id = _insert_item(conn, rec, chash)
+    counts["new_items"] += 1
+    if rec.get("analysis") and _insert_analysis(conn, item_id, rec["analysis"]):
+        counts["analyses_added"] += 1
+    return item_id
+
+
+def _merge_scores(conn: sqlite3.Connection, item_id: int, rec: dict) -> int:
+    """Requirement scores (for new and existing items: add any missing)."""
+    added = 0
+    for req in rec.get("requirements") or []:
+        q = (req.get("question") or "").strip()
+        if not q:
+            continue
+        rid = _requirement_id(conn, q, int(req.get("priority") or 2))
+        cur = conn.execute(
+            """
+            INSERT OR IGNORE INTO requirement_hits
+                (item_id, requirement_id, score, rationale, model, scored_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                item_id,
+                rid,
+                int(req.get("score") or 0),
+                req.get("rationale"),
+                req.get("model"),
+                req.get("scored_at"),
+            ),
+        )
+        if cur.rowcount:
+            added += 1
+    return added
+
+
+def _merge_evidence(conn: sqlite3.Connection, zf: zipfile.ZipFile, ev_dir: Path,
+                    item_id: int, rec: dict) -> int:
+    """Evidence screenshots: write the file (basename only) + DB row."""
+    added = 0
+    for ev in rec.get("evidence") or []:
+        name = os.path.basename(ev.get("filename") or "")
+        if not name:
+            continue
+        arcname = f"evidence/{name}"
+        already = conn.execute(
+            "SELECT 1 FROM evidence WHERE item_id = ? AND sha256 = ?",
+            (item_id, ev.get("sha256")),
+        ).fetchone()
+        if already is not None:
+            continue
+        try:
+            file_bytes = zf.read(arcname)
+        except KeyError:
+            file_bytes = None
+        if file_bytes is not None:
+            write_protected(ev_dir / name, file_bytes)
+        conn.execute(
+            "INSERT INTO evidence (item_id, screenshot, sha256, captured_at, ocr_text) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                item_id,
+                f"evidence/{name}",
+                ev.get("sha256") or "",
+                ev.get("captured_at") or datetime.now(UTC).isoformat(),
+                ev.get("ocr_text"),
+            ),
+        )
+        added += 1
+    return added
+
+
+def import_bundle(conn: sqlite3.Connection, blob: bytes) -> dict:
+    """Merge a ``.nexusbundle`` into the local database.
+
+    Idempotent: items already present (matched on content_hash) are not
+    duplicated; their analysis/scores are filled in only where missing. Returns
+    a summary dict with counts for the UI.
+    """
+    zf, payload = _open_bundle(blob)
 
     settings = get_settings()
     ev_dir = settings.data_path / "evidence"
     ev_dir.mkdir(parents=True, exist_ok=True)
 
-    new_items = 0
-    skipped_items = 0
-    analyses_added = 0
-    scores_added = 0
-    evidence_added = 0
-
+    counts = {"new_items": 0, "skipped_items": 0, "analyses_added": 0,
+              "scores_added": 0, "evidence_added": 0}
     items = payload.get("items") or []
     for rec in items:
         chash = rec.get("content_hash")
         if not chash:
             continue
-
-        existing = conn.execute(
-            "SELECT id FROM items WHERE content_hash = ?", (chash,)
-        ).fetchone()
-
-        if existing is not None:
-            item_id = int(existing["id"])
-            skipped_items += 1
-            # Backfill analysis only if this machine has none for the item.
-            if (
-                rec.get("analysis")
-                and conn.execute(
-                    "SELECT 1 FROM analyses WHERE item_id = ?", (item_id,)
-                ).fetchone() is None
-                and _insert_analysis(conn, item_id, rec["analysis"])
-            ):
-                analyses_added += 1
-        else:
-            dedup_key = rec.get("dedup_key") or chash
-            conn.execute(
-                "INSERT OR IGNORE INTO clusters (id, shared_count) VALUES (?, ?)",
-                (dedup_key, int(rec.get("shared_count") or 1)),
-            )
-            cur = conn.execute(
-                """
-                INSERT INTO items (
-                    content_hash, dedup_key, source, track, external_id, url, author,
-                    title, content, summary, language, published_at, fetched_at,
-                    media_urls, raw, cluster_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    chash,
-                    dedup_key,
-                    rec.get("source") or "import",
-                    rec.get("track") or "api",
-                    rec.get("external_id"),
-                    rec.get("url"),
-                    rec.get("author"),
-                    rec.get("title"),
-                    rec.get("content") or "",
-                    rec.get("summary") or "",
-                    rec.get("language"),
-                    rec.get("published_at"),
-                    # fetched_at is NOT NULL; a real export always sets it, but a
-                    # partial/hand-built bundle might not — fall back to now so a
-                    # missing field never aborts the whole import.
-                    rec.get("fetched_at") or datetime.now(UTC).isoformat(),
-                    rec.get("media_urls") or "[]",
-                    rec.get("raw") or "{}",
-                    dedup_key,
-                ),
-            )
-            item_id = last_row_id(cur)
-            new_items += 1
-
-            if rec.get("analysis") and _insert_analysis(conn, item_id, rec["analysis"]):
-                analyses_added += 1
-
-        # Requirement scores (for both new and existing items: add any missing).
-        for req in rec.get("requirements") or []:
-            q = (req.get("question") or "").strip()
-            if not q:
-                continue
-            rid = _requirement_id(conn, q, int(req.get("priority") or 2))
-            cur = conn.execute(
-                """
-                INSERT OR IGNORE INTO requirement_hits
-                    (item_id, requirement_id, score, rationale, model, scored_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    item_id,
-                    rid,
-                    int(req.get("score") or 0),
-                    req.get("rationale"),
-                    req.get("model"),
-                    req.get("scored_at"),
-                ),
-            )
-            if cur.rowcount:
-                scores_added += 1
-
-        # Evidence screenshots: write the file (basename only) + DB row.
-        for ev in rec.get("evidence") or []:
-            name = os.path.basename(ev.get("filename") or "")
-            if not name:
-                continue
-            arcname = f"evidence/{name}"
-            already = conn.execute(
-                "SELECT 1 FROM evidence WHERE item_id = ? AND sha256 = ?",
-                (item_id, ev.get("sha256")),
-            ).fetchone()
-            if already is not None:
-                continue
-            try:
-                file_bytes = zf.read(arcname)
-            except KeyError:
-                file_bytes = None
-            if file_bytes is not None:
-                write_protected(ev_dir / name, file_bytes)
-            conn.execute(
-                "INSERT INTO evidence (item_id, screenshot, sha256, captured_at, ocr_text) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (
-                    item_id,
-                    f"evidence/{name}",
-                    ev.get("sha256") or "",
-                    ev.get("captured_at") or datetime.now(UTC).isoformat(),
-                    ev.get("ocr_text"),
-                ),
-            )
-            evidence_added += 1
+        item_id = _merge_item(conn, rec, chash, counts)
+        counts["scores_added"] += _merge_scores(conn, item_id, rec)
+        counts["evidence_added"] += _merge_evidence(conn, zf, ev_dir, item_id, rec)
 
     # Rebuild the case + its notes on the far side, linking imported items.
     case_block = payload.get("case")
     if case_block and case_block.get("name"):
         _import_case(conn, case_block, [r.get("content_hash") for r in items])
 
-    return {
-        "new_items": new_items,
-        "skipped_items": skipped_items,
-        "analyses_added": analyses_added,
-        "scores_added": scores_added,
-        "evidence_added": evidence_added,
-        "total_in_bundle": len(items),
-    }
+    return {**counts, "total_in_bundle": len(items)}
 
 
 def _insert_analysis(conn: sqlite3.Connection, item_id: int, a: dict) -> bool:
