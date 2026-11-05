@@ -359,6 +359,7 @@ Notes:
   `.env` or `data/` — verify this stays true (no secrets or user data in a build).
 - `NEXUS_DEBUG_CONSOLE=1` keeps a console window for tracebacks while testing.
 - A Linux spec (`installer/nexus_linux.spec`) and a Docker image are also provided; tagged releases publish the image to GHCR through `.github/workflows/docker.yml`.
+- Optional code signing (Azure Trusted Signing) is described in `docs/SIGNING.md`.
 
 ---
 
