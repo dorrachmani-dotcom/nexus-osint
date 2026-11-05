@@ -64,8 +64,7 @@ pyinstaller installer/nexus.spec --noconfirm --distpath installer/dist --workpat
 
 # 3) Build the installer; ISCC signs Nexus-Setup.exe and the uninstaller.
 $cmd = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File $q' + "$PWD\installer\sign.ps1" + '$q $f'
-ISCC /DSignWithScript "/Snexussign=$cmd" installer
-exus.iss
+ISCC /DSignWithScript "/Snexussign=$cmd" installer\nexus.iss
 ```
 
 `$q` and `$f` are Inno Setup placeholders (a quote character and the file to sign);
