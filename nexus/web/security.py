@@ -84,6 +84,19 @@ def _is_loopback_host(host: str) -> bool:
     return _host_only(host) in _ALLOWED_HOSTS
 
 
+def _from_this_app(request: Request, source: str) -> bool:
+    """Whether an Origin/Referer value is ours.
+
+    Our ``Referrer-Policy: no-referrer`` makes browsers send ``Origin: null`` on a
+    plain form post. So does a hostile sandboxed frame, so ``null`` alone proves
+    nothing: it counts only with ``Sec-Fetch-Site: same-origin``, which the browser
+    sets and page script cannot.
+    """
+    if source == "null":
+        return request.headers.get("sec-fetch-site") == "same-origin"
+    return _is_loopback_host(urlsplit(source).hostname or "")
+
+
 class SameOriginGuardMiddleware(BaseHTTPMiddleware):
     """Reject cross-origin state-changing requests and DNS-rebinding hosts."""
 
@@ -99,7 +112,7 @@ class SameOriginGuardMiddleware(BaseHTTPMiddleware):
             origin = request.headers.get("origin")
             referer = request.headers.get("referer")
             source = origin or referer
-            if source and not _is_loopback_host(urlsplit(source).hostname or ""):
+            if source and not _from_this_app(request, source):
                 logger.warning(
                     "Rejected cross-origin %s %s (origin/referer=%r)",
                     request.method,

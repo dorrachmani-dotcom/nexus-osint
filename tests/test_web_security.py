@@ -86,6 +86,20 @@ def test_headerless_post_passes(client):
     assert resp.status_code == 200
 
 
+def test_plain_form_post_with_a_null_origin_passes(client):
+    # What a browser sends for <form method=post> under Referrer-Policy: no-referrer.
+    resp = client.post("/act", headers={"origin": "null", "sec-fetch-site": "same-origin"})
+    assert resp.status_code == 200
+
+
+@pytest.mark.parametrize("fetch_site", [None, "cross-site", "same-site", "none"])
+def test_null_origin_alone_proves_nothing(client, fetch_site):
+    headers = {"origin": "null"}
+    if fetch_site:
+        headers["sec-fetch-site"] = fetch_site
+    assert client.post("/act", headers=headers).status_code == 403
+
+
 def test_safe_method_skips_origin_check(client):
     # A GET is read-only, so a cross-origin Origin header must not block it.
     resp = client.get("/ping", headers={"origin": "http://evil.com"})
