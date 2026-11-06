@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 
 logger = logging.getLogger("nexus.casesetup")
 
@@ -54,16 +55,53 @@ def _split_name(name: str) -> list[str]:
     return out
 
 
+def _apply_plan(conn, case_id: int, plan: dict) -> tuple[int, int]:
+    """Store an AI plan on a case; returns (terms added, questions added)."""
+    from nexus.storage import add_case_term, add_requirement
+
+    terms = questions = 0
+    for term in plan.get("queries", []) or []:
+        if (term or "").strip():
+            add_case_term(conn, case_id, term.strip())
+            terms += 1
+    for q in plan.get("requirements", []) or []:
+        if (q or "").strip():
+            add_requirement(conn, q.strip(), priority=1, case_id=case_id)
+            questions += 1
+    logger.info("auto_setup_case %s: +%s AI term(s), +%s question(s)",
+                case_id, terms, questions)
+    return terms, questions
+
+
+def _expand_in_background(case_id: int, name: str, seed: str, settings) -> None:
+    """Ask the model, then store the result on a short connection of its own."""
+    from nexus.analysis.query_builder import generate_plan
+    from nexus.db import get_connection
+    from nexus.storage import get_case
+
+    try:
+        plan = generate_plan(name, seed, settings) or {}
+        if not (plan.get("queries") or plan.get("requirements")):
+            return
+        with get_connection() as conn:
+            if get_case(conn, case_id) is not None:  # may be deleted by now
+                _apply_plan(conn, case_id, plan)
+    except Exception:
+        logger.exception("auto_setup_case: background AI expansion failed (kept name words)")
+
+
 def auto_setup_case(
     conn, case_id: int, name: str, description: str = "",
-    *, settings=None, brief: str = "",
+    *, settings=None, brief: str = "", background: bool = False,
 ) -> dict:
     """Seed a new case's tracking words (+ AI questions). Returns a small summary.
 
     Never raises — a brand-new case always gets at least the name-derived words,
-    and AI expansion is best-effort on top.
+    and AI expansion is best-effort on top. With ``background`` the model is
+    asked on a separate thread, so a slow or unreachable model can't delay the
+    caller; the summary then counts the name-derived words only.
     """
-    from nexus.storage import add_case_term, add_requirement
+    from nexus.storage import add_case_term
 
     added_terms = 0
     added_questions = 0
@@ -79,21 +117,22 @@ def auto_setup_case(
 
         settings = settings or get_settings()
         if settings.analysis_enabled:
-            from nexus.analysis.query_builder import generate_plan
-
+            # Never hold the write lock across a model call: a provider logs each
+            # call on its own connection, which would wait out busy_timeout here
+            # and then lose the row. This also keeps a new case if the call dies.
+            conn.commit()
             seed = (brief or description or name or "").strip()
-            plan = generate_plan(name, seed, settings) or {}
-            before = added_terms
-            for term in plan.get("queries", []) or []:
-                if (term or "").strip():
-                    add_case_term(conn, case_id, term.strip())
-                    added_terms += 1
-            for q in plan.get("requirements", []) or []:
-                if (q or "").strip():
-                    add_requirement(conn, q.strip(), priority=1, case_id=case_id)
-                    added_questions += 1
-            logger.info("auto_setup_case %s: +%s AI term(s), +%s question(s)",
-                        case_id, added_terms - before, added_questions)
+            if background:
+                threading.Thread(
+                    target=_expand_in_background, args=(case_id, name, seed, settings),
+                    name="case-ai-setup", daemon=True,
+                ).start()
+            else:
+                from nexus.analysis.query_builder import generate_plan
+
+                plan = generate_plan(name, seed, settings) or {}
+                terms, added_questions = _apply_plan(conn, case_id, plan)
+                added_terms += terms
     except Exception:
         logger.exception("auto_setup_case: AI expansion failed (kept name words)")
 

@@ -102,6 +102,15 @@ to [Semantic Versioning](https://semver.org/).
   no-referrer` makes browsers send `Origin: null` on these posts. The guard now
   accepts that only with `Sec-Fetch-Site: same-origin`, so a sandboxed page is
   still refused.
+- Creating a case took about 10 seconds when the AI model was unreachable. The
+  model call ran inside the write transaction, so its activity-log row waited
+  out the database lock and was then lost. The form now returns at once and the
+  AI terms and questions are added in the background; Sherlock's create-case
+  commits first.
+- Sherlock no longer fails when the model sends a list or object as a tool name;
+  the action is refused like any other unknown tool.
+- Bundle import keeps a requirement score that has no `scored_at` (dated at
+  import) instead of dropping it silently.
 - The Security center lists Confluence hosts as expected destinations.
 - Connector attachments are parsed before the document is written, so a slow
   file no longer holds the database's write lock.

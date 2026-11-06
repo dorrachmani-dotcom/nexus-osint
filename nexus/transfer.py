@@ -405,7 +405,9 @@ def _merge_scores(conn: sqlite3.Connection, item_id: int, rec: dict) -> int:
                 int(req.get("score") or 0),
                 req.get("rationale"),
                 req.get("model"),
-                req.get("scored_at"),
+                # scored_at is NOT NULL and OR IGNORE would drop the row silently;
+                # a partial/hand-built bundle keeps its score with today's date.
+                req.get("scored_at") or datetime.now(UTC).isoformat(),
             ),
         )
         if cur.rowcount:
