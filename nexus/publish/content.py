@@ -31,7 +31,7 @@ KEEP_LINE = ("%% nexus:end - anything you write below this line is kept when "
              "Nexus updates this note %%")
 
 # Characters XML 1.0 forbids (Confluence rejects a body containing them).
-_XML_BAD = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f￾￿]")
+_XML_BAD = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
 _HTTP = re.compile(r"^https?://", re.I)
 
 
