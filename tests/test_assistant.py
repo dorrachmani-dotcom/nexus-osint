@@ -251,6 +251,24 @@ def test_extract_json_tolerates_fences_and_prose():
     assert _extract_json("no json here at all") is None
 
 
+def test_act_survives_a_non_string_tool_from_the_model(temp_db, monkeypatch):
+    # A list or dict in "tool" is unhashable; act() promises it never raises.
+    fake = _FakePlanProvider({"reply": "Working on it.", "actions": [
+        {"tool": ["create_case"], "name": "Sneaky"},
+        {"tool": {"name": "create_case"}, "name": "Sneaky"},
+        {"tool": None},
+        {"tool": 7},
+        {"tool": "create_case", "name": "Legit"},
+    ]})
+    monkeypatch.setattr("nexus.analysis.providers.get_provider", lambda settings: fake)
+    with temp_db() as conn:
+        res = act("open a case", conn=conn, settings=_FakeSettings("gemini"))
+        names = [c["name"] for c in list_cases(conn)]
+    assert res["ok"] is True
+    assert [a["type"] for a in res["actions"]] == ["case_created"]
+    assert names == ["Legit"]
+
+
 def test_act_plain_answer_runs_no_actions(temp_db, monkeypatch):
     fake = _FakePlanProvider({"reply": "Here's how to scan.", "actions": []})
     monkeypatch.setattr("nexus.analysis.providers.get_provider", lambda settings: fake)

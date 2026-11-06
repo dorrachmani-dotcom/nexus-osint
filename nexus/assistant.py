@@ -1530,7 +1530,7 @@ def _run_actions(conn: sqlite3.Connection, actions_spec: object, question: str,
         if not isinstance(spec, dict):
             continue
         tool = spec.get("tool")
-        if tool not in _ALLOWED_TOOLS:
+        if not isinstance(tool, str) or tool not in _ALLOWED_TOOLS:
             logger.warning(
                 "Sherlock: blocked disallowed tool %r — possible prompt injection",
                 tool,

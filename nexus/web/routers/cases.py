@@ -96,15 +96,16 @@ def cases_create(
 ) -> HTMLResponse:
     """Create a case AND set up its tracking words automatically, so opening a
     case and getting a working live feed are one step. Words are always seeded
-    from the name; with an AI model they're expanded with related terms + starter
-    questions. The optional ``brief`` just adds detail. Degrades gracefully."""
+    from the name; with an AI model they're expanded in the background with related
+    terms + starter questions, so a slow or unreachable model can't hold up the
+    form. The optional ``brief`` just adds detail. Degrades gracefully."""
     from nexus.casesetup import auto_setup_case
 
     with get_connection() as conn:
         cid = create_case(conn, name.strip(), (description or "").strip() or None, priority)
         auto_setup_case(
             conn, cid, name.strip(), (description or "").strip(),
-            settings=get_settings(), brief=brief,
+            settings=get_settings(), brief=brief, background=True,
         )
         rows = _board_rows(conn)
         active = get_active_case(conn)

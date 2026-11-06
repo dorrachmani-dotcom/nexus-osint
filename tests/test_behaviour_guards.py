@@ -338,6 +338,19 @@ def test_the_summary_keeps_its_shape_and_counts_every_kind(temp_db):
         ("evidence_added", 0), ("total_in_bundle", 2)]
 
 
+def test_a_score_without_a_timestamp_is_kept(temp_db):
+    # scored_at is NOT NULL: inserting NULL with OR IGNORE lost the row silently.
+    undated = {"question": "Who owns the depot?", "priority": 1, "score": 55}
+    blank = {"question": "Who runs the depot?", "score": 40, "scored_at": ""}
+    with temp_db() as conn:
+        summary = import_bundle(conn, _bundle([_record(requirements=[undated, blank])]))
+        rows = conn.execute(
+            "SELECT score, scored_at FROM requirement_hits ORDER BY score").fetchall()
+    assert summary["scores_added"] == 2
+    assert [r["score"] for r in rows] == [40, 55]
+    assert all(r["scored_at"] for r in rows)
+
+
 def test_an_existing_item_gains_what_it_lacks(temp_db):
     with temp_db() as conn:
         import_bundle(conn, _bundle([_record()]))
