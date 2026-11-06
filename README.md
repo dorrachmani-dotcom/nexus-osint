@@ -12,9 +12,9 @@
 
 </div>
 
-<p align="center"><b>65-second demo:</b> one sentence to Sherlock opens a full investigation, then the same workflow by hand.</p>
+<p align="center"><b>One-minute demo:</b> one sentence to Sherlock opens a full investigation, then your own documents, connectors, and publishing the result back.</p>
 
-https://github.com/user-attachments/assets/5a123727-9177-4f8b-bb7b-09266f8b30b6
+https://github.com/user-attachments/assets/993629f7-98cf-4224-bc06-b2c4d6c59387
 
 <p align="center"><sub>The demo runs on live public sources; names of private individuals are blurred.</sub></p>
 
@@ -155,7 +155,7 @@ forward to it, and the prefix is what keeps it reachable from this machine only.
 Never publish it as a bare `-p 8000:8000`. The `nexus-data` volume holds the
 database, evidence and settings; add `--env-file .env` to pass API keys. The
 image contains no `.env`, data or project tooling files and runs as a non-root
-user. Pin a release with a version tag (for example `:1.3.0`) instead of
+user. Pin a release with a version tag (for example `:1.4.0`) instead of
 `:latest`.
 
 **Windows installer**: download the latest installer from the repository's
