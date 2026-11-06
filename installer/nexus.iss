@@ -15,7 +15,7 @@
 ; by the app itself, never here.
 
 #define AppName "Nexus"
-#define AppVersion "1.3.0"
+#define AppVersion "1.4.0"
 #define AppPublisher "Nexus OSINT"
 #define AppExeName "Nexus.exe"
 

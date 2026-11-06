@@ -6,6 +6,13 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-06
+
+Fixes the form bug in 1.3.0, where plain HTML forms were refused with a 403 in a
+real browser, so upgrading is recommended. Also adds encryption at rest for stored
+files, backup and restore, an outbound activity log, an optional app password,
+cloud connectors and a container image.
+
 ### Added
 - Container image on GitHub Container Registry
   (`ghcr.io/dorrachmani-dotcom/nexus-osint`, linux/amd64 and linux/arm64),
@@ -410,7 +417,8 @@ First tagged release.
 - Inline script embedding of collected data uses Jinja `|tojson` to prevent
   `</script>` breakout.
 
-[Unreleased]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/dorrachmani-dotcom/nexus-osint/compare/v1.0.0...v1.1.0
