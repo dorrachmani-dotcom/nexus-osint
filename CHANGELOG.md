@@ -6,6 +6,9 @@ to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- The README demo video now shows document upload, connectors and publishing.
+
 ## [1.4.0] - 2026-11-06
 
 Fixes the form bug in 1.3.0, where plain HTML forms were refused with a 403 in a
