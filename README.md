@@ -224,10 +224,47 @@ Colours separate people, organisations, places and identifiers (wallets,
 domains, CVEs, emails), so infrastructure reuse stands out. Every node opens
 that entity's dossier.
 
+### 5. Your own documents, searchable next to everything else
+
+<img src="docs/media/documents.png" alt="Documents page: a fictional Word report uploaded to the knowledge pool and split into four searchable sections" width="100%">
+
+Upload a report, a spreadsheet, an exported wiki or a ZIP, and Nexus splits it
+into one item per page, section, sheet or slide. Those items are searchable right
+away, and Sherlock answers from them with citations you can click to open the
+exact passage. With a cloud AI provider, a file stays away from it unless you
+tick "Allow cloud AI" for that upload.
+
+<img src="docs/media/connector.png" alt="Confluence connector screen with a fictional Data Center connection, read-only by default, with publishing switched on" width="100%">
+
+The same goes for the places your material already lives: Confluence (Cloud or
+Data Center) and Obsidian vaults, plus read-only Notion, Slack, Google Drive and
+SharePoint or OneDrive connectors. On a closed network, intranet hosts are
+reached only after you allow-list them, and tokens stay in `.env`. Setup details:
+[docs/INGESTION.md](docs/INGESTION.md).
+
+### 6. Edit, preview, publish
+
+<img src="docs/media/publish-preview.png" alt="Item drawer showing an analyst edit and a preview of the exact Confluence content, with nothing sent until Confirm and publish is clicked" width="100%">
+
+Edit an item without touching the collected original, or compose a write-up from
+pinned items, then publish it to Confluence, a note in your Obsidian vault or the
+knowledge pool. Writing is off until you allow it per connection, the preview is
+exactly what will be sent, and only a click confirms it. Sherlock can prepare a
+publish but has no path to confirm one. See [docs/PUBLISHING.md](docs/PUBLISHING.md).
+
+### 7. An activity log of what left the machine
+
+<img src="docs/media/activity-log.png" alt="Outbound activity page listing each event by type, destination, action, size and result" width="100%">
+
+Local-first is easier to believe when you can check it. Outbound activity lists
+AI calls, publishing, e-mail and source fetches by destination, with counts and
+sizes but never the content, and exports to CSV. Stored files can also be
+encrypted at rest (Settings > Encryption at rest, off by default).
+
 <details>
 <summary><b>More of the tour: entity dossier, daily brief, the assistant, settings</b></summary>
 
-#### 5. Entity dossier and contextual pivots
+#### 8. Entity dossier and contextual pivots
 
 <img src="docs/media/entity.png" alt="Entity dossier for Nightjar Group: co-occurring entities, cases it appears in and every item mentioning it" width="100%">
 
@@ -238,7 +275,7 @@ offers the matching **passive** OSINT tools (for example holehe for an email,
 maigret for a username) as one-click pivots. Only tools that are installed are
 offered, and targets are validated before they reach a subprocess.
 
-#### 6. Daily brief
+#### 9. Daily brief
 
 <img src="docs/media/brief.png" alt="Daily brief listing new items per case since the analyst last looked" width="100%">
 
@@ -248,9 +285,9 @@ AI analysis is off) instead of failing silently. Optionally, Sherlock emails a
 written version of this brief every morning, and each case can save a daily
 PDF/HTML report that shows up in a "Latest reports" strip here.
 
-#### 7. Sherlock: an assistant that can act, inside a fence
+#### 10. Sherlock: an assistant that can act, inside a fence
 
-<img src="docs/media/assistant.png" alt="Sherlock panel with suggested actions" width="100%">
+<img src="docs/media/assistant.png" alt="Sherlock panel; with no AI provider set it says so and links to the setup step" width="100%">
 
 Sherlock, the in-app assistant (not the `sherlock` username CLI of the same
 name), can open cases, add tracking words, pin matching items, run a scan and
@@ -260,7 +297,7 @@ reach the network. Collected text is untrusted input, so the assistant's output
 is rendered as text, never HTML: a prompt injection hidden in a scraped post
 cannot become script execution in your browser.
 
-#### 8. A setup checklist, and settings that explain themselves
+#### 11. A setup checklist, and settings that explain themselves
 
 <img src="docs/media/setup.png" alt="Setup checklist: five steps with live status (sources, AI, email, daily brief, daily case reports) and the daily-brief scheduling card" width="100%">
 
@@ -433,7 +470,7 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-The suite (about 600 tests) uses temporary SQLite databases and avoids the
+The suite (about 1,050 tests) uses temporary SQLite databases and avoids the
 network; it covers storage and dedup, source parsing, the assistant allow-list,
 web hardening, export/transfer round-trips and route smoke tests.
 
